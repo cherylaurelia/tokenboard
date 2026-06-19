@@ -46,25 +46,29 @@ The global board still exists — it's a fun ceiling and an aspirational backdro
 
 ### 3.1 The "Appear Before You Sign Up" onboarding
 
-The mantra: **APPEAR → HOOKED → CLAIM.** You should be *on a board* before you ever create an account. Login is the async step where you *claim* what already exists.
+The mantra: **PREVIEW → HOOKED → CLAIM.** You see your real number *locally* before you create anything; GitHub login is the step — taken while you're already hooked — that puts you on the public board. There is **no permanent anonymous public presence** (§7): the only pre-auth state is the local preview.
 
 ```
   $ npx tokenboard
   ─────────────────────────────────────────────
   scanning ~/.claude/projects ...        ✓ 1,207 sessions
   computing aggregate usage ...          ✓
-  you burned 4.2B tokens · ~$1,180 this month
+  you burned 4.2B tokens · ~$1,180 this month   ← LOCAL preview, no login
 
-  → you're on the board:  tokenboard.sh/u/anon-7f3a
-  → claim your profile + verified badge:  tokenboard.sh/claim/7f3a
+  ┌─ if it were live, you'd rank ─────────────┐
+  │  #3  in a typical 8-person room            │   ← teaser, computed locally
+  └────────────────────────────────────────────┘
+
+  → claim your spot + see your community:
+    sign in with GitHub →  tokenboard.sh/claim/7f3a
   ─────────────────────────────────────────────
 ```
 
-1. **Appear (~30s).** `npx tokenboard` harvests local usage, uploads aggregates, and drops you onto a board under an anonymous handle. **No login required to appear.** This is the dopamine hit and it happens first.
-2. **Hooked.** The CLI prints your live board URL. You see your number, ranked, immediately. You can share that URL before you've signed up for anything.
-3. **Claim (async).** Visit the claim link → GitHub OAuth → your anonymous handle and all its accumulated history bind to your account, you pick a vanity URL, and you get the **verified badge**. The claim step is where identity and the vanity layer attach — *after* you're already hooked.
+1. **Preview (~30s, no login).** `npx tokenboard` harvests local usage and renders your number — and a *local* teaser board — **right in the terminal**, before any account exists. This is the dopamine hit and it happens first. Nothing is uploaded yet.
+2. **Hooked.** You see your real burn, beautifully rendered (§14). The CLI's call to action: *"Sign in with GitHub to claim your spot & see your community."*
+3. **Claim → appear.** Click through → GitHub OAuth (one click for devs) → a device token binds to your account, your previewed history uploads, you pick a vanity URL, get the **verified badge**, and now you're on the **public** board and can create/join communities.
 
-> Login is never a gate in front of value. It's the upgrade you reach for once you already want it.
+> Login is never a gate in front of *value* — the value (your number) shows first, locally. Login is the gate in front of *appearing publicly*, which is exactly where we want maximum captured identity.
 
 ### 3.2 Create / Join a community
 
@@ -74,7 +78,7 @@ The mantra: **APPEAR → HOOKED → CLAIM.** You should be *on a board* before y
 3. Creator is auto-added as first member + admin.
 
 **Join:**
-1. Open an invite link → if logged in, one-click join; if not, run `npx tokenboard` first to *appear*, then claim + join.
+1. Open an invite link → if logged in, one-click join; if not, sign in with GitHub (after the local `npx tokenboard` preview), then join. Company boards instead auto-join on **work-email verification** (§7.2).
 2. On join, your existing `usage_day` history backfills the room's windowed leaderboard (you don't start at zero — you start with your real numbers).
 
 ### 3.3 The X share loop (numbered)
@@ -100,7 +104,8 @@ The split matters because of a hard constraint: **agent logs prune.** Claude Cod
   ┌──────────────────────────── YOUR MACHINE ────────────────────────────┐
   │  npx tokenboard                                                       │
   │    ├─ Claude Code parser (OURS) ── ~/.claude/projects/**/*.jsonl      │
-  │    └─ ccusage adapter (shell out) ── 14 other tools                   │
+  │    └─ ccusage (shell out, source-first) ── 14 other tools             │
+  │        `ccusage <source> daily --json --offline`                      │
   │                    │                                                  │
   │            normalized records {tool,model,4 token buckets,ts}         │
   │            `tokenboard show-data`  ← dry-run, prints exact upload     │
@@ -152,53 +157,39 @@ Postgres is **truth**; Redis is a **fast, disposable read model** for ranking. I
 
 **The pattern is decisive:** Claude Code is the only tool where (a) the data actually exists on the machine, (b) it's our primary tool, and (c) the build cost is bounded. Codex has no data yet; Gemini has no data *by design*. Building those parsers now is writing tests against fixtures for usage that doesn't exist.
 
-### 5.2 The "aura loss" feeling — the honest reframe
-
-The instinct — *"depending = not innovating; the stack should all be mine"* — is backwards **in this specific scene.**
-
-**The parser is not the moat. It's plumbing.** Re-implementing JSONL/SQLite log readers for 15 agents is undifferentiated work that everyone who's looked at it agrees is undifferentiated. And the failure mode is brutal: if dedup is subtly wrong, **the leaderboard numbers visibly disagree with people's real Anthropic bills.** On a public board distributed on X, a wrong number isn't a bug — it's the screenshot that kills credibility. The aura you'd be protecting is exactly the aura a buggy parser destroys.
-
-**Where the aura actually lives:** tokenboard's moat is everything *on top* of accurate counts — the board, the comparisons, the framing, the social/leaderboard layer, the X-native distribution. Counting is a commodity input to the actual product.
-
-**But the instinct isn't wrong — it's mis-aimed.** Note what tokscale (our most direct competitor) did: built a *custom* Rust parser, didn't credit ccusage, and markets "10× faster, 35+ clients." So "I built my own counting core" *is* a legitimate differentiation story — **if performance or coverage is your wedge.** The hybrid lets us make that claim *honestly* for the load-bearing tool, without pretending the long tail is a moat it isn't.
-
-**The status math, plainly:**
-- Reinventing all 15 parsers to "look hardcore" → **low-status** (a part-time maintenance job with zero differentiation).
-- Quietly cloning ccusage without credit → **the actual aura-loss move** (ryoppippi is a known quantity in a small scene; you'll get caught and it reads as insecure).
-- **Owning the hero parser + leverage-with-attribution on the tail → high-status, credible-founder move.** *"I wrote my own Claude Code counter because accuracy on my main tool was non-negotiable; I lean on the community standard for the long tail"* is a flex **and** it's true.
-
-We get to say *"the Claude Code counter is all mine."* That's the real, defensible version of the feeling.
-
-### 5.3 The HYBRID path — and the exact seam
+### 5.2 The HYBRID path — and the exact seam
 
 **Own:** the Claude Code parser. Primary tool (~1207 files of real data on disk now), best-documented format, bounded build, and the one place wrong numbers publicly embarrass us.
 
 **Depend:** `ccusage` for the ~14-tool long tail (Codex, Gemini, Goose, Amp, Qwen, Copilot CLI, etc.). Let ryoppippi absorb the several-releases-per-week maintenance tax for formats users rarely touch.
 
 ```
-                    ┌─────────────────────────────────────┐
-   Claude Code  →   │  OUR parser (Rust/TS)               │
-   JSONL transcripts│  • global message.id dedup          │ ─┐
-                    │  • skip synthetic/error/non-asst    │  │
-                    └─────────────────────────────────────┘  │
-                                                              ▼
-                    ┌─────────────────────────────────────┐  ┌──────────────────┐
-   14 other tools → │  ccusage CLI (shell out)            │  │ Normalized usage │
-                    │  `ccusage <tool> --json --offline`  │ ─┤ record (OUR      │
-                    │  ingest stdout JSON                 │  │ schema)          │
-                    └─────────────────────────────────────┘  └────────┬─────────┘
-                                                                       ▼
-                                                       ┌──────────────────────────┐
-                                                       │ Cost engine (server-side)│
-                                                       │ LiteLLM price JSON +      │
-                                                       │ offline snapshot,         │
-                                                       │ 4 buckets + 1h/5m cache   │
-                                                       └──────────────────────────┘
+                    ┌─────────────────────────────────────────┐
+   Claude Code  →   │  OUR parser (Rust/TS)                   │
+   JSONL transcripts│  • global message.id dedup              │ ─┐
+                    │  • skip synthetic/error/non-asst        │  │
+                    └─────────────────────────────────────────┘  │
+                                                                  ▼
+                    ┌─────────────────────────────────────────┐  ┌──────────────────┐
+   14 other tools → │  ccusage CLI (shell out, CLIENT-SIDE)   │  │ Normalized usage │
+                    │  `ccusage <source> daily --json         │ ─┤ record (OUR      │
+                    │            --offline`                   │  │ schema)          │
+                    │  e.g. `ccusage codex daily --json …`    │  └────────┬─────────┘
+                    │  ingest stdout JSON                     │           │
+                    └─────────────────────────────────────────┘           ▼
+   (both run on the USER's machine; the server                ┌──────────────────────────┐
+    ingests POSTed JSON and NEVER spawns ccusage)             │ Cost engine (server-side)│
+                                                              │ LiteLLM price JSON +      │
+                                                              │ offline snapshot,         │
+                                                              │ 4 buckets + 1h/5m cache   │
+                                                              └──────────────────────────┘
 ```
 
 **Seam decisions, exactly:**
 
-1. **The integration boundary is the CLI/JSON line, not a library import.** As of v20, ccusage ships as a Rust binary with *no importable JS parser function* — so we shell out to `ccusage <tool> --json --offline` and ingest stdout. This is a *feature*: the process boundary insulates us from ccusage's internal churn. We depend on its **output contract**, not its internals.
+1. **The integration boundary is the CLI/JSON line, not a library import — and it runs CLIENT-SIDE only.** As of v20 (current `ccusage@20.x`, ~89% Rust), ccusage ships as a thin JS launcher (`./src/cli.js`) that spawns a per-platform precompiled native binary via `optionalDependencies` (`@ccusage/ccusage-{darwin,linux,win32}-{arm64,x64}`). There is **no importable JS parser** — the `exports` map (incl. the old `ccusage/data-loader`) was **removed in the v20 rewrite** (it existed through v15; do not plan to import it). So we **shell out to the CLI and ingest stdout**. Critically, ccusage reads **local per-machine files** (`~/.claude`, `~/.codex`, …), so it must run on the **user's machine inside our CLI**; the **server never spawns ccusage** — it only ingests the POSTed JSON. **Pin the major** (`ccusage@20`) in the client collector — the v15→v20 (JS→Rust) rewrite was a breaking change to this surface. The process boundary insulates us from ccusage's internal churn; we depend on its **output contract**, not its internals.
+
+   > **Syntax note:** v20 is **source-first** — `ccusage <source> <period> [flags]`, e.g. `ccusage claude daily --json --offline`, `ccusage codex daily --json --offline`. Sources: `claude, codex, opencode, amp, droid, gemini, copilot, qwen, …`; periods: `daily/weekly/monthly/session/blocks`. `--offline` uses cached pricing (good for cron). Only `--mode display` is confirmed in the v20 README — **verify `--mode calculate`/`auto` against the installed binary** before relying on it (we compute cost server-side regardless, so this only affects ccusage's own cost column, which we ignore).
 
 2. **Both paths emit OUR normalized record.** Our parser and the ccusage adapter both produce the same shape:
    ```
@@ -206,7 +197,7 @@ We get to say *"the Claude Code counter is all mine."* That's the real, defensib
    ```
    Downstream (the board) never knows which path a row came from.
 
-3. **Compute cost server-side, in ONE place, for BOTH paths.** There is **no `costUSD` on disk** for Claude Code, and pricing has **4 buckets** that price differently (cache-read ~0.1×, cache-write 1.25×/2× by TTL). Don't trust ccusage's cost number and don't hand-maintain a table. **Vendor the LiteLLM `model_prices` JSON, ship an offline snapshot, and run our cost engine over raw token counts from both paths.** One consistent cost methodology across all 15 tools — removes *"did ccusage and my parser price differently?"* as a whole class of bug. (tokscale, ccusage, and us all converge on LiteLLM as the pricing oracle — reinventing the *price table* is the genuinely dumb move; reinventing the *parser* for the hero tool is the smart one.)
+3. **Compute cost server-side, in ONE place, for BOTH paths.** There is **no `costUSD` on disk** for Claude Code, and pricing has **4 buckets** that price differently (cache-read ~0.1×, cache-write 1.25× for 5m / 2× for 1h TTL — all confirmed). Don't trust ccusage's cost number and don't hand-maintain a table. **Vendor the LiteLLM `model_prices_and_context_window.json`, ship an offline snapshot, and run our cost engine over raw token counts from both paths.** One consistent cost methodology across all 15 tools — removes *"did ccusage and my parser price differently?"* as a whole class of bug. (tokscale, ccusage, and us all converge on LiteLLM as the pricing oracle — reinventing the *price table* is the genuinely dumb move; reinventing the *parser* for the hero tool is the smart one.)
 
 4. **License: zero risk.** ccusage and LiteLLM are both MIT. Depending on the npm/binary package satisfies attribution automatically. If we vendor the LiteLLM JSON, drop the MIT notice in a `NOTICES` file. That's the whole obligation. **Crediting ccusage publicly is also the aura-positive move — do it.**
 
@@ -230,15 +221,38 @@ Postgres, with Row-Level Security. The server is the **system of record** — it
 
 **Server accumulates forever.** Once a `usage_day` row lands, it's permanent — even after the source logs prune off the user's disk. Lifetime totals are a `SUM` over `usage_day`, never dependent on what's currently on any machine.
 
-**`cost_usd` is computed server-side** by the cost engine (§5.3) at ingest time and stored on the row, so leaderboards never recompute pricing at read time.
+**`cost_usd` is computed server-side** by the cost engine (§5.2) at ingest time and stored on the row, so leaderboards never recompute pricing at read time.
 
 ---
 
 ## 7. Auth & Identity
 
-**GitHub OAuth is primary.** It's the right identity for a developer audience, gives us a real avatar for the board for free, and `github_id` is a strong, stable anti-sock-puppet anchor. **Email magic-link is the fallback** for people who won't OAuth.
+**GitHub OAuth is primary and MANDATORY to appear on a public board.** It's the right identity for a developer audience, gives us a real avatar for the board for free, and `github_id` is a strong, stable anti-sock-puppet anchor. We require it (rather than allowing permanent anonymous users) to **maximize captured identity** — every public row is a real, claimable account. **Email magic-link is the fallback** for people who won't OAuth, and is *also* the mechanism for company-board membership (§7.2).
+
+> **Value-first, not login-first.** Requiring GitHub does *not* mean a login wall at the door. `npx tokenboard` first renders a **local preview** (your number + a local board) with **no login**, *then* prompts *"Sign in with GitHub to claim your spot & see your community."* Order is **appear → hooked → claim** (§3.1). The login happens while the user is already hooked, not before they've seen value. There are **no permanent anonymous public users** — the local preview is the only pre-auth state.
 
 Board rows show **GitHub avatars** — recognizable faces are what make "you vs your friends" legible at a glance.
+
+### 7.1 Membership tiers (one `communities` table, three behaviors)
+
+All three tiers are the **same table**, differing only by a `type` + `join_policy` + `visibility`. We don't build three systems — one system with a verification strategy per room. (Full schema + flows in `ARCHITECTURE.md`.)
+
+| Tier | What it is | Join / verification | Default visibility |
+|---|---|---|---|
+| **Individual** | Just you, your GitHub identity + vanity profile | GitHub OAuth (verification tier 1) | public profile |
+| **Community / Group** | Anyone creates one; friends join | invite link or 6-char code (`join_policy: open` / `code`) | unlisted or public |
+| **Company** | An org board that auto-groups verified employees | **work-email domain** magic-link/OTP (verification tier 2) → `@amazon.com` proves mailbox control → auto-join + 🏢 badge | public (org-admin can privatize) |
+
+**Verification ladder:** tier 1 = **GitHub** (who you are), tier 2 = **work email** (which company you're in). No SAML, no WorkOS — a public consumer product wants the lightweight magic-link path, not enterprise SSO.
+
+### 7.2 Work-email (company) verification
+
+1. User clicks **Join `<company>`** → enters `you@company.com`.
+2. Server emails a **magic link / 6-digit code**; clicking it proves mailbox control.
+3. Auto-add to the company community + grant the 🏢 verified-company badge.
+4. **Block disposable domains** (`@mailinator.com`, etc.) and **`+`-subaddress tricks**; rate-limit verification attempts.
+
+Company boards are **public by default** ("Stripe vs Ramp, who burns more tokens" is exactly the X-native content), with an **org-admin private toggle** (see §15 open question on optics).
 
 ### X is a BADGE + share rail, NOT login
 
@@ -251,7 +265,7 @@ This is a hard, cost-driven decision. **In 2026 the X API has no free tier** —
 
 - Profiles: `tokenboard.sh/u/[handle]`. Communities: `tokenboard.sh/c/[slug]`.
 - `handle` and `slug` share no namespace conflict (different path prefixes) but are each unique within their space.
-- Anonymous CLI users get a system handle (`anon-7f3a`); **claiming** via GitHub OAuth lets them pick a real vanity handle and migrates all accumulated history onto it.
+- The local-preview state shows a provisional handle; **claiming** via GitHub OAuth binds a real vanity handle (defaulting to the GitHub login) and migrates all locally-previewed history onto the account on first sync.
 
 ---
 
@@ -278,11 +292,12 @@ A rank is only motivating when it isn't embarrassing or hollow:
 
 The board lives or dies on whether people believe the numbers. Defenses, in order of leverage:
 
-1. **Cost is computed server-side, always.** Clients upload *raw token counts*, never dollar figures. The pinned LiteLLM table (§5.3) is the single pricing authority. You cannot inflate your spend by lying about price — only the server prices.
-2. **Trust tiers / pills on every row:**
-   - **`verified`** — claimed account + GitHub OAuth (and optionally X badge). High trust.
-   - **`cli`** — appeared via `npx tokenboard`, unclaimed/anonymous. Counts, but visibly lower trust.
-   The pill is always visible on the board, so viewers calibrate.
+1. **Cost is computed server-side, always.** Clients upload *raw token counts*, never dollar figures. The pinned LiteLLM table (§5.2) is the single pricing authority. You cannot inflate your spend by lying about price — only the server prices.
+2. **Trust tiers / pills on every row** (every *public* row is at least GitHub-verified, since GitHub is mandatory to appear — §7):
+   - **GitHub-verified** (baseline) — real `github_id` + avatar. The floor for any public row.
+   - **🏢 company-verified** — also passed work-email domain verification (§7.2). Highest trust.
+   - **✓ X-connected** — optional connected X badge, an additional identity signal.
+   Pills are always visible on the board, so viewers calibrate. (No anonymous public tier exists — the local CLI preview never appears publicly.)
 3. **Sanity caps.** Per-day token totals above a physically-implausible ceiling are flagged/capped (you can't realistically emit more than *X* tokens/day through a single agent). Caps protect the global board from obvious garbage.
 4. **Social context is the real anti-cheat (see §2).** In a small room of people who know each other's real stack, a faked number is self-evident and self-policing. This is *why* communities are the core surface — they make cheating socially expensive in a way a global board never can.
 
@@ -339,19 +354,17 @@ Distribution **is** the strategy — it's the gap tokscale left on the table. Th
 
 ## 12. MVP Cut — ordered build checklist
 
-Build the thinnest end-to-end vertical slice that proves the **product**, not parser breadth.
+> **24-hour sprint. No time-phasing — this is a strict build *order*, not a schedule.** Build the thinnest end-to-end vertical slice that proves the **product**, not parser breadth. Ship top-to-bottom; each item unblocks the next.
 
-**Week 1 — the load-bearing slice:**
+1. [ ] **Claude Code parser (the hero, all ours).** Read `~/.claude/projects/**/*.jsonl`. Keep only `type=="assistant"` lines. **Global `message.id` dedup** (handle null `requestId`). Exclude `<synthetic>` model lines; decide the rule on `isApiErrorMessage`. Emit all **4 token buckets** including the `cache_creation` *object* (1h/5m split), not just the scalar.
+2. [ ] **`tokenboard show-data` dry-run** — wire alongside the parser; it's the trust unlock and must exist *before* any upload path.
+3. [ ] **Cost engine.** Vendor LiteLLM `model_prices` JSON + commit an offline snapshot. Price all 4 buckets correctly. Unknown model id → **log it, don't silently read 0.** Observed model mix: `claude-opus-4-8` (dominant), `claude-sonnet-4-6`, `<synthetic>` (exclude).
+3. [ ] **Ingest + GitHub OAuth + the board.** Idempotent `usage_day` upsert; GitHub login to claim a public spot; aggregate normalized records → public leaderboard view + CLI leaderboard → the X-shareable screenshot. **This is the differentiation — where the energy visibly lands.**
+4. [ ] **ONE ccusage adapter, ONE tool wired.** Pick Codex or one tail tool. Shell out **client-side** `ccusage codex daily --json --offline` (source-first), map output into the normalized record, run it through *our* cost engine. **Proves the seam end-to-end** — one is enough.
 
-- [ ] **Day 1–3 — Claude Code parser (the hero, all ours).** Read `~/.claude/projects/**/*.jsonl`. Keep only `type=="assistant"` lines. **Global `message.id` dedup** (handle null `requestId`). Exclude `<synthetic>` model lines; decide the rule on `isApiErrorMessage`. Emit all **4 token buckets** including the `cache_creation` *object* (1h/5m split), not just the scalar.
-- [ ] **Day 3–4 — Cost engine.** Vendor LiteLLM `model_prices` JSON + commit an offline snapshot. Price all 4 buckets correctly. Unknown model id → **log it, don't silently read 0.** Observed model mix: `claude-opus-4-8` (dominant), `claude-sonnet-4-6`, `<synthetic>` (exclude).
-- [ ] **Day 4 — ONE ccusage adapter, ONE tool wired.** Pick Codex or one tail tool. Shell out `ccusage <tool> --json --offline`, map output into the normalized record, run it through *our* cost engine. **Proves the seam end-to-end** — one is enough.
-- [ ] **Day 5 — The board.** Aggregate normalized records → public leaderboard view → the X-shareable screenshot. **This is where week-1 energy should visibly land** — it's the differentiation.
-- [ ] **`tokenboard show-data` dry-run** — wire alongside the parser; it's the trust unlock and ships before any upload path.
+**Definition of Done:** my real Claude Code usage shows up on the board with a cost number that **matches my Anthropic console**, *and* one tool routed through ccusage shows up alongside it via the **same** cost engine. That single screenshot proves the whole architecture and is itself the launch asset.
 
-**Week-1 Definition of Done:** my real Claude Code usage shows up on the board with a cost number that **matches my Anthropic console**, *and* one tool routed through ccusage shows up alongside it via the **same** cost engine. That single screenshot proves the whole architecture and is itself the launch asset.
-
-**Explicitly NOT in week 1 (skip):**
+**Explicitly NOT in v1 (skip):**
 - ❌ Gemini (no data exists).
 - ❌ All 14 tail tools (one is enough to prove the seam).
 - ❌ Forking ccusage.
@@ -363,8 +376,56 @@ Build the thinnest end-to-end vertical slice that proves the **product**, not pa
 
 ---
 
-## 13. Open Questions
+## 13. Scale & Performance (5k users)
 
-1. **`isApiErrorMessage` rule.** Do error-message assistant lines carry real billed tokens (Anthropic sometimes bills partial generations) or should they be excluded? Decision affects whether our number matches the console on error-heavy days — needs a console reconciliation test.
-2. **Community visibility defaults & abuse.** Public rooms are discoverable and SEO-valuable but invite spam/squatting on good slugs; unlisted rooms are safer but spread worse. What's the right default, and do we need slug reservation / reporting before public launch?
-3. **Anonymous (`cli` tier) retention on the global board.** Unclaimed CLI appearances drive the "appear first" hook, but how long do we keep an unclaimed anon handle's data before pruning, and how do we prevent the global board from filling with stale anon rows that never claimed?
+**Verdict: 5,000 users is small.** Average write load is ~1.4 req/s, reads collapse to near-zero with caching, Redis ops are microsecond-scale, and row counts stay in the low tens of millions. The architecture (Next.js/Vercel + Postgres + Upstash + next/og) has **10–100× headroom** before any redesign. The risk is not throughput — it is a short list of specific footguns.
+
+### Postgres connection pooling — the #1 risk (MANDATORY before launch)
+Each Vercel serverless invocation that opens a raw TCP Postgres connection consumes one backend slot. Neon's 0.25 CU free tier exposes only ~**97 usable direct connections** (104 − 7 reserved); a bursty ingest will hit `too many connections` and start dropping writes. **Fix (pick one):**
+- **Neon pooled endpoint** — add `-pooler` to the host (PgBouncer, **transaction mode**, `max_client_conn` 10,000); **or**
+- **`@neondatabase/serverless` HTTP driver** — queries over HTTP/WebSocket, sidesteps TCP connection accounting entirely (ideal for one-shot serverless ingest writes); **or**
+- **Supabase Supavisor** transaction-mode pooler on port `6543`.
+
+When adopting a transaction-mode pooler, configure the client for it: **Prisma** needs `?pgbouncer=true&connection_limit=1`; or prefer the Neon HTTP driver to avoid the prepared-statement / session-state class of issues entirely. Our ingest is a simple idempotent `INSERT … ON CONFLICT DO UPDATE`, which is unaffected by transaction-mode limitations. Co-locate functions and DB in one region (e.g. `iad1`) to cut connection hold time.
+
+### Write load + cron thundering herd
+5,000 hourly syncs = **~1.4 req/s average** — trivial. The only spike is a naive `0 * * * *` cron firing all 5k at `:00`. Vercel functions auto-scale (≈30,000 concurrency) so the function tier absorbs it; the real victim would be Postgres connections (above). **Fix: client-side jitter.** The CLI picks a stable per-install offset — `sleep(hash(machineId) % 3600s)` after the top of the hour, or a random minute chosen at install — flattening 5k syncs across the full window to ~1.4 req/s with no coordinated spike. Costs nothing; accept-and-queue is overkill at this scale.
+
+### Redis ZSET headroom
+A non-concern — do not optimize it. `ZADD`/`ZINCRBY` are O(log N) (~12 comparisons at N=5,000), `ZREVRANGE`/`ZREVRANK` are O(log N + K). Redis does millions of ops/sec; 5k members is a toy. The **only** real constraint is Upstash per-command billing: ~120k syncs/day × ~3 cmds ≈ **10.8M commands/month**, which exceeds the 500K/month free tier. **Plan for PAYG (~$20–40/mo)** and **pipeline/`MULTI` the per-sync `ZINCRBY`s** to cut REST round-trips and command count.
+
+### OG image caching
+Satori / `next/og` is genuinely CPU-bound (~150–800ms+ per render, billed as Vercel active CPU). Uncached, every Slack/Discord/X unfurl re-scrape re-renders. **Fix: CDN-cache from data-versioned immutable URLs** — e.g. `/og/[user]/[periodHash].png` with `Cache-Control: public, immutable` + long `s-maxage`. Satori then runs ~**once per key**; new data = new URL = the only cache miss. Keep the route on the Node runtime, load fonts globally/base64. Origin renders drop from thousands/hour to a handful.
+
+### Ingest rate-limiting
+Use **`@upstash/ratelimit`** (v2.0.8, GA, connectionless HTTP) with a **generous per-user fixed window** (cheapest, ~2 Redis cmds/call) set well above hourly cron + manual re-syncs (e.g. 60/hour/user keyed by API token), plus a coarse per-IP fixed window as an abuse guard. Enable the **ephemeral in-memory cache** so already-exceeded identifiers short-circuit without a Redis round-trip (abuse traffic doesn't itself burn commands). The real replay/dup defense is the **idempotent upsert** (§6) — duplicate syncs are no-op overwrites, so limits can stay loose and never block legit re-syncs.
+
+### Read caching / ISR
+Leaderboards change slowly, so caching is nearly free. **Fix:** Next.js **ISR / route-segment caching** with `revalidate` 30–120s on the leaderboard page, and the CLI `board` JSON route served with `s-maxage=60, stale-while-revalidate=120`. 5k pollers collapse to ~1 origin compute per revalidate window; Upstash read-command volume stays low. No per-request SSR needed.
+
+### Premature at 5k (don't build yet)
+- ❌ Sorted-set algorithmic optimization (microsecond ops already).
+- ❌ `usage_day` table partitioning (~10–70M rows/year worst case is trivial for Postgres with the composite-PK index).
+- ❌ An ingest queue / accept-and-queue pipeline (client jitter alone suffices).
+- ❌ Multi-region DB / read replicas.
+
+**Launch blockers, in order:** (1) Postgres connection pooler, (2) client cron jitter, (3) CDN-cached data-versioned OG URLs, (4) ISR/`s-maxage` on board page + CLI API, (5) generous fixed-window ingest rate limit leaning on the idempotent upsert, (6) budget Upstash PAYG (~$20–40/mo). Everything else has 10–100× headroom.
+
+---
+
+## 14. CLI Leaderboard
+
+> **Goal:** after `npx tokenboard` syncs, render the user's community leaderboard right in the terminal — screenshot-worthy, instant, and graceful when there's no community, no color, or no data. A great terminal board is itself a share artifact (devs post their terminals), so this doubles as a second distribution surface alongside the web OG card.
+
+### 14.1 Commands
+Minimal surface; the bare command does the 90% thing.
+
+---
+
+## 15. Open Questions
+
+1. **`isApiErrorMessage` rule** *(small empirical check, not a design debate).* When Claude Code errors mid-response, it still writes an assistant line tagged `isApiErrorMessage: true` — and a partial/failed generation may still have **billed real tokens** (model emitted 500 tokens then errored → you paid for 500). So: do we **count** those tokens or **skip** them? Counting tokens Anthropic didn't bill → our number reads *high*; skipping tokens it *did* bill → our number reads *low*. Either way the board disagrees with the user's Anthropic console on error-heavy days, which erodes trust. **Resolution: run one day of real logs through the parser both ways and compare totals to the Anthropic console; pick whichever rule matches.** A 30-minute reconciliation during parser build, not a blocker.
+2. **Community visibility defaults & abuse.** Public rooms are discoverable and SEO-valuable but invite spam/squatting on good slugs; unlisted rooms are safer but spread worse. What's the right default, and do we need slug reservation / reporting before public launch? *(See `ARCHITECTURE.md` for the company-domain verification + slug-namespace design.)*
+3. **Public company-board optics.** A public company board exposes that org's collective AI-spend trend. Most won't care; some might. Default company boards to **public with an org-admin private toggle** — confirm this is the right default before recruiting named companies.
+
+> **Resolved since v1 of this doc** (moved out of open questions): *Auth* — GitHub OAuth is **mandatory to appear on a public board** (maximize captured identity), but `npx tokenboard` shows a **local preview with no login first** (value-first, then "Sign in with GitHub to claim"); see §7. This removes the old "anonymous-tier retention" question — there are **no permanent anonymous public users**. *ccusage integration* — client-side shell-out, source-first syntax, no importable library; see §5.2.
