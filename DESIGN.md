@@ -75,7 +75,7 @@ The mantra: **PREVIEW → HOOKED → CLAIM.** You see your real number *locally*
 **Create:**
 1. Authenticated user clicks **New Room**, names it (e.g. `the-boys`), picks public/unlisted.
 2. Server mints a community with a slug (`tokenboard.sh/c/the-boys`) and an **invite link**.
-3. Creator is auto-added as first member + admin.
+3. Creator is auto-added as first member with `role='owner'` (ownership lives in the membership, not an `owner_id` column).
 
 **Join:**
 1. Open an invite link → if logged in, one-click join; if not, sign in with GitHub (after the local `npx tokenboard` preview), then join. Company boards instead auto-join on **work-email verification** (§7.2).
@@ -169,13 +169,26 @@ The board *feels* live but is not real-time streaming; it's a **scheduled batch 
 
 We pin **`ccusage@20`** *internally* so their releases never silently break our parsing, while letting **our own** client float to `@latest` via the cron. Net: the dashboard is always current; the CLI stays current for cron/`@latest` users and politely nags the rest.
 
+### 4.3 Design language — monkeytype-inspired
+
+The whole product — web dashboard *and* CLI — follows a **monkeytype** aesthetic. This isn't decoration; it's the brand, and it's load-bearing for a tool whose distribution *is* screenshots. monkeytype is the canonical example of a tool developers find beautiful, and that exact crowd is our audience.
+
+**Principles:**
+- **Dark, calm, monospace-forward.** Near-black background, a muted neutral palette, one warm accent color (monkeytype's signature is its amber/yellow `#e2b714`-style accent on a `#323437`-ish bg). Type-forward: a clean **monospace** for numbers/handles/ranks (e.g. JetBrains Mono / Geist Mono), so the web board and the terminal board feel like the *same* thing.
+- **Minimal chrome, content-dense.** No cards-with-shadows, no gradients-for-the-sake-of-it, no clutter. The data *is* the design — ranks, big numbers, sparklines. Generous whitespace, flat surfaces, hairline dividers.
+- **Muted-until-meaningful color.** Most of the UI is grayscale; color appears only to mean something (your row, a `▲`/`▼` delta, a tier). Exactly the restraint monkeytype uses — the accent pops *because* everything else is quiet.
+- **Calm motion.** Subtle, fast, functional transitions (a rank tick, a count-up). Nothing bouncy.
+- **One visual identity across surfaces.** The CLI board (§14) and the web board + OG share card share palette, monospace, accent, and the "muted-until-meaningful" rule, so a terminal screenshot and a web screenshot are visibly the same product. (Exact hex palette + font choices are a build-time decision; this section fixes the *direction*.)
+
+> Tooling note: the installed **`frontend-design`** skill + **shadcn** (via the `vercel` plugin) should be pointed at this monkeytype direction when building the web app, with a custom theme — not the default shadcn look, which reads as generic-AI.
+
 ---
 
 ## 5. Usage Counting — the HYBRID decision
 
 > This was the one genuinely open question, framed as: *building the counting core myself vs. depending on `ccusage` (the "aura loss" of leaning on someone else's tool).* It is now **decided.**
 
-**VERDICT: HYBRID — write our own Claude Code parser (the hero tool), shell out to `ccusage` for the 14-tool long tail, and compute cost server-side from LiteLLM pricing. Ship it.**
+**VERDICT: HYBRID — write our own Claude Code parser (the hero tool), shell out to `ccusage` for the 14-tool long tail (15 incl. Claude Code), and compute cost server-side from LiteLLM pricing. Ship it.**
 
 ### 5.1 Honest difficulty table (from on-disk evidence)
 
@@ -243,8 +256,8 @@ Postgres, with Row-Level Security. The server is the **system of record** — it
 |---|---|---|
 | **users** | `id`, `handle` (vanity), `github_id`, `github_avatar_url`, `email`, `verified_badge`, `created_at` | Identity. `handle` is the vanity-URL namespace. |
 | **linked_accounts** | `id`, `user_id`, `provider` (`github`/`x`), `provider_handle`, `cached_payload`, `linked_at` | **Separate table on purpose.** X is one cached read at connect time, stored here, removable without a migration. Keeps optional/volatile providers off the core `users` row. |
-| **communities** | `id`, `slug`, `name`, `visibility` (`public`/`unlisted`), `owner_id`, `created_at` | A "room." `slug` → `tokenboard.sh/c/[slug]`. |
-| **memberships** | `community_id`, `user_id`, `role` (`admin`/`member`), `joined_at` | Many-to-many user↔community. |
+| **communities** | `id`, `slug`, `name`, `visibility` (`public`/`unlisted`), `created_by`, `created_at` | A "room." `slug` → `tokenboard.sh/c/[slug]`. `created_by` records who made it; **ownership lives in `memberships.role='owner'`**, not a column here. |
+| **memberships** | `community_id`, `user_id`, `role` (`owner`/`admin`/`member`), `joined_at` | Many-to-many user↔community. `owner` is the creator/controlling member. |
 | **ingest_devices** | `id`, `user_id`, `token_hash`, `label`, `status`, `created_at` | One row per claimed machine. The device's `id` is the `device_id` in `usage_day`, so a user's laptops accumulate (§7.3). |
 | **usage_day** | **PK (`user_id`, `device_id`, `date`, `tool`, `model`)**, `input`, `output`, `cache_read`, `cache_create_5m`, `cache_create_1h`, `cost_usd`, `updated_at` | The atom of usage. One row per device/day/tool/model. |
 | **usage_day_total** | **PK (`user_id`, `date`)**, `tokens`, `cost_usd` | Cross-device rollup = `SUM` over all of a user's devices/tools/models that day. The leaderboard score source. |
@@ -265,9 +278,9 @@ Postgres, with Row-Level Security. The server is the **system of record** — it
 
 Board rows show **GitHub avatars** — recognizable faces are what make "you vs your friends" legible at a glance.
 
-### 7.1 Membership tiers (one `communities` table, three behaviors)
+### 7.1 Membership tiers (two `communities` rows + the individual profile)
 
-All three tiers are the **same table**, differing only by a `type` + `join_policy` + `visibility`. We don't build three systems — one system with a verification strategy per room. (Full schema + flows in `ARCHITECTURE.md`.)
+**Community and Company share the `communities` table** (two `type` values: `community` and `company`), differing only by `type` + `join_policy` + `visibility`. The **Individual tier is just the `users` row + public profile** — *not* a `community_type` enum value (the enum is `community | company` only) and not a `communities` row at all. So we don't build three systems: one `communities` table with a verification strategy per room, plus the bare user profile for individuals. (Full schema + flows in `ARCHITECTURE.md`.)
 
 | Tier | What it is | Join / verification | Default visibility |
 |---|---|---|---|
@@ -284,7 +297,7 @@ All three tiers are the **same table**, differing only by a `type` + `join_polic
 3. Auto-add to the company community + grant the 🏢 verified-company badge.
 4. **Block disposable domains** (`@mailinator.com`, etc.) and **`+`-subaddress tricks**; rate-limit verification attempts.
 
-Company boards are **public by default** ("Stripe vs Ramp, who burns more tokens" is exactly the X-native content), with an **org-admin private toggle** (see §15 open question on optics).
+Company boards are **public by default** ("Stripe vs Ramp, who burns more tokens" is exactly the X-native content). **DECIDED policy** (not anonymize-until-claim): we **show the real company name and logo immediately** — the recognizable brand *is* the distribution — paired with two safety levers: (1) **alias-by-default for company-scoped rows** — on a company board a member's row defaults to a display alias, so individual identity isn't exposed without opt-in even though the company is named; and (2) a **fast self-serve emergency-privatize / takedown path** — any verified member (and, once claimed, the org admin) can flip the board to private or request takedown in one click, taking effect immediately via DB-session revocation. **Residual risk:** a company's aggregate spend trend is briefly public before anyone privatizes it; we accept this as the cost of the distribution loop, mitigated by the one-click privatize lever.
 
 ### 7.3 Multi-device — combining usage across machines
 
@@ -347,7 +360,7 @@ The board lives or dies on whether people believe the numbers. Defenses, in orde
    - **🏢 company-verified** — also passed work-email domain verification (§7.2). Highest trust.
    - **✓ X-connected** — optional connected X badge, an additional identity signal.
    Pills are always visible on the board, so viewers calibrate. (No anonymous public tier exists — the local CLI preview never appears publicly.)
-3. **Sanity caps.** Per-day token totals above a physically-implausible ceiling are flagged/capped (you can't realistically emit more than *X* tokens/day through a single agent). Caps protect the global board from obvious garbage.
+3. **Sanity caps (flag, don't clip).** Per-day token totals above a physically-implausible ceiling are **flagged** — never silently clipped, so lifetime totals stay intact and auditable. The ceiling is **derived**, not arbitrary: max sustained model throughput **including cache reads** (the dominant bucket — order ~10⁴ tok/s aggregate) × 86,400 s/day × a generous N parallel agents (say N≈10), which lands a per-user/day ceiling in the low-trillions of tokens. We frame it for **N parallel agents**, not a single agent, because a real power user fans out many concurrent sessions; only totals above that many-agents-running-flat-out ceiling are implausible enough to flag. The server applies this as a flag step after the cross-device day-total rollup (`ARCHITECTURE.md` §6.4); flagged days are dropped from ranking eligibility but their counts are preserved. Caps protect the global board from obvious garbage.
 4. **Social context is the real anti-cheat (see §2).** In a small room of people who know each other's real stack, a faked number is self-evident and self-policing. This is *why* communities are the core surface — they make cheating socially expensive in a way a global board never can.
 
 ---
@@ -408,8 +421,8 @@ Distribution **is** the strategy — it's the gap tokscale left on the table. Th
 1. [ ] **Claude Code parser (the hero, all ours).** Read `~/.claude/projects/**/*.jsonl`. Keep only `type=="assistant"` lines. **Global `message.id` dedup** (handle null `requestId`). Exclude `<synthetic>` model lines; decide the rule on `isApiErrorMessage`. Emit all **4 token buckets** including the `cache_creation` *object* (1h/5m split), not just the scalar.
 2. [ ] **`tokenboard show-data` dry-run** — wire alongside the parser; it's the trust unlock and must exist *before* any upload path.
 3. [ ] **Cost engine.** Vendor LiteLLM `model_prices` JSON + commit an offline snapshot. Price all 4 buckets correctly. Unknown model id → **log it, don't silently read 0.** Observed model mix: `claude-opus-4-8` (dominant), `claude-sonnet-4-6`, `<synthetic>` (exclude).
-3. [ ] **Ingest + GitHub OAuth + the board.** Idempotent `usage_day` upsert; GitHub login to claim a public spot; aggregate normalized records → public leaderboard view + CLI leaderboard → the X-shareable screenshot. **This is the differentiation — where the energy visibly lands.**
-4. [ ] **ONE ccusage adapter, ONE tool wired.** Pick Codex or one tail tool. Shell out **client-side** `ccusage codex daily --json --offline` (source-first), map output into the normalized record, run it through *our* cost engine. **Proves the seam end-to-end** — one is enough.
+4. [ ] **Ingest + GitHub OAuth + the board.** Idempotent `usage_day` upsert; GitHub login to claim a public spot; aggregate normalized records → public leaderboard view + CLI leaderboard → the X-shareable screenshot. **This is the differentiation — where the energy visibly lands.**
+5. [ ] **ONE ccusage adapter, ONE tool wired.** Pick Codex or one tail tool. Shell out **client-side** `ccusage codex daily --json --offline` (source-first), map output into the normalized record, run it through *our* cost engine. **Proves the seam end-to-end** — one is enough.
 
 **Definition of Done:** my real Claude Code usage shows up on the board with a cost number that **matches my Anthropic console**, *and* one tool routed through ccusage shows up alongside it via the **same** cost engine. That single screenshot proves the whole architecture and is itself the launch asset.
 
@@ -466,8 +479,130 @@ Leaderboards change slowly, so caching is nearly free. **Fix:** Next.js **ISR / 
 
 > **Goal:** after `npx tokenboard` syncs, render the user's community leaderboard right in the terminal — screenshot-worthy, instant, and graceful when there's no community, no color, or no data. A great terminal board is itself a share artifact (devs post their terminals), so this doubles as a second distribution surface alongside the web OG card.
 
+> **Retention MOTD nudge.** The hourly cron sync is silent, so the *next interactive* `npx tokenboard` run is our one retention surface — use it. On that run, print a one-line terminal MOTD nudge driven by the `delta`/`rankChange` already present in the board JSON (§14.4), e.g. `‹dim›you dropped to #4 — Dana passed you›`. A negative rank change with a named passer is the exact "come back tomorrow" hook from §2; it costs nothing (the data is already in the board payload) and turns a silent background sync into a reason to re-engage.
+
 ### 14.1 Commands
 Minimal surface; the bare command does the 90% thing.
+
+```
+tokenboard                      # sync local usage → server, then render MY boards
+tokenboard top                  # global / default board
+tokenboard board <slug>         # a specific community board
+tokenboard board <slug> --30d   # …over a window
+tokenboard me                   # my rank + stats across communities (one line each)
+tokenboard join <slug>          # join a community
+tokenboard sync                 # sync only, no render (cron / CI)
+```
+
+**Flags** (any render command):
+
+| Flag | Meaning | Default |
+|---|---|---|
+| `--7d` / `--30d` / `--all` | leaderboard window | `--7d` |
+| `-c, --community <slug>` | pick community when in several | primary |
+| `--top <n>` | rows to show (clamps to terminal height) | `10` |
+| `--me` | always include your row (pinned at bottom if off-screen) | on |
+| `--no-color` | force plain output (also honors `NO_COLOR`, non-TTY) | auto |
+| `--json` | raw board JSON, no rendering | off |
+
+Rules: bare `tokenboard` = hero path (sync, then auto-render primary board; compact line per non-primary community). Windows are bare flags (`--7d`), not `--window=7d`. Nouns, not subcommand-soup (`top`, `board`, `me`, `join`).
+
+### 14.2 Render approach
+**MVP: static pretty-print** — render once, print, exit. No event loop, no alt-screen, no flicker. Composes into the post-sync flow, pipes cleanly, screenshots trivially (it's just scrollback). Interactive TUIs fight the "I ran a command and got a beautiful artifact" feeling and break when piped or captured mid-frame.
+
+**MVP stack (static):**
+
+| Concern | Lib | Why |
+|---|---|---|
+| Color/bold/dim | **`picocolors`** | ~7× smaller/faster than chalk; auto-detects TTY / `NO_COLOR` |
+| Table layout | **hand-rolled box-drawing** (not `cli-table3`) | need a sparkline column, per-cell color, medals, right-aligned numerics, highlighted row — `cli-table3` fights all of these (~120-line helper gives full control) |
+| String width | **`string-width`** + **`cli-truncate`** | correct alignment for emoji/CJK handles; `…` truncation |
+| Sparklines | **`sparkly`** (or 8-line hand-roll over `▁▂▃▄▅▆▇█`) | per-user daily-burn micro-chart |
+| Arg parsing | **`citty`** or **`cac`** | tiny declarative subcommands+flags (<10kB) |
+| Spinner (sync only) | **`nanospinner`** / **`ora`** | cleared before the board prints |
+
+**Interactive upgrade (post-MVP, behind `tokenboard top -i`):** use **`ink`** (React-for-CLIs; the lib Claude Code itself is built on) + **`ink-table`**/custom components. ←/→ switch window (7d/30d/all), ↑/↓ or tab switch community, `/` filters handles, `q` quits; ink owns the alt-screen/redraw. The static renderer stays the default and the piped/`--json` fallback — ink is opt-in so the screenshot path never regresses.
+
+### 14.3 Mockups
+> Target width **68 cols**. `**bold**`, `‹dim›`, `[color]` tags mark where ANSI goes — they are NOT printed.
+
+**(a) Full community leaderboard**
+```
+┌────────────────────────────────────────────────────────────────┐
+│  🪙 tokenboard ‹dim›·› **steel-cartel** ‹dim›· last 7 days›       │
+├────┬─────────────────────┬──────────┬───────┬──────────────────┤
+│ #  │ builder             │   tokens │  Δ wk │ daily burn       │
+├────┼─────────────────────┼──────────┼───────┼──────────────────┤
+│ 🥇 │ **doomslug**        │  12.4M   │ [grn]▲2[/] │ ▂▃▅▂█▆▃          │
+│ 🥈 │ kernelpanic         │  11.8M   │ [grn]▲1[/] │ ▅▄▆▅▃▇▆          │
+│ 🥉 │ vibe_compiler       │   9.2M   │ [red]▼1[/] │ █▆▃▂▄▃▂          │
+│  4 │ asyncawaitlonger…   │   7.7M   │  ‹dim›–›  │ ▃▃▄▄▃▅▄          │
+├────┼─────────────────────┼──────────┼───────┼──────────────────┤
+│[inv] ▸ 5 │ **you** ‹dim›(angela)›  │ **6.9M** │ [grn]▲3[/] │ ▁▂▄▆█▇▅ [/inv]│
+├────┼─────────────────────┼──────────┼───────┼──────────────────┤
+│  6 │ promptsmith         │   6.1M   │ [red]▼1[/] │ ▆▅▄▃▂▁▂          │
+│  7 │ gigachad_io ‹gold›◆› │   5.4M   │  ‹dim›–›  │ ▄▄▄▅▄▄▄          │
+│  8 │ tinyctx             │   3.0M   │ [grn]▲4[/] │ ▁▁▂▃▅▆█          │
+└────┴─────────────────────┴──────────┴───────┴──────────────────┘
+  ‹dim›42 builders · 318M tokens this week · ↑18% vs last›
+  ‹dim›tier ◆ = whale (>10M/wk) · run `tokenboard top --30d` for month›
+```
+
+- **Title bar:** 🪙 + slug **bold** in tier color; window label dim, changes with the flag.
+- **Medals:** 🥇🥈🥉 for ranks 1–3; plain right-aligned number after.
+- **Your row:** full-width **inverse/reverse-video** band (most reliable highlight across themes), `▸` pointer, `**you** (handle)`, tokens **bold** — the row people screenshot.
+- **Δ wk:** `▲n` green, `▼n` red, `–` dim for none/new; reserve fixed width so columns don't jitter.
+- **Sparkline:** 7 glyphs `▁▂▃▄▅▆▇█` of daily burn, normalized per-row, single accent color (e.g. cyan).
+- **Tier marker:** `◆` in tier color after the handle (gold = whale).
+- **Numbers:** humanized (`12.4M`, `980K`), right-aligned.
+- **Footer:** dim meta — member count, total, WoW trend, one hint.
+
+**(b) Compact post-sync summary line** (prints by default after sync, before the full board; the only thing shown for non-primary communities)
+```
+✔ ‹dim›synced 1.2M tokens (7 days)›
+  🪙 **steel-cartel**  ‹dim›#›**5**‹dim›/42›  6.9M  [grn]▲3 this week[/]  ▁▂▄▆█▇▅
+```
+- Line 1: green ✔ + dim sync confirmation.
+- Line 2: coin, **bold** community, **bold** rank (`#5/42`), tokens, green delta, sparkline.
+- Multiple communities → one line each, then `‹dim›→ tokenboard board <slug> for the full leaderboard›`.
+
+### 14.4 Data source & auth
+**Render = fetch JSON + print.** The CLI never computes ranks; the server is source of truth.
+```
+GET /api/v1/board?c=<slug>&window=7d&top=10&me=1
+Authorization: Bearer <token>
+```
+```jsonc
+{
+  "community": { "slug": "steel-cartel", "name": "Steel Cartel",
+                 "members": 42, "total": 318000000, "wowPct": 0.18 },
+  "window": "7d",
+  "me": { "rank": 5, "handle": "angela" },          // server says which row is "you"
+  "rows": [
+    { "rank": 1, "handle": "doomslug", "tokens": 12400000,
+      "delta": 2, "tier": "whale", "spark": [3,4,6,3,9,7,4], "isMe": false }
+    // …
+  ]
+}
+```
+- **Server owns** ranking, deltas, sparkline buckets, humanization inputs, and `isMe`. The client only styles — keeps the board tamper-resistant and lets ranking logic change without shipping a new CLI.
+- **Auth:** the first `npx tokenboard` renders a **local preview** with no account. `tokenboard claim` runs the GitHub device-authorization flow and mints a **device-bound ingest token** (`~/.config/tokenboard/auth.json`, `chmod 600`); the board/render calls send it as the bearer. Every machine claims its own token bound to the same `user_id`, so multiple laptops accumulate (§7.3). There is no permanent anonymous public row — appearing on a public board requires the claim.
+- **Caching:** cache the last board JSON at `~/.cache/tokenboard/<slug>-<window>.json`. On network failure, render the cached board with a dim `‹stale · 2h ago›` tag instead of erroring. `--json` short-circuits all rendering. (Server sends `s-maxage=60, stale-while-revalidate=120` per §13 so 5k pollers collapse to ~1 origin compute/min.)
+
+### 14.5 Edge cases
+
+| Case | Behavior |
+|---|---|
+| **Not in any community** | No empty box. `✔ synced 1.2M tokens`, then `‹dim›You're not in a community yet.›` + CTAs `tokenboard join <slug>` and `tokenboard create`, plus a short shareable invite hint. |
+| **Board with 1 member (you)** | "Rank only when flattering." No `#1 of 1`. Solo card: handle, tokens, sparkline, `‹dim›invite builders to start the board›` — no rank line, no `Δ` column. Rank returns when a 2nd member appears. |
+| **Very long handles** | Truncate to column width with `cli-truncate` → `asyncawaitlonger…`; width measured via `string-width` so emoji/CJK don't break alignment. Your own row gets one extra char before truncating (so "you" reads). |
+| **No color / piped / non-TTY** | Respect `NO_COLOR`, `--no-color`, `!process.stdout.isTTY`. Drop ANSI; keep box-drawing (still aligns) or fall back to a 2-space-padded plain table. Medals → `1. 2. 3.`, deltas → `+2 / -1 / =`, sparkline → `[3 4 6 3 9 7 4]` or omit. `--json` is the canonical machine path. |
+| **Narrow terminal (<60 cols)** | Drop sparkline column first, then delta column, then truncate handles harder. Never wrap a row across lines. |
+| **Stale / offline** | Render cached JSON with a dim `‹stale · 2h ago›` badge (§14.4). |
+| **Unicode-hostile terminal** | `--ascii` (or auto-detect via `TERM`/locale) swaps box-drawing for `+ - |` and glyphs for ASCII so the table never becomes mojibake in a screenshot. |
+
+### 14.6 Implementation note
+Ship the static renderer as one pure `renderBoard(json, {color, width, ascii}) → string`. The post-sync flow, `top`, `board`, and `me` all call it; `--json` bypasses it; the future `ink` mode reuses the same humanize/sparkline/delta helpers. One contract (§14.4 JSON), one renderer, every surface consistent.
 
 ---
 
@@ -475,6 +610,5 @@ Minimal surface; the bare command does the 90% thing.
 
 1. **`isApiErrorMessage` rule** *(small empirical check, not a design debate).* When Claude Code errors mid-response, it still writes an assistant line tagged `isApiErrorMessage: true` — and a partial/failed generation may still have **billed real tokens** (model emitted 500 tokens then errored → you paid for 500). So: do we **count** those tokens or **skip** them? Counting tokens Anthropic didn't bill → our number reads *high*; skipping tokens it *did* bill → our number reads *low*. Either way the board disagrees with the user's Anthropic console on error-heavy days, which erodes trust. **Resolution: run one day of real logs through the parser both ways and compare totals to the Anthropic console; pick whichever rule matches.** A 30-minute reconciliation during parser build, not a blocker.
 2. **Community visibility defaults & abuse.** Public rooms are discoverable and SEO-valuable but invite spam/squatting on good slugs; unlisted rooms are safer but spread worse. What's the right default, and do we need slug reservation / reporting before public launch? *(See `ARCHITECTURE.md` for the company-domain verification + slug-namespace design.)*
-3. **Public company-board optics.** A public company board exposes that org's collective AI-spend trend. Most won't care; some might. Default company boards to **public with an org-admin private toggle** — confirm this is the right default before recruiting named companies.
 
-> **Resolved since v1 of this doc** (moved out of open questions): *Auth* — GitHub OAuth is **mandatory to appear on a public board** (maximize captured identity), but `npx tokenboard` shows a **local preview with no login first** (value-first, then "Sign in with GitHub to claim"); see §7. This removes the old "anonymous-tier retention" question — there are **no permanent anonymous public users**. *ccusage integration* — client-side shell-out, source-first syntax, no importable library; see §5.2.
+> **Resolved since v1 of this doc** (moved out of open questions): *Auth* — GitHub OAuth is **mandatory to appear on a public board** (maximize captured identity), but `npx tokenboard` shows a **local preview with no login first** (value-first, then "Sign in with GitHub to claim"); see §7. This removes the old "anonymous-tier retention" question — there are **no permanent anonymous public users**. *ccusage integration* — client-side shell-out, source-first syntax, no importable library; see §5.2. *Public company-board optics* — **DECIDED**: show the real company name/logo immediately (the brand is the distribution), with **alias-by-default for company-scoped rows** + a **fast self-serve emergency-privatize/takedown path** (one-click, immediate); not anonymize-until-claim. Residual risk: brief public exposure of aggregate spend before privatize. See §7.2.

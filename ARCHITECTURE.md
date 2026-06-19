@@ -262,20 +262,23 @@ create table usage_day_total (
 create index usage_day_total_date_idx on usage_day_total (date);
 
 -- ============================================================
--- email_verifications — pending work-email magic-link tokens (tier-2).
--- token_hash stored, never the raw token. Disposable/plus-addr blocked at app layer.
+-- email_verifications — pending work-email verifications (tier-2).
+-- ONE shared 6-digit code per verification, embedded in the magic link AND shown as an OTP.
+-- code_hash = sha256(6-digit code); raw code never stored. Security rests on
+-- attempt-lockout (~5 tries) + 15m TTL + send/confirm rate-limits — NOT code entropy.
+-- Disposable/plus-addr blocked at app layer.
 -- ============================================================
 create table email_verifications (
   id            uuid primary key default gen_random_uuid(),
   user_id       uuid not null references users(id) on delete cascade,
   email         citext not null,                  -- full work email entered
   domain        citext not null,                  -- parsed domain (normalized)
-  token_hash    bytea not null,                   -- sha256(raw_token); also serves as 6-digit code hash
+  code_hash     bytea not null,                   -- sha256(6-digit code); same code in link + OTP
   expires_at    timestamptz not null,             -- e.g. now() + 15 min
   consumed_at   timestamptz,                       -- non-null once confirmed
-  attempts      int not null default 0,            -- confirm attempts, for throttle
+  attempts      int not null default 0,            -- confirm attempts, for lockout (~5)
   created_at    timestamptz not null default now(),
-  constraint email_verifications_token_hash_key unique (token_hash)
+  constraint email_verifications_code_hash_key unique (code_hash)
 );
 create index email_verifications_user_idx on email_verifications (user_id);
 -- Fast lookup of an outstanding (unconsumed, unexpired) verification.
@@ -312,11 +315,16 @@ create table ingest_devices (
   label         text,                              -- e.g. "MacBook Pro" / hostname
   machine_hash  text,                              -- salted machine id (de-dup across accounts)
   status        device_status not null default 'active',
+  expires_at    timestamptz not null,             -- sliding expiry; sync bumps it forward (silent re-mint)
   last_used_at  timestamptz,
   created_at    timestamptz not null default now(),
   revoked_at    timestamptz,
   constraint ingest_devices_token_hash_key unique (token_hash)
 );
+-- Sliding expiry: each successful sync extends expires_at; a token whose window has lapsed
+-- is silently re-minted on the cron path (the CLI re-runs the device-claim flow once, transparently),
+-- so an actively-used machine never has to manually re-auth, while a long-abandoned device's
+-- token eventually expires.
 create index ingest_devices_user_idx on ingest_devices (user_id) where status = 'active';
 
 -- ============================================================
@@ -340,15 +348,15 @@ create index sync_requests_user_idx on sync_requests (user_id, created_at);
 
 | Table | RLS | Policy gist |
 |---|---|---|
-| `users` | on | **SELECT**: any row whose `handle` belongs to a public profile is world-readable (profiles are public). **UPDATE**: only `id = auth.uid()`. **INSERT**: service_role only (created at OAuth callback). |
+| `users` | on | **SELECT**: all non-banned rows are world-readable (`banned_at is null`) — individual profiles are always public, so there is no `is_public`/`profile_visibility` column and no "shares a community" branch to gate on. **UPDATE**: only `id = auth.uid()`. **INSERT**: service_role only (created at OAuth callback). |
 | `linked_accounts` | on | **SELECT/UPDATE/DELETE**: only `user_id = auth.uid()`. `access_token` never exposed via PostgREST (column-level revoke); reads go through server. |
 | `sessions` | on | service_role only — opaque session tokens are never client-selectable; revocation is a server `DELETE`. |
 | `communities` | on | **SELECT**: `visibility = 'public'` to everyone; `visibility = 'unlisted'` readable if you know the id (still gated to anon, allowed); `visibility = 'private'` only if `exists (select 1 from memberships m where m.community_id = communities.id and m.user_id = auth.uid())`. **INSERT**: any authenticated user (sets `created_by = auth.uid()`). **UPDATE**: only members with `role in ('admin','owner')`. |
 | `community_email_domains` | on | **SELECT**: readable if parent community is readable (same visibility rule). **INSERT/DELETE**: company-board `owner`/`admin` only, via server. |
 | `memberships` | on | **SELECT**: your own rows always; other rows readable only if the community is readable to you (so public boards expose their roster, private boards do not). **INSERT**: only `user_id = auth.uid()` AND the join is authorized for that community's `join_policy` (open always; code/email_domain enforced server-side via service_role on the join/verify routes). **DELETE**: your own membership (leave), or admins removing a member. |
-| `usage_day` | on | **SELECT**: a row is readable if the owning user has a public profile **or** shares a community readable to the requester (leaderboard reads are mostly served via pre-aggregated server queries / Redis, but direct reads are gated this way). **INSERT/UPDATE/DELETE**: **service_role only** — all writes happen in the ingest route after cost is computed. No client can write usage. |
-| `usage_day_total` | on | Same posture as `usage_day`: client-readable under the same public-profile/shared-community predicate; **writes service_role only** (upserted in the sync transaction). |
-| `email_verifications` | on | **ALL**: `user_id = auth.uid()` for reads of own pending state; **INSERT/UPDATE** done by service_role (start mints token, confirm consumes it). `token_hash` never selectable by clients. |
+| `usage_day` | on | **SELECT**: a row is readable if its owning user is non-banned (`exists (select 1 from users u where u.id = usage_day.user_id and u.banned_at is null)`) — individual profiles are always public, so usage rows are world-readable for any live user (leaderboard reads are mostly served via pre-aggregated server queries / Redis, but direct reads are gated this way). **INSERT/UPDATE/DELETE**: **service_role only** — all writes happen in the ingest route after cost is computed. No client can write usage. |
+| `usage_day_total` | on | Same posture as `usage_day`: client-readable when the owning user is non-banned; **writes service_role only** (upserted in the sync transaction). |
+| `email_verifications` | on | **ALL**: `user_id = auth.uid()` for reads of own pending state; **INSERT/UPDATE** done by service_role (start mints the code, confirm consumes it). `code_hash` never selectable by clients. |
 | `device_grants` | on | service_role only — `device_code`/`user_code` are secrets resolved exclusively by the device-flow routes. |
 | `ingest_devices` | on | **SELECT/DELETE(revoke)**: only `user_id = auth.uid()` (manage your devices in settings). **INSERT/UPDATE**: service_role only (mint at claim, bump `last_used_at` at sync). `token_hash` not client-selectable. |
 | `sync_requests` | on | service_role only — internal idempotency ledger, never client-facing. |
@@ -376,8 +384,8 @@ Base path `/api/v1`. Auth column: **none** (public), **session** (Auth.js DB-ses
 | **POST** | **`/api/v1/communities/:id/join`** | **session** | `{ code? }` | `{ joined, role, board_url }` | Open: no body. Code: `{code}`. email_domain: rejects → directs to verify flow. |
 | POST | `/api/v1/communities/:id/leave` | session | `{}` | `{ ok:true }` | Deletes own membership. |
 | GET | `/api/v1/communities/:id` | none/session | — | community meta + member count + your role | Private gated by membership. |
-| POST | `/api/v1/verify/email/start` | session | `{ email }` | `{ sent:true, domain, expires_in }` | Validates domain (blocks disposable + `+` subaddressing), mints `email_verifications`, emails magic link + 6-digit code. |
-| POST | `/api/v1/verify/email/confirm` | session | `{ token }` or `{ domain, code }` | `{ verified:true, community:{id,slug}, joined:true, badge:"company" }` | Consumes token; auto-creates/joins the domain's company board; grants badge. |
+| POST | `/api/v1/verify/email/start` | session | `{ email }` | `{ sent:true, domain, expires_in }` | Validates domain (blocks disposable + `+` subaddressing), mints `email_verifications` (one 6-digit code), emails a magic link embedding that same code + shows the code as an OTP. |
+| POST | `/api/v1/verify/email/confirm` | session | `{ domain, code }` (the link prefills `code`) | `{ verified:true, community:{id,slug}, joined:true, badge:"company" }` | Consumes the code (attempt-lockout + 15m TTL); auto-creates/joins the domain's company board; grants badge. |
 | GET | `/api/auth/x` | session | — | 302 redirect | Begins X OAuth (badge/share only, not auth). |
 | GET | `/api/auth/x/callback` | session | `?code&state` | 302 → settings | Upserts `linked_accounts(x)`; grants verified badge. |
 | DELETE | `/api/v1/connections/x` | session | — | `{ ok:true }` | Disconnect X. |
@@ -395,37 +403,39 @@ Content-Type: application/json
 {
   "client_version": "tokenboard-cli/0.4.1",
   "tz": "UTC",
-  "days": [
+  "records": [
     {
       "date": "2026-06-18",
-      "tool": "claude_code",
+      "tool": "claude-code",
       "model": "claude-opus-4-8",
-      "input_tokens": 124500,
-      "output_tokens": 38210,
-      "cache_read_tokens": 891200,
-      "cache_write_tokens": 64000
+      "input": 124500,
+      "output": 38210,
+      "cacheRead": 891200,
+      "cacheCreate5m": 64000,
+      "cacheCreate1h": 0
     },
     {
       "date": "2026-06-18",
       "tool": "cursor",
       "model": "gpt-5",
-      "input_tokens": 22000,
-      "output_tokens": 9100,
-      "cache_read_tokens": 0,
-      "cache_write_tokens": 0
+      "input": 22000,
+      "output": 9100,
+      "cacheRead": 0,
+      "cacheCreate5m": 0,
+      "cacheCreate1h": 0
     }
   ]
 }
 ```
-Aggregates only — never prompts, code, or paths. Server resolves the bearer → `user_id`, computes `cost_usd` per row from the pinned LiteLLM table, then `INSERT ... ON CONFLICT (user_id,date,tool,model) DO UPDATE` (last-write-wins, idempotent). Response:
+Aggregates only — never prompts, code, or paths. The wire shape is camelCase with the cache-write bucket **split** into `cacheCreate5m`/`cacheCreate1h` (they price differently — 1.25× vs 2×), matching the canonical contract in §6.3. Server resolves the bearer → `(user_id, device_id)`, computes `cost_usd` per row from the pinned LiteLLM table, then `INSERT ... ON CONFLICT (user_id, device_id, date, tool, model) DO UPDATE` (last-write-wins, idempotent). Response:
 ```json
 {
   "accepted": true,
   "days_upserted": 2,
   "cost_usd_total": 7.412300,
   "price_table_version": "litellm-2026-06-01",
-  "profile_url": "https://tokenboard.dev/u/angela",
-  "board_url": "https://tokenboard.dev/c/global"
+  "profile_url": "https://tokenboard.sh/u/angela",
+  "board_url": "https://tokenboard.sh/c/global"
 }
 ```
 Replaying the same `Idempotency-Key` returns the stored `response_json` verbatim; reusing the key with a different `request_hash` returns `409 idempotency_key_conflict`. (The full wire payload with the four cache-bucket fields and the server processing order are specified in §6.)
@@ -449,7 +459,7 @@ Compact response shape (the canonical full contract is §7.2):
   "generated_at": "2026-06-19T04:00:00Z",
   "you": { "rank": 12, "handle": "angela", "value": 41.88 },
   "rows": [
-    { "rank": 1, "handle": "kpatel", "display_name": "Kiran P.", "avatar_url": "https://...", "value": 318.04, "tokens": 51200000, "top_tool": "claude_code", "badges": ["company"] },
+    { "rank": 1, "handle": "kpatel", "display_name": "Kiran P.", "avatar_url": "https://...", "value": 318.04, "tokens": 51200000, "top_tool": "claude-code", "badges": ["company"] },
     { "rank": 2, "handle": "dvo",    "display_name": "Duy Vo",   "avatar_url": "https://...", "value": 287.61, "tokens": 47800000, "top_tool": "cursor",      "badges": ["company","x"] }
   ],
   "next_cursor": "eyJyYW5rIjo1MH0="
@@ -470,7 +480,7 @@ Content-Type: application/json
 ```
 Response (success):
 ```json
-{ "joined": true, "role": "member", "community": { "slug": "frontend-guild", "name": "Frontend Guild" }, "board_url": "https://tokenboard.dev/c/frontend-guild" }
+{ "joined": true, "role": "member", "community": { "slug": "frontend-guild", "name": "Frontend Guild" }, "board_url": "https://tokenboard.sh/c/frontend-guild" }
 ```
 Failure modes: wrong code → `403 invalid_join_code`; already a member → `200 { "joined": true, "already_member": true }`; company board (`join_policy='email_domain'`) → `409 { "error":"requires_email_verification", "verify_url":"/verify/email?community=..." }`.
 
@@ -568,7 +578,7 @@ The CLI **never** prompts for login before showing value. `npx tokenboard` parse
 **Phase B — claim (device flow → ingest token):**
 1. CLI POSTs `/api/v1/cli/login/start` with `{ client_name, machine_hash }` (machine_hash = salted hash of a stable machine id, used only for "this device" labeling and de-dup, never PII).
 2. Server creates a `device_grants` row: a `device_code` (long, secret, CLI-held), a short human `user_code` (e.g. `WXYZ-1234`), `expires_at` (~10 min), `interval` (poll seconds), status `pending`. Returns `{ device_code, user_code, verification_url, interval, expires_in }`.
-3. CLI opens the browser to `verification_url` = `https://tokenboard.dev/claim?code=WXYZ-1234` and **also prints** the URL + code in case the browser can't open. CLI begins polling `/api/v1/cli/login/poll` with `device_code` every `interval` seconds.
+3. CLI opens the browser to `verification_url` = `https://tokenboard.sh/claim?code=WXYZ-1234` and **also prints** the URL + code in case the browser can't open. CLI begins polling `/api/v1/cli/login/poll` with `device_code` every `interval` seconds.
 4. In the browser, if the user has no web session they go through the **GitHub OAuth flow (§4.2)** first. Once authenticated, the `/claim` page shows the `user_code` for confirmation ("Approve device WXYZ-1234?") and they click **Approve**.
 5. On approve, server binds the grant to the user: sets `device_grants.user_id`, status `approved`, and mints a **device/ingest token** — a random opaque secret returned to the CLI on its *next poll* (never shown in the browser). Server stores only `sha256(ingest_token)` in `ingest_devices` with `user_id`, `machine_hash`, `created_at`, `last_used_at`, `revoked_at`.
 6. CLI's next poll returns `{ status: "complete", ingest_token }`. CLI writes it to `~/.config/tokenboard/credentials` (mode `600`). The `device_code` is now consumed.
@@ -618,7 +628,7 @@ Why device-flow and not a localhost redirect: a localhost callback works on a de
 | Credential | Holder | Storage | Revocable | Authorizes |
 |---|---|---|---|---|
 | Session cookie | Browser | `sessions` row, opaque `HttpOnly` cookie | Yes (delete row) | Full web app as that user |
-| Ingest/device token | CLI | `ingest_devices`, **sha256 only** | Yes (set `revoked_at`) | Ingest aggregates only |
+| Ingest/device token | CLI | `ingest_devices`, **sha256 only** | Yes (set `revoked_at`); also has sliding `expires_at` (bumped each sync, silent re-mint on cron) | Ingest aggregates only |
 | GitHub `access_token` | — | **Discarded** after first fetch | n/a | Nothing (not retained) |
 | Email verification | transient | `email_verifications`, **hashes only**, ~15m TTL | Expires | One-time company join |
 
@@ -666,7 +676,7 @@ The **verification ladder** is exactly two rungs: **tier-1 = GitHub** (you exist
 
 ### 5.3 Work-email verification: start → confirm flow
 
-GitHub never proves you work somewhere — so company membership requires proving control of a **mailbox at the company's domain** via a magic-link / OTP. This is a *separate, additive* verification on top of an existing GitHub session.
+GitHub never proves you work somewhere — so company membership requires proving control of a **mailbox at the company's domain** via a single 6-digit code, delivered both as a clickable magic link (link embeds the code) and as a paste-able OTP. This is a *separate, additive* verification on top of an existing GitHub session.
 
 1. **Start** — Logged-in user enters a work email (we pre-fill the GitHub primary email as a *hint* only). `POST /api/v1/verify/email/start { email }`.
 2. **Validate the address** before sending anything:
@@ -674,13 +684,13 @@ GitHub never proves you work somewhere — so company membership requires provin
    - **Block disposable domains** against a maintained denylist refreshed on a schedule. Reject with a clear message.
    - **Block plus-subaddressing**: strip/reject `+tag` (`angela+foo@amazon.com` → `angela@amazon.com`; if the normalized local-part is already pending/used, don't allow a second slot). The disposable/free-provider denylist also excludes `gmail.com`, `outlook.com`, etc. from forming company boards.
    - **Domain sanity**: must have an MX record (cheap DNS check) to be eligible to *create* a new company board.
-3. **Mint OTP / magic-link** — server stores `email_verifications (user_id, email, domain, token_hash, expires_at ~15m, attempts)`. Sends an email containing **both** a 6-digit OTP and a magic link (`/verify/email/confirm?token=…`). Only hashes are stored.
-4. **Confirm** — user clicks the link or pastes the OTP. `POST /api/v1/verify/email/confirm { token }` or `{ domain, code }`. Server checks hash, expiry, attempt count (lock after ~5 tries).
+3. **Mint the 6-digit code** — server generates **one** 6-digit code and stores `email_verifications (user_id, email, domain, code_hash, expires_at ~15m, attempts)`. Sends an email that contains the code **both** as a paste-able OTP **and** embedded in a magic link (`/verify/email/confirm?domain=…&code=…`) — the link and the OTP are the *same* code. Only the `code_hash` is stored. Security rests on attempt-lockout + 15m TTL + send/confirm rate-limits, not on code entropy (it's a 6-digit code, not a high-entropy token).
+4. **Confirm** — user clicks the link (which prefills the code) or pastes the OTP. `POST /api/v1/verify/email/confirm { domain, code }`. Server checks `code_hash`, expiry, and attempt count (lock after ~5 tries).
 5. **Bind** — on success: find-or-create the company community for `domain` (rules above), insert `memberships (user_id, community_id, role='member', verified_via='email:<domain>')`, set `reverify_due = now() + 180 days`, and grant the **company badge**. The raw email is **not** stored long-term — we keep `domain` + a salted hash of the full address (for re-verification de-dup), not the plaintext.
 
 **Leaving / re-verification cadence:** email proof is point-in-time, so company memberships **expire** on a 180-day re-verification window (`reverify_due`). After expiry the member is moved to `lapsed` (hidden from the live board, not deleted) until they re-verify — this naturally drops people who've left without us needing HR data. Users can **leave** a company board manually at any time (removes the membership row, revokes the badge). If a domain's MX disappears or the company is dissolved, the board is frozen (read-only) rather than deleted.
 
-**Privacy note on public company boards:** company boards are **public by default** — the social pressure ("amazon.com is #3 this week") is the distribution engine — but this is sensitive, so: org-admin can flip `visibility='private'` once the org is claimed (a private board is visible only to verified members of that domain); individuals can always opt their own row out by leaving the board while keeping their individual profile public; we display only **aggregates and ranks**, never prompts/code/paths (those never leave the client anyway); and a member may appear under a display alias on company boards if they choose.
+**Privacy note on public company boards (DECIDED policy):** company boards **show the real company name/logo immediately** — the social pressure ("amazon.com is #3 this week") is the distribution engine — but this is sensitive, so the safety levers are: **alias-by-default for company-scoped rows** (a member's row on a company board defaults to a display alias, so individual identity isn't exposed without opt-in even though the company is named); a **fast self-serve emergency-privatize / takedown path** — any verified member (and, once claimed, the org admin) can flip `visibility='private'` (visible only to verified members of that domain) or request takedown in one click, effective immediately via DB-session revocation; individuals can always fully opt out by leaving the board while keeping their individual profile public; and we display only **aggregates and ranks**, never prompts/code/paths (those never leave the client anyway). This is *not* anonymize-until-claim. Residual risk: a company's aggregate spend trend is briefly public before anyone privatizes it — accepted as the cost of the distribution loop. (See `DESIGN.md` §7.2.)
 
 **ASCII sequence diagram (verify):**
 
@@ -692,14 +702,15 @@ GitHub never proves you work somewhere — so company membership requires provin
   │                       │                        │ strip +subaddress     │
   │                       │                        │ deny disposable/free  │
   │                       │                        │ MX check (new domain) │
-  │                       │                        │ store token_hash      │
+  │                       │                        │ store code_hash       │
   │                       │                        │ send OTP + magic link │
+  │                       │                        │  (same 6-digit code)  │
   │                       │                        │──────────────────────▶│
   │  receive email        │                        │                       │
   │◀──────────────────────────────────────────────────────────────────────│
   │ click link / paste OTP│                        │                       │
-  │──────────────────────▶│ POST /verify/email/confirm {token|code}        │
-  │                       │───────────────────────▶│ verify hash,expiry,attempts
+  │──────────────────────▶│ POST /verify/email/confirm {domain,code}       │
+  │                       │───────────────────────▶│ verify code_hash,expiry,attempts
   │                       │                        │ find-or-create company(domain)
   │                       │                        │ INSERT memberships     │
   │                       │                        │   verified_via=email:<domain>
@@ -723,7 +734,7 @@ The CLI is a stateless, side-effect-light Node binary run as `npx tokenboard` (o
 
 Two collectors feed one normalizer:
 
-1. **Native Claude Code parser (first-party).** Reads the local Claude Code session logs (the JSONL transcript/usage records under the Claude Code config dir). For each assistant message we extract the `usage` block: `input_tokens`, `output_tokens`, `cache_read_input_tokens`, and the cache-creation buckets (ephemeral 5-minute and 1-hour TTL writes). We attribute each record to a local calendar day (the user's local TZ, captured once and sent as an offset) and to `tool = "claude-code"` plus the model id (e.g. `claude-opus-4-8`).
+1. **Native Claude Code parser (first-party).** Reads the local Claude Code session logs (the JSONL transcript/usage records under the Claude Code config dir). For each assistant message we extract the `usage` block: `input_tokens`, `output_tokens`, `cache_read_input_tokens`, and the cache-creation buckets (ephemeral 5-minute and 1-hour TTL writes). We attribute each record to a local calendar day (the user's local TZ, captured once and sent as an offset) and to `tool = "claude-code"` plus the model id (e.g. `claude-opus-4-8`). **Dedup is global on `message.id`, first-occurrence-wins** (`requestId` is null on ~100% of assistant lines on disk, so the documented `requestId+message.id` key degenerates to `message.id` alone; the same id recurs within and across files from session resume — without global first-occurrence-wins dedup every total roughly doubles; see `DESIGN.md` §5.1).
 
 2. **`ccusage` shell-out (long tail).** For tools we don't natively parse (Cursor, Codex CLI, Aider, Copilot CLI, Gemini CLI, etc.), the CLI shells out to `ccusage` (or the tool's own export) and reads its normalized JSON, mapping each tool's row into the same internal record shape. If `ccusage` is not installed, the CLI offers to `npx ccusage` on demand and degrades gracefully (Claude Code data still syncs).
 
@@ -826,10 +837,16 @@ Response `200 OK`:
     "totalCostUsdDelta": 5.7421,
     "totalTokens": 4720000
   },
+  "flags": [
+    { "code": "DAY_TOTAL_IMPLAUSIBLE", "date": "2026-06-18", "detail": "day total exceeds the DESIGN §9 plausibility ceiling; flagged not clipped, counts preserved" }
+  ],
   "boardsTouched": [
     "lb:g:t:7d", "lb:g:t:30d", "lb:g:t:all",
-    "lb:c:acme-corp:t:7d", "lb:c:acme-corp:t:30d", "lb:c:acme-corp:t:all",
-    "lb:c:weekend-warriors:t:7d", "lb:c:weekend-warriors:t:30d", "lb:c:weekend-warriors:t:all"
+    "lb:g:usd:7d", "lb:g:usd:30d", "lb:g:usd:all",
+    "lb:c:91af:t:7d", "lb:c:91af:t:30d", "lb:c:91af:t:all",
+    "lb:c:91af:usd:7d", "lb:c:91af:usd:30d", "lb:c:91af:usd:all",
+    "lb:c:7d3e:t:7d", "lb:c:7d3e:t:30d", "lb:c:7d3e:t:all",
+    "lb:c:7d3e:usd:7d", "lb:c:7d3e:usd:30d", "lb:c:7d3e:usd:all"
   ],
   "nextSyncSuggestedAfterSec": 3600
 }
@@ -851,11 +868,11 @@ Error envelope (validation, partial success):
 
 ### 6.4 Server-side processing (numbered, exact order)
 
-1. **Authenticate.** Resolve the `Authorization` bearer → **`(user_id, device_id)`** via `ingest_devices.token_hash` (the matched row's `id` is the `device_id`). Reject `401` if absent/expired/revoked. (No anonymous sync path exists.) The `device_id` scopes every write below, so multiple machines under one account accumulate rather than overwrite each other.
+1. **Authenticate.** Resolve the `Authorization` bearer → **`(user_id, device_id)`** via `ingest_devices.token_hash` (the matched row's `id` is the `device_id`). Reject `401` if absent, revoked (`status='revoked'`/`revoked_at` set), or expired (`expires_at < now()`); on a successful auth, bump `expires_at` forward (sliding window). (No anonymous sync path exists.) Compare the request's presented `machine_hash` to the one bound on the device row — a mismatch is **advisory only** (flag for detection / possible token-sharing or copy, do not hard-reject), since a legitimately re-imaged machine can shift its hash. The `device_id` scopes every write below, so multiple machines under one account accumulate rather than overwrite each other.
 2. **Idempotency check.** Look up `Idempotency-Key` in `sync_requests`. If present and `request_hash` matches the canonicalized body, return the stored `response_json` verbatim (`200`) and stop; if present with a *different* hash → `409 idempotency_key_conflict`. Otherwise reserve the key (insert row with `status='processing'`).
 3. **Schema-validate the payload.** Reject the whole request `400` on malformed JSON. Per-record validation: `date` matches `YYYY-MM-DD`; all six count fields are integers `>= 0`; `tool`/`model` are non-empty strings ≤ 64 chars. Invalid records are collected into `errors[]` and skipped (partial success).
 4. **Clamp the date window.** Drop records with `date` older than the **90-day retention horizon** or in the future (relative to server UTC + the client `tzOffsetMinutes`, ±1 day grace). Skipped records → `DATE_OUT_OF_RANGE`.
-5. **Normalize + re-validate the model key.** Re-apply the canonical alias map server-side (do not trust the client's normalization). Resolve `tool` against the known-tools allowlist; unknown tools are accepted but tagged `tool_unverified=true`.
+5. **Normalize + re-validate the model key.** Re-apply the canonical alias map server-side (do not trust the client's normalization). **Canonicalize `tool` server-side** before anything keys on it — lowercase, trim, and map spelling variants to the single canonical form (e.g. `claude_code`/`ClaudeCode` → `claude-code`) so the `usage_day` PK can never split one tool across two spellings. Then resolve the canonicalized `tool` against the known-tools allowlist; unknown tools are accepted but tagged `tool_unverified=true`.
 6. **Resolve the price table.** Load the **current pinned** LiteLLM price-table version (e.g. `litellm-2026-06-12`) from config/DB — *not* the client's `priceTableVersionSeen` (that field is advisory/telemetry only). Cache the table in process memory keyed by version.
 7. **Compute cost server-side.** For each record:
    `cost = input*p.input + output*p.output + cacheRead*p.cache_read + cacheCreate5m*p.cache_write_5m + cacheCreate1h*p.cache_write_1h`
@@ -883,18 +900,19 @@ Error envelope (validation, partial success):
      tokens=EXCLUDED.tokens, cost_usd=EXCLUDED.cost_usd, updated_at=now();
    ```
    The Redis update uses this **new cross-device day-total** as the score for that day-bucket (idempotent overwrite via `ZADD` — see §7.3), so retries and multi-device syncs are both safe.
-10. **Update Redis ZSETs.** For each affected day, write the per-day bucket score and refresh the rolling-window members (full algorithm in §7.3). All `ZADD`s use the user's `handle` as member and the day-total (or window-total) as score — overwrites are inherently idempotent.
-11. **Resolve the user's communities.** `SELECT community_id, slug FROM memberships WHERE user_id=$1` → update each community-scoped board key in addition to the global board. (A user is always a member of the global pseudo-community `g`.)
-12. **Finalize idempotency record.** Update the `sync_requests` row with the full response JSON and `status='done'`. Return `200`.
-13. **Bust caches.** Trigger ISR revalidation tags and CDN purge for the affected boards (see §8).
+10. **Sanity-cap flag (flag, don't clip).** After the `usage_day_total` rollup, compare each affected `(user_id, date)` total against the **derived plausibility ceiling** (the daily-throughput ceiling from `DESIGN.md` §9 — max plausible tokens/day including cache reads × 24h × N parallel agents). If a day total exceeds it, **flag** the day (e.g. set a `flagged` marker and surface a `DAY_TOTAL_IMPLAUSIBLE` flag code in the response) but **do not clip or alter the stored counts** — lifetime totals stay intact and auditable; the flag governs *display/ranking eligibility*, not the underlying numbers. This protects the global board from obvious garbage without ever destroying real data.
+11. **Update Redis ZSETs.** For each affected day, write the per-day bucket score and refresh the rolling-window members (full algorithm in §7.3). All `ZADD`s use the user's immutable `user_id` (uuid) as member and the day-total (or window-total) as score — overwrites are inherently idempotent. Handle/avatar/tier are never stored in the ZSET; they're joined at read time from the profile cache by `user_id` (§7.5).
+12. **Resolve the user's communities.** `SELECT community_id, slug FROM memberships WHERE user_id=$1` → update each community-scoped board key in addition to the global board. (A user is always a member of the global pseudo-community `g`.)
+13. **Finalize idempotency record.** Update the `sync_requests` row with the full response JSON and `status='done'`. Return `200`.
+14. **Bust caches.** Trigger ISR revalidation tags and CDN purge for the affected boards (see §8).
 
-The DB writes in steps 8–11 run in a single Postgres transaction; Redis writes happen **after** commit (so a rolled-back DB never leaves phantom leaderboard scores). If a Redis write fails post-commit, it's enqueued for retry — Postgres remains the source of truth and Redis is fully rebuildable (§7.6).
+The DB writes in steps 8–12 run in a single Postgres transaction; Redis writes happen **after** commit (so a rolled-back DB never leaves phantom leaderboard scores). If a Redis write fails post-commit, it's enqueued for retry — Postgres remains the source of truth and Redis is fully rebuildable (§7.6).
 
 **Why double-counting is impossible:** the underlying write is an idempotent `ON CONFLICT` upsert keyed on `(user_id, device_id, date, tool, model)`, so even a lost idempotency-ledger row cannot cause double counting *within a device*, and distinct devices write distinct rows that are summed (not overwritten) into `usage_day_total`. The `Idempotency-Key` layer exists for response consistency and cheap retries; the primary key is the true guard.
 
 ### 6.5 CLI commands, cadence & updates
 
-**Commands** (collection/sync subset; board-render commands are in `DESIGN.md` §14):
+**Commands** (collection/sync subset; the board-render commands — `top`, `board`, `me`, etc. — are specified in `DESIGN.md` §14.1):
 
 | Command | Does |
 |---|---|
@@ -937,22 +955,22 @@ Two metrics (tokens and cost) × three windows × scopes. We rank on **tokens by
 
 ```
 # scope = g (global) or c:{community_id}
-# metric = t (tokens, default ranked) or $ (cost)
+# metric = t (tokens, default ranked) or usd (cost)
 # window = 7d | 30d | all
 lb:{scope}:{metric}:{window}
 
 # Global tokens, 7-day:                 lb:g:t:7d
 # Community 91af tokens, all-time:       lb:c:91af:t:all
-# Community 91af cost, 30-day:           lb:c:91af:$:30d
+# Community 91af cost, 30-day:           lb:c:91af:usd:30d
 
 # Per-day buckets (the source for rolling windows), one ZSET per (scope, metric, day):
 lbday:{scope}:{metric}:{YYYY-MM-DD}
 #   lbday:g:t:2026-06-19
 #   lbday:c:91af:t:2026-06-19
 ```
-Member = the user's `handle` (stable, lowercased GitHub login). Score = float (tokens are exact up to 2^53, well within float64 for realistic counts; cost is USD).
+Member = the user's **`user_id`** (the immutable uuid PK), never the `handle` — `handle` is a user-chosen vanity slug (per the `users` DDL it's mutable) and would orphan a member's scores on rename. This mirrors how communities are keyed by `community_id`, not `slug`. Handle, avatar, and tier are joined at read time from the profile cache by `user_id` (§7.5). Score = float (tokens are exact up to 2^53, well within float64 for realistic counts). For the **cost** (`usd`) boards the score is stored as **integer micro-dollars (USD × 1e6)**, not float dollars, so `ZUNIONSTORE`/`ZADD` sums stay exactly equal to the Postgres `numeric(14,6)` truth (no float-rounding drift); the API divides by 1e6 at read time.
 
-> We key communities by **`community_id`** (immutable) in Redis, not `slug` (mutable). The API maps `slug → community_id` before touching Redis. The `g` global board uses literal scope `g`.
+> We key communities by **`community_id`** (immutable) in Redis, not `slug` (mutable), and members by **`user_id`** (immutable), not `handle` (mutable). The API maps `slug → community_id` before touching Redis. The `g` global board uses literal scope `g`.
 
 ### 7.2 The board JSON contract (shared by web + CLI)
 
@@ -1080,14 +1098,14 @@ GET /api/v1/board?community={slug}&window={7d|30d|all}&me={handle}&metric={token
 A naïve "7d board" decays continuously — yesterday's contribution must silently leave the window at midnight. You cannot express that with a single mutable ZSET without a sweep. We use the **daily-bucket** approach.
 
 **Write side (on each sync, per affected day `D` and scope/metric):**
-1. Write the authoritative day-total into the day bucket (idempotent overwrite):
+1. Write the authoritative day-total into the day bucket (idempotent overwrite; member = `user_id`, score = day-total):
    ```
-   ZADD lbday:g:t:2026-06-19 4218511 angela
+   ZADD lbday:g:t:2026-06-19 4218511 9f3c1e21-...-uuid
    EXPIRE lbday:g:t:2026-06-19 3456000   # 40 days TTL (>30d window + slack)
    ```
 2. **Incrementally** patch the rolling windows the day belongs to. A sync for day `D` only affects the `7d`/`30d`/`all` boards if `D` is within those windows of *today*. Rather than recompute a union on every write, we maintain each rolling board's member score directly:
    - Compute the member's new window total in SQL (cheap, indexed): `SELECT SUM(tokens) FROM usage_day_total WHERE user_id=$u AND date >= today-6` (7d) / `today-29` (30d) / no lower bound (all).
-   - `ZADD lb:g:t:7d <sum7> angela`, `ZADD lb:g:t:30d <sum30> angela`, `ZADD lb:g:t:all <sumAll> angela`.
+   - `ZADD lb:g:t:7d <sum7> $user_id`, `ZADD lb:g:t:30d <sum30> $user_id`, `ZADD lb:g:t:all <sumAll> $user_id`.
 
    This is exact and idempotent: the score is always the recomputed truth, so retries and out-of-order syncs converge. Cost is `O(1)` Redis writes + 3 small indexed Postgres aggregates per affected user.
 
@@ -1117,19 +1135,19 @@ Top-N (the board page / CLI table):
 ```
 ZREVRANGE lb:c:91af:t:7d 0 49 WITHSCORES   # top 50 with scores, highest first
 ```
-"Your rank" (the caller, even if outside top-N), issued together in one `MULTI`/pipeline:
+"Your rank" (the caller, even if outside top-N), issued together in one `MULTI`/pipeline (the member is the caller's `user_id`):
 ```
-ZREVRANK lb:c:91af:t:7d angela    # 0-based rank; null if absent
-ZSCORE   lb:c:91af:t:7d angela    # the score
-ZCARD    lb:c:91af:t:7d           # board size, for "X of N"
+ZREVRANK lb:c:91af:t:7d $user_id    # 0-based rank; null if absent
+ZSCORE   lb:c:91af:t:7d $user_id    # the score
+ZCARD    lb:c:91af:t:7d             # board size, for "X of N"
 ```
-Avatars, tiers, and deltas are **not** in Redis — they're joined from the Postgres-backed profile cache keyed by the returned handles.
+Handles, avatars, tiers, and deltas are **not** in Redis — they're joined from the Postgres-backed profile cache keyed by the returned `user_id`s.
 
 **How the server assembles the board JSON:**
 1. Map `slug → community_id`; resolve `scope` (`g` or `c:{id}`) and metric/window key.
-2. `ZREVRANGE lb:{scope}:{metric}:{window} 0 {limit-1} WITHSCORES` → ordered `[handle, score]`.
-3. If `me` present: pipeline `ZREVRANK` + `ZSCORE` + `ZCARD` for the caller.
-4. Batch-load profiles for all returned handles (+ caller) from the **profile cache** (Redis hash `prof:{handle}` → displayName, avatar, tier, top community pill) with Postgres fallback.
+2. `ZREVRANGE lb:{scope}:{metric}:{window} 0 {limit-1} WITHSCORES` → ordered `[user_id, score]`.
+3. If `me` present: pipeline `ZREVRANK` + `ZSCORE` + `ZCARD` for the caller's `user_id`.
+4. Batch-load profiles for all returned `user_id`s (+ caller) from the **profile cache** (Redis hash `prof:{user_id}` → handle, displayName, avatar, tier, top community pill) with Postgres fallback.
 5. **Deltas:** compare current window score to the previous-period snapshot stored in `lbsnap:{scope}:{metric}:{window}` (a daily-frozen copy of the board taken by the same 00:10 cron). `rankChange` = previous rank − current rank; `tokensChange` = current − previous score.
 6. **Sparklines:** one Postgres query `SELECT date, SUM(tokens) FROM usage_day_total WHERE user_id = ANY($ids) AND date BETWEEN windowStart AND windowEnd GROUP BY ...`, zero-filling missing days. This per-board query is cached (§8).
 7. Serialize. The CLI consumes the identical JSON and renders an ASCII table; the web renders rows + sparkline SVGs + the next/og share card.
@@ -1138,13 +1156,13 @@ Avatars, tiers, and deltas are **not** in Redis — they're joined from the Post
 
 Redis holds no source data. Full rebuild for one board:
 ```sql
--- day buckets for the last 40 days, global tokens:
-SELECT date, u.handle AS user_handle, SUM(udt.tokens) AS day_tokens
-FROM usage_day_total udt JOIN users u USING (user_id)
+-- day buckets for the last 40 days, global tokens (member = user_id):
+SELECT date, udt.user_id, SUM(udt.tokens) AS day_tokens
+FROM usage_day_total udt
 WHERE udt.date >= CURRENT_DATE - INTERVAL '40 days'
-GROUP BY udt.date, u.handle;
+GROUP BY udt.date, udt.user_id;
 ```
-A `rebuild` job streams these rows → `ZADD lbday:{scope}:t:{date}` per day → then runs the §7.3 sweep to materialize `7d`/`30d`/`all`. Community boards filter by `memberships`. The rebuild is idempotent and can run hot (it `ZADD`s authoritative values). A lightweight **drift check** runs nightly, sampling N users and comparing Redis window scores to the Postgres truth, alerting on mismatch.
+A `rebuild` job streams these rows → `ZADD lbday:{scope}:t:{date} <day_tokens> <user_id>` per day → then runs the §7.3 sweep to materialize `7d`/`30d`/`all`. Community boards filter by `memberships`. The rebuild is idempotent and can run hot (it `ZADD`s authoritative values). A lightweight **drift check** runs nightly, sampling N users and comparing Redis window scores to the Postgres truth, alerting on mismatch.
 
 ---
 
@@ -1156,14 +1174,14 @@ A `rebuild` job streams these rows → `ZADD lbday:{scope}:t:{date}` per day →
 |---|---|---|---|---|
 | **CDN (Vercel Edge)** | Board JSON for **public** boards | `Cache-Control: public, s-maxage=30, stale-while-revalidate=300` + cache tag `board:{scope}:{metric}:{window}` | 30s fresh, 5min SWR | Tag purge for each board in `boardsTouched` (§6.3) |
 | **CDN** | OG share-card images (`/api/og/...`, rendered by next/og) | Immutable URL keyed by `?handle&window&community&v={contentHash}` | `immutable, max-age=31536000` | New `v` hash on data change → new URL; old stays cached harmlessly |
-| **ISR (Next.js App Router)** | SSR profile + board pages | `revalidate = 60` + `revalidateTag('board:{scope}:...')` and `revalidateTag('profile:{handle}')` | 60s | `revalidateTag(...)` called in sync handler step 13 for touched boards + the syncing user's profile |
-| **Redis — leaderboard ZSETs** | Ranked scores | §7 keys | day buckets 40d; 7d/30d boards 2d; `all` none | Overwritten in-band on every sync (step 10); nightly sweep re-materializes |
-| **Redis — profile cache** | `prof:{handle}` hash (name/avatar/tier/pill) | `HSET` | 6h | Busted when profile/membership changes; lazy refill on miss |
+| **ISR (Next.js App Router)** | SSR profile + board pages | `revalidate = 60` + `revalidateTag('board:{scope}:...')` and `revalidateTag('profile:{handle}')` | 60s | `revalidateTag(...)` called in sync handler step 14 for touched boards + the syncing user's profile |
+| **Redis — leaderboard ZSETs** | Ranked scores | §7 keys | day buckets 40d; 7d/30d boards 2d; `all` none | Overwritten in-band on every sync (step 11); nightly sweep re-materializes |
+| **Redis — profile cache** | `prof:{user_id}` hash (handle/name/avatar/tier/pill) | `HSET` | 6h | Busted when profile/membership changes; lazy refill on miss |
 | **Redis — board-render cache** | Assembled `entries[]` payload per `(scope,metric,window,limit)` | `SET ... EX` | 30s | Deleted for touched boards on sync; otherwise expires fast |
 | **Redis — previous-period snapshot** | `lbsnap:{scope}:{metric}:{window}` | Frozen ZSET copy | rolling, replaced nightly | Not sync-invalidated (intentionally a daily-frozen baseline for deltas) |
 | **In-process (server)** | Pinned LiteLLM price table by version | LRU keyed by version string | until version bump | Immutable per version; new version = new key |
 
-**Invalidation flow on a sync (step 13 expanded):**
+**Invalidation flow on a sync (step 14 expanded):**
 1. Sync handler computes `boardsTouched` (global + each of the user's community boards × every window).
 2. For each touched board: `DEL` the Redis render-cache key, then `revalidateTag('board:{scope}:{metric}:{window}')` (ISR) and edge cache-tag purge.
 3. `revalidateTag('profile:{handle}')` for the syncing user (their numbers changed).
@@ -1187,7 +1205,7 @@ Token-bucket limits enforced in Upstash Redis, keyed per-user (`uid:<id>`) and p
 | `POST /api/v1/cli/login/poll` | per `interval` (5s) | 60 / min | Device-flow polling respects returned `interval`; faster → `slow_down`. |
 | OAuth callbacks | n/a | 60 / min | State+PKCE validated. |
 
-**Idempotency (sync):** the CLI must send a stable `Idempotency-Key` (ULID) per sync attempt; retries of a failed/timed-out request reuse the same key. The server flow is specified in §6.4 (steps 2 and 12). Keys are retained 30 days, then GC'd. Because the underlying write is itself an idempotent `ON CONFLICT` upsert keyed on `(user_id, device_id, date, tool, model)`, even a lost ledger row cannot cause double counting — the idempotency layer is for response consistency and cheap retries; the PK is the true guard.
+**Idempotency (sync):** the CLI must send a stable `Idempotency-Key` (ULID) per sync attempt; retries of a failed/timed-out request reuse the same key. The server flow is specified in §6.4 (steps 2 and 13). Keys are retained 30 days, then GC'd. Because the underlying write is itself an idempotent `ON CONFLICT` upsert keyed on `(user_id, device_id, date, tool, model)`, even a lost ledger row cannot cause double counting — the idempotency layer is for response consistency and cheap retries; the PK is the true guard.
 
 ---
 
@@ -1203,7 +1221,7 @@ Token-bucket limits enforced in Upstash Redis, keyed per-user (`uid:<id>`) and p
 | Cost computation | **Pinned LiteLLM price table (server-side)** | Counts in, cost out: clients can't game cost boards; versioned pinning enables deterministic historical re-pricing. |
 | Local log parsing | **First-party Claude Code parser + `ccusage` shell-out** | First-party parser for the primary tool; `ccusage` covers the long tail (Cursor, Codex, Aider, Copilot, Gemini) with graceful degradation. |
 | Share cards | **next/og** | Server-rendered OG images for X/social sharing; immutable content-hash URLs make them CDN-cacheable forever. |
-| Email verification | **Magic-link + 6-digit OTP, hashes only** | Proves mailbox control at a work domain (the only credible signal of employment); short TTL, hashed tokens, disposable/free-provider denylist. |
+| Email verification | **One shared 6-digit code (in both the magic link and the OTP), `code_hash` only** | Proves mailbox control at a work domain (the only credible signal of employment); security from attempt-lockout + 15m TTL + rate-limit (not code entropy), disposable/free-provider denylist. |
 | Identity badge (X) | **X OAuth (connect-only)** | Verified badge + share affordance; deliberately *not* an auth provider — GitHub is the spine. |
 
 ---
@@ -1224,7 +1242,7 @@ Token-bucket limits enforced in Upstash Redis, keyed per-user (`uid:<id>`) and p
 - **Local preview** — Phase A of the CLI: parse local logs and print your number with no network identity, no login, no server write.
 - **Membership / `verified_via`** — a `(user_id, community_id, role)` row; `verified_via` records how membership was proven (`github` / `code` / `invite` / `email:<domain>`).
 - **Price-table version** — the identifier (e.g. `litellm-2026-06-12`) stored on each `usage_day` row recording which table priced it; a bump triggers controlled background re-pricing.
-- **Profile cache** — Redis hash `prof:{handle}` (display name, avatar, tier, pill) joined onto leaderboard handles at read time; Postgres-backed, lazily refilled.
+- **Profile cache** — Redis hash `prof:{user_id}` (handle, display name, avatar, tier, pill) joined onto leaderboard members (`user_id`) at read time; Postgres-backed, lazily refilled.
 - **Rolling window** — `7d` / `30d` / `all` ranking horizons computed by unioning day buckets (with a nightly sweep for correct decay) plus incremental write-path freshness.
 - **Scope** — `g` (global) or `c:{community_id}`; the first segment of a Redis board key.
 - **Session cookie** — the opaque, `HttpOnly` web credential backed by a `sessions` row; revocable server-side (the reason for DB sessions over JWTs).
