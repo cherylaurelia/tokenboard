@@ -169,18 +169,27 @@ The board *feels* live but is not real-time streaming; it's a **scheduled batch 
 
 We pin **`ccusage@20`** *internally* so their releases never silently break our parsing, while letting **our own** client float to `@latest` via the cron. Net: the dashboard is always current; the CLI stays current for cron/`@latest` users and politely nags the rest.
 
-### 4.3 Design language — monkeytype-inspired
+### 4.3 Design language — monkeytype *restraint*, our own color
 
-The whole product — web dashboard *and* CLI — follows a **monkeytype** aesthetic. This isn't decoration; it's the brand, and it's load-bearing for a tool whose distribution *is* screenshots. monkeytype is the canonical example of a tool developers find beautiful, and that exact crowd is our audience.
+The whole product — web dashboard *and* CLI — borrows monkeytype's **restraint** (dark, calm, monospace-forward, muted-until-meaningful) but uses **our own brand color**, not monkeytype's. This isn't decoration; it's the brand, and it's load-bearing for a tool whose distribution *is* screenshots. monkeytype is the canonical example of a tool developers find beautiful, and that exact crowd is our audience — but we take the *discipline*, not the hex.
+
+**The accent: muted clay coral `#cc785c`.** A warm, desaturated coral — elegant, "expensive," and explored against ~10 alternatives (neon/lime/magenta read "vibecoded"; amber `#e2b714` would clone monkeytype outright). It reads warm like the layout was designed around, pairs naturally with the dark near-black base, and is Claude-adjacent without being a third party's literal brand color. The reference is the chosen prototype `prototypes/v3-rich/index.html` (the "v3 / elevated-rich" direction).
+
+**Palette (dark, the default):**
+- bg `#0c0c0e` · surfaces `#161618`/`#1a1a1d` · hairlines `#232327`/`#2c2c31`
+- text `#ececee` → muted `#a4a4ac` → `#6f6f78` → `#4d4d55`
+- **accent `#cc785c`** (dim `#a85c43`); on light mode the accent-as-text darkens to `#b3624a` for contrast
+- movement signals kept muted: up `#6f9e78`, down `#a87070`
+- A **light mode** exists (warm off-white `#f4f3ee`, *not* stark white) via a `data-theme` toggle.
 
 **Principles:**
-- **Dark, calm, monospace-forward.** Near-black background, a muted neutral palette, one warm accent color (monkeytype's signature is its amber/yellow `#e2b714`-style accent on a `#323437`-ish bg). Type-forward: a clean **monospace** for numbers/handles/ranks (e.g. JetBrains Mono / Geist Mono), so the web board and the terminal board feel like the *same* thing.
-- **Minimal chrome, content-dense.** No cards-with-shadows, no gradients-for-the-sake-of-it, no clutter. The data *is* the design — ranks, big numbers, sparklines. Generous whitespace, flat surfaces, hairline dividers.
-- **Muted-until-meaningful color.** Most of the UI is grayscale; color appears only to mean something (your row, a `▲`/`▼` delta, a tier). Exactly the restraint monkeytype uses — the accent pops *because* everything else is quiet.
-- **Calm motion.** Subtle, fast, functional transitions (a rank tick, a count-up). Nothing bouncy.
-- **One visual identity across surfaces.** The CLI board (§14) and the web board + OG share card share palette, monospace, accent, and the "muted-until-meaningful" rule, so a terminal screenshot and a web screenshot are visibly the same product. (Exact hex palette + font choices are a build-time decision; this section fixes the *direction*.)
+- **Dark, calm, monospace-forward.** **JetBrains Mono** for all numbers/handles/ranks (web board *and* terminal board feel like the same thing); a clean sans (**Inter**) only for labels/headings.
+- **Minimal chrome, content-dense.** No heavy shadows, no decorative gradients, no clutter. The data *is* the design — ranks, big numbers, sparklines. Flat surfaces, hairline dividers.
+- **Muted-until-meaningful color.** ~90% of the UI is grayscale; the coral accent appears *only* where it means something — the YOU row, your rank, key numbers. Avatars are neutral grey (not a rainbow); all sparklines are muted grey **except** the YOU row's coral one. The accent pops *because* everything else is quiet.
+- **Calm motion.** Subtle, fast, functional transitions. Nothing bouncy.
+- **One visual identity across surfaces.** The CLI board (§14) and the web board + OG share card share the palette, monospace, coral accent, and the "muted-until-meaningful" rule, so a terminal screenshot and a web screenshot are visibly the same product.
 
-> Tooling note: the installed **`frontend-design`** skill + **shadcn** (via the `vercel` plugin) should be pointed at this monkeytype direction when building the web app, with a custom theme — not the default shadcn look, which reads as generic-AI.
+> Tooling note: build the web app with **shadcn** (via the `vercel` plugin) on a **custom theme keyed to `#cc785c`** + the palette above — not the default shadcn look, which reads as generic-AI. The chosen visual direction is **v3 / elevated-rich** (`prototypes/v3-rich/`).
 
 ---
 

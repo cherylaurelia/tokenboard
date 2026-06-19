@@ -24,10 +24,10 @@
     --text-4:    #4d4d55;
 
     /* the ONE accent */
-    --amber:      #e2b714;
-    --amber-text: #e2b714;   /* amber used as text/foreground */
-    --amber-dim:  #b9930f;
-    --amber-glow: rgba(226,183,20,0.14);
+    --amber:      #cc785c;
+    --amber-text: #cc785c;   /* amber used as text/foreground */
+    --amber-dim:  #a85c43;
+    --amber-glow: rgba(204,120,92,0.14);
 
     /* meaningful-only signals (movement) — kept muted */
     --up:        #6f9e78;
@@ -42,8 +42,8 @@
     --spark-muted: #5b5b63;
 
     --topbar-bg: rgba(12,12,14,0.72);
-    --atmo-1: rgba(226,183,20,0.045);
-    --atmo-2: rgba(226,183,20,0.018);
+    --atmo-1: rgba(204,120,92,0.045);
+    --atmo-2: rgba(204,120,92,0.018);
     --shadow: rgba(0,0,0,0.3);
 
     --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
@@ -67,10 +67,10 @@
     --text-3:    #9a978c;
     --text-4:    #b8b5a8;
 
-    --amber:      #e2b714;          /* fills/blocks stay the brand amber */
-    --amber-text: #9a7d0a;          /* darker amber for text — contrast on light */
-    --amber-dim:  #a8850c;
-    --amber-glow: rgba(226,183,20,0.18);
+    --amber:      #cc785c;          /* fills/blocks stay the brand amber */
+    --amber-text: #b3624a;          /* darker amber for text — contrast on light */
+    --amber-dim:  #b3624a;
+    --amber-glow: rgba(204,120,92,0.18);
 
     --up:        #4f8a5e;
     --down:      #b05a5a;
@@ -82,8 +82,8 @@
     --spark-muted: #b0ad9f;
 
     --topbar-bg: rgba(244,243,238,0.78);
-    --atmo-1: rgba(226,183,20,0.10);
-    --atmo-2: rgba(226,183,20,0.04);
+    --atmo-1: rgba(204,120,92,0.10);
+    --atmo-2: rgba(204,120,92,0.04);
     --shadow: rgba(80,72,40,0.08);
   }
 
@@ -164,8 +164,8 @@
     display: grid; place-items: center;
     font-family: var(--mono); font-weight: 700; font-size: 22px;
     color: var(--amber-text);
-    background: linear-gradient(160deg, rgba(226,183,20,0.13), rgba(226,183,20,0.02));
-    border: 1px solid rgba(226,183,20,0.22);
+    background: linear-gradient(160deg, rgba(204,120,92,0.13), rgba(204,120,92,0.02));
+    border: 1px solid rgba(204,120,92,0.22);
     flex: none;
   }
   .community-title h1 {
@@ -283,7 +283,7 @@
   .row.you .avatar {
     color: var(--amber-text);
     background: var(--amber-glow);
-    border-color: rgba(226,183,20,0.32);
+    border-color: rgba(204,120,92,0.32);
   }
   .handle {
     font-family: var(--mono); font-weight: 500; font-size: 14.5px;
@@ -296,7 +296,7 @@
   .you-tag {
     font-family: var(--mono); font-size: 10px; font-weight: 700;
     letter-spacing: 0.06em; color: var(--amber-text);
-    background: var(--amber-glow); border: 1px solid rgba(226,183,20,0.3);
+    background: var(--amber-glow); border: 1px solid rgba(204,120,92,0.3);
     padding: 2px 7px; border-radius: 6px;
   }
 
@@ -320,13 +320,13 @@
 
   /* YOU row — the one place amber lives */
   .row.you {
-    background: linear-gradient(90deg, var(--amber-glow), rgba(226,183,20,0.02) 60%, transparent);
+    background: linear-gradient(90deg, var(--amber-glow), rgba(204,120,92,0.02) 60%, transparent);
   }
   .row.you::before {
     content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background: var(--amber);
   }
   .row.you:hover {
-    background: linear-gradient(90deg, rgba(226,183,20,0.16), rgba(226,183,20,0.04) 60%, transparent);
+    background: linear-gradient(90deg, rgba(204,120,92,0.16), rgba(204,120,92,0.04) 60%, transparent);
   }
   .row.you .rank .num { color: var(--amber-text); }
   .row.you .tokens { color: var(--amber-text); }
@@ -357,7 +357,7 @@
     border-radius: 16px; overflow: hidden; position: relative;
     padding: 30px 34px; display: flex; flex-direction: column;
     background-image:
-      radial-gradient(420px 300px at 88% -20%, rgba(226,183,20,0.13), transparent 70%);
+      radial-gradient(420px 300px at 88% -20%, rgba(204,120,92,0.13), transparent 70%);
   }
   .og::before {
     content:""; position:absolute; inset:0; pointer-events:none; opacity:.5;
@@ -392,7 +392,7 @@
     font-family: var(--mono); font-weight: 700; font-size: 26px;
     color: var(--amber-text);
     background: var(--amber-glow);
-    border: 1px solid rgba(226,183,20,0.3);
+    border: 1px solid rgba(204,120,92,0.3);
   }
   .og-num {
     font-family: var(--mono); font-weight: 800; font-size: 64px;
@@ -405,7 +405,7 @@
   }
   .og-meta .rank-badge {
     color: var(--amber-text); font-weight: 700;
-    background: var(--amber-glow); border: 1px solid rgba(226,183,20,0.3);
+    background: var(--amber-glow); border: 1px solid rgba(204,120,92,0.3);
     padding: 2px 9px; border-radius: 7px;
   }
   .og-meta .dot { width:3px;height:3px;border-radius:50%;background:var(--text-4); }
