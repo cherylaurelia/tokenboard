@@ -1,6 +1,6 @@
 # tokenboard — Design Doc
 
-> **Single source of truth.** This document is canonical. Decisions here are *decided*, not open for re-litigation. Open questions are explicitly flagged in §13.
+> **Single source of truth (product).** This document is canonical for *what* we're building and *why*. Decisions here are *decided*, not open for re-litigation. Open questions are flagged in §15. For the technical *how* — SQL DDL, API endpoints, OAuth + device + work-email sequence diagrams, sync protocol, Redis key scheme — see the companion **`ARCHITECTURE.md`**.
 
 ---
 
@@ -392,7 +392,7 @@ When adopting a transaction-mode pooler, configure the client for it: **Prisma**
 5,000 hourly syncs = **~1.4 req/s average** — trivial. The only spike is a naive `0 * * * *` cron firing all 5k at `:00`. Vercel functions auto-scale (≈30,000 concurrency) so the function tier absorbs it; the real victim would be Postgres connections (above). **Fix: client-side jitter.** The CLI picks a stable per-install offset — `sleep(hash(machineId) % 3600s)` after the top of the hour, or a random minute chosen at install — flattening 5k syncs across the full window to ~1.4 req/s with no coordinated spike. Costs nothing; accept-and-queue is overkill at this scale.
 
 ### Redis ZSET headroom
-A non-concern — do not optimize it. `ZADD`/`ZINCRBY` are O(log N) (~12 comparisons at N=5,000), `ZREVRANGE`/`ZREVRANK` are O(log N + K). Redis does millions of ops/sec; 5k members is a toy. The **only** real constraint is Upstash per-command billing: ~120k syncs/day × ~3 cmds ≈ **10.8M commands/month**, which exceeds the 500K/month free tier. **Plan for PAYG (~$20–40/mo)** and **pipeline/`MULTI` the per-sync `ZINCRBY`s** to cut REST round-trips and command count.
+A non-concern — do not optimize it. `ZADD`/`ZREVRANGE`/`ZREVRANK` are O(log N) (~12 comparisons at N=5,000). Redis does millions of ops/sec; 5k members is a toy. **Use `ZADD` (set absolute score), not `ZINCRBY`** — because sync is idempotent (re-uploading a day *overwrites* `usage_day`), the leaderboard must *set* each member's score to their current window total, not increment it, or every re-sync double-counts. See `ARCHITECTURE.md` §7 for the per-day-bucket key scheme that makes rolling windows correct. The **only** real constraint is Upstash per-command billing: ~120k syncs/day × ~3 cmds ≈ **10.8M commands/month**, which exceeds the 500K/month free tier. **Plan for PAYG (~$20–40/mo)** and **pipeline/`MULTI` the per-sync `ZADD`s** to cut REST round-trips and command count.
 
 ### OG image caching
 Satori / `next/og` is genuinely CPU-bound (~150–800ms+ per render, billed as Vercel active CPU). Uncached, every Slack/Discord/X unfurl re-scrape re-renders. **Fix: CDN-cache from data-versioned immutable URLs** — e.g. `/og/[user]/[periodHash].png` with `Cache-Control: public, immutable` + long `s-maxage`. Satori then runs ~**once per key**; new data = new URL = the only cache miss. Keep the route on the Node runtime, load fonts globally/base64. Origin renders drop from thousands/hour to a handful.
