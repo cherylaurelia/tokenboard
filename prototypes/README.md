@@ -1,17 +1,18 @@
-# tokenboard — design prototypes
+# tokenboard — design prototype
 
-Static HTML prototypes to validate the dashboard vibe before building in Next.js.
-Open any `index.html` directly in a browser. Screenshots in `shots/`.
+The chosen visual direction for the dashboard. Open `v3-rich/index.html` directly
+in a browser; a screenshot is in `shots/v3-rich.png`.
 
-- **v3-rich — CHOSEN DIRECTION.** Elevated/rich: Linear/Vercel-meets-monkeytype.
-  Near-black surfaces, amber `#e2b714` accent used only on meaningful bits,
-  mono data + sans labels, colored initial-circle avatars, smooth inline-SVG
-  sparklines, top-3 podium, stat strip, the YOU row with amber left-rail.
-- v2-terminal — terminal-window-in-browser (box-drawing TUI, inverse YOU row).
-  Not chosen, but its terminal soul (mono, the inverse YOU-row idea) can inform
-  the CLI renderer (DESIGN §14).
-- v1-pure — faithful minimal monkeytype. Not chosen.
+**v3-rich — the design direction.** Elevated/rich: Linear/Vercel-meets-monkeytype.
+Near-black surfaces, amber `#e2b714` accent used only on meaningful bits (the YOU
+row, your rank, key numbers), mono data + sans labels, colored initial-circle
+avatars, smooth inline-SVG sparklines, a top-3 podium, a stat strip, and the YOU
+row with an amber left-rail. The page also includes the OG share card (1200×630)
+that gets posted to X.
 
-Same fake data across all three (community `steel-cartel`, fictional handles)
-so they're directly comparable. Each page also includes the OG share card
-(1200x630) that gets posted to X.
+(Two alternative directions — pure-monkeytype and terminal-native — were explored
+and dropped in favor of v3. The terminal-native ideas inform the CLI renderer in
+`DESIGN.md` §14, not the web app.)
+
+This is a static prototype to lock the vibe before building the real thing in
+Next.js + shadcn with a custom monkeytype theme.
