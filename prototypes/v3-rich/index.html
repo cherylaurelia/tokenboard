@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>tokenboard — steel-cartel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    /* base — refined near-black */
+    --bg:        #0c0c0e;
+    --bg-2:      #0e0e10;
+    --surface:   #161618;
+    --surface-2: #1a1a1d;
+    --surface-3: #202024;
+    --line:      #232327;
+    --line-2:    #2c2c31;
+
+    /* text */
+    --text:      #ececee;
+    --text-2:    #a4a4ac;
+    --text-3:    #6f6f78;
+    --text-4:    #4d4d55;
+
+    /* accents */
+    --amber:     #e2b714;
+    --amber-dim: #b9930f;
+    --amber-glow: rgba(226,183,20,0.14);
+    --cyan:      #56b6c2;   /* the single, sparing cool secondary */
+
+    --up:        #71c585;   /* muted green */
+    --down:      #c97a7a;   /* muted red */
+
+    --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+    --sans: 'Inter', -apple-system, system-ui, sans-serif;
+
+    --radius:    14px;
+    --radius-sm: 9px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.5;
+    min-height: 100vh;
+    /* faint atmospheric depth — no heavy gradients */
+    background-image:
+      radial-gradient(900px 480px at 78% -8%, rgba(226,183,20,0.045), transparent 70%),
+      radial-gradient(800px 520px at 10% 4%, rgba(86,182,194,0.025), transparent 65%);
+    background-attachment: fixed;
+  }
+
+  .mono { font-family: var(--mono); font-feature-settings: "tnum" 1, "zero" 1; }
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  .page { max-width: 940px; margin: 0 auto; padding: 0 24px 80px; }
+
+  /* ───────────────── header ───────────────── */
+  .topbar {
+    position: sticky; top: 0; z-index: 20;
+    background: rgba(12,12,14,0.72);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner {
+    max-width: 940px; margin: 0 auto; padding: 16px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .wordmark {
+    font-family: var(--mono); font-weight: 700; font-size: 16px;
+    letter-spacing: -0.02em; color: var(--text);
+    display: flex; align-items: center; gap: 9px;
+  }
+  .wordmark .caret {
+    color: var(--amber); font-weight: 800;
+  }
+  .wordmark .tk { color: var(--text); }
+  .wordmark .dim { color: var(--text-3); }
+
+  nav.nav { display: flex; align-items: center; gap: 4px; }
+  nav.nav a {
+    font-family: var(--mono); font-size: 12.5px; letter-spacing: -0.01em;
+    color: var(--text-3); text-decoration: none;
+    padding: 7px 13px; border-radius: 8px;
+    transition: color .15s ease, background .15s ease;
+  }
+  nav.nav a:hover { color: var(--text-2); background: var(--surface); }
+  nav.nav a.active { color: var(--text); background: var(--surface-2); }
+  nav.nav .sep { color: var(--text-4); padding: 0 2px; font-size: 11px; }
+
+  /* ───────────────── hero / stat strip ───────────────── */
+  .hero { padding: 44px 0 26px; }
+  .crumb {
+    font-family: var(--mono); font-size: 12px; color: var(--text-3);
+    letter-spacing: 0.02em; margin-bottom: 16px; display:flex; gap:8px; align-items:center;
+  }
+  .crumb .dot { width:4px;height:4px;border-radius:50%;background:var(--text-4); }
+  .crumb b { color: var(--text-2); font-weight: 500; }
+
+  .community-head {
+    display: flex; align-items: center; gap: 16px; margin-bottom: 22px;
+  }
+  .community-badge {
+    width: 52px; height: 52px; border-radius: 13px;
+    display: grid; place-items: center;
+    font-family: var(--mono); font-weight: 700; font-size: 22px;
+    color: var(--amber);
+    background:
+      linear-gradient(160deg, rgba(226,183,20,0.13), rgba(226,183,20,0.02));
+    border: 1px solid rgba(226,183,20,0.22);
+    flex: none;
+  }
+  .community-title h1 {
+    font-family: var(--mono); font-weight: 700; font-size: 27px;
+    letter-spacing: -0.025em; color: var(--text);
+  }
+  .community-title .sub {
+    font-size: 13px; color: var(--text-3); margin-top: 2px;
+  }
+
+  /* stat strip */
+  .stat-strip {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .stat {
+    padding: 16px 18px 15px;
+    border-right: 1px solid var(--line);
+    position: relative;
+  }
+  .stat:last-child { border-right: none; }
+  .stat .label {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.07em;
+    text-transform: uppercase; color: var(--text-4); margin-bottom: 8px;
+  }
+  .stat .value {
+    font-family: var(--mono); font-weight: 600; font-size: 21px;
+    color: var(--text); letter-spacing: -0.02em;
+    display: flex; align-items: baseline; gap: 7px;
+  }
+  .stat .value .unit { font-size: 12px; color: var(--text-3); font-weight: 500; }
+  .stat .value .pill {
+    font-size: 11px; font-weight: 600; color: var(--up);
+    background: rgba(113,197,133,0.1); border: 1px solid rgba(113,197,133,0.18);
+    padding: 2px 7px; border-radius: 999px; letter-spacing: 0;
+  }
+  .stat.you .value { color: var(--amber); }
+  .stat.you::before {
+    content:""; position:absolute; left:0; top:0; bottom:0; width:2px; background: var(--amber);
+  }
+
+  /* ───────────────── board ───────────────── */
+  .board {
+    margin-top: 26px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.02) inset;
+  }
+
+  .tabs {
+    display: flex; align-items: center; gap: 2px;
+    padding: 12px 14px; border-bottom: 1px solid var(--line);
+    background: var(--bg-2);
+  }
+  .tab {
+    font-family: var(--mono); font-size: 12.5px; letter-spacing: -0.01em;
+    color: var(--text-3); padding: 7px 14px; border-radius: 8px;
+    cursor: pointer; transition: all .15s ease; user-select: none;
+    border: 1px solid transparent;
+  }
+  .tab:hover { color: var(--text-2); }
+  .tab.active {
+    color: var(--text); background: var(--surface-3);
+    border-color: var(--line-2);
+  }
+  .tabs .spacer { flex: 1; }
+  .tabs .live {
+    font-family: var(--mono); font-size: 11px; color: var(--text-3);
+    display: flex; align-items: center; gap: 7px; padding-right: 6px;
+  }
+  .tabs .live .dot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--up);
+    box-shadow: 0 0 0 3px rgba(113,197,133,0.14);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+  /* column header */
+  .col-head {
+    display: grid;
+    grid-template-columns: 56px 1fr 132px 78px 110px;
+    align-items: center; gap: 12px;
+    padding: 11px 22px;
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.07em;
+    text-transform: uppercase; color: var(--text-4);
+    border-bottom: 1px solid var(--line);
+  }
+  .col-head .r-tokens { text-align: right; }
+  .col-head .r-spark  { text-align: right; }
+
+  /* rows */
+  .row {
+    display: grid;
+    grid-template-columns: 56px 1fr 132px 78px 110px;
+    align-items: center; gap: 12px;
+    padding: 14px 22px;
+    border-bottom: 1px solid var(--line);
+    position: relative;
+    transition: background .14s ease;
+  }
+  .row:last-child { border-bottom: none; }
+  .row:hover { background: var(--surface-2); }
+
+  /* rank */
+  .rank {
+    font-family: var(--mono); font-weight: 600; font-size: 14px;
+    color: var(--text-3); display: flex; align-items: center; gap: 9px;
+  }
+  .rank .num { width: 18px; text-align: right; }
+  .medal {
+    width: 22px; height: 22px; border-radius: 7px; flex:none;
+    display: grid; place-items: center;
+    font-size: 11px; font-weight: 700; font-family: var(--mono);
+  }
+  .medal.gold   { color:#0c0c0e; background: linear-gradient(150deg,#f4d04a,#cf9c0c); }
+  .medal.silver { color:#0c0c0e; background: linear-gradient(150deg,#dfe2e6,#9ea4ad); }
+  .medal.bronze { color:#0c0c0e; background: linear-gradient(150deg,#dba36a,#a96f37); }
+
+  /* identity */
+  .who { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .avatar {
+    width: 32px; height: 32px; border-radius: 9px; flex: none;
+    display: grid; place-items: center;
+    font-family: var(--mono); font-weight: 700; font-size: 13px;
+    color: #fff; letter-spacing: -0.02em;
+    border: 1px solid rgba(255,255,255,0.07);
+  }
+  .handle {
+    font-family: var(--mono); font-weight: 500; font-size: 14.5px;
+    color: var(--text); letter-spacing: -0.015em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    display: flex; align-items: center; gap: 9px;
+  }
+  .handle .whale {
+    color: var(--cyan); font-size: 11px; opacity: .85;
+  }
+  .you-tag {
+    font-family: var(--mono); font-size: 10px; font-weight: 700;
+    letter-spacing: 0.06em; color: var(--amber);
+    background: var(--amber-glow); border: 1px solid rgba(226,183,20,0.3);
+    padding: 2px 7px; border-radius: 6px;
+  }
+
+  /* tokens */
+  .tokens {
+    font-family: var(--mono); font-weight: 600; font-size: 15px;
+    color: var(--text); text-align: right; letter-spacing: -0.01em;
+  }
+  .tokens .m { color: var(--text-3); font-weight: 400; font-size: 12px; margin-left: 1px; }
+
+  /* delta */
+  .delta {
+    font-family: var(--mono); font-weight: 600; font-size: 12.5px;
+    display: flex; align-items: center; justify-content: flex-start; gap: 3px;
+  }
+  .delta.up   { color: var(--up); }
+  .delta.down { color: var(--down); }
+  .delta.flat { color: var(--text-4); }
+  .delta .arrow { font-size: 10px; }
+
+  /* sparkline cell */
+  .spark { display: flex; justify-content: flex-end; }
+  .spark svg { display: block; }
+
+  /* YOU row — distinct */
+  .row.you {
+    background:
+      linear-gradient(90deg, rgba(226,183,20,0.07), rgba(226,183,20,0.015) 60%, transparent);
+  }
+  .row.you::before {
+    content:""; position:absolute; left:0; top:0; bottom:0; width:3px;
+    background: var(--amber);
+  }
+  .row.you:hover {
+    background:
+      linear-gradient(90deg, rgba(226,183,20,0.10), rgba(226,183,20,0.03) 60%, transparent);
+  }
+  .row.you .handle { color: #fff; }
+  .row.you .rank .num { color: var(--amber); }
+  .row.you .tokens { color: var(--amber); }
+
+  .board-foot {
+    padding: 13px 22px; border-top: 1px solid var(--line);
+    background: var(--bg-2);
+    font-family: var(--mono); font-size: 11.5px; color: var(--text-4);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .board-foot a { color: var(--text-3); text-decoration: none; }
+  .board-foot a:hover { color: var(--amber-dim); }
+
+  /* ───────────────── OG share card ───────────────── */
+  .share-section { margin-top: 56px; }
+  .share-label {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--text-4); margin-bottom: 16px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .share-label::after { content:""; flex:1; height:1px; background: var(--line); }
+
+  .og-wrap { display: flex; justify-content: center; }
+  /* 1200x630 ratio, displayed ~600x315 */
+  .og {
+    width: 600px; height: 315px; flex: none;
+    background: var(--bg-2);
+    border: 1px solid var(--line-2);
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    padding: 30px 34px;
+    display: flex; flex-direction: column;
+    background-image:
+      radial-gradient(420px 300px at 88% -20%, rgba(226,183,20,0.13), transparent 70%),
+      radial-gradient(360px 280px at 0% 120%, rgba(86,182,194,0.06), transparent 70%);
+  }
+  /* faint grid texture */
+  .og::before {
+    content:""; position:absolute; inset:0; pointer-events:none; opacity:.5;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+    background-size: 30px 30px;
+    mask-image: linear-gradient(160deg, #000 10%, transparent 75%);
+    -webkit-mask-image: linear-gradient(160deg, #000 10%, transparent 75%);
+  }
+  .og > * { position: relative; z-index: 1; }
+
+  .og-top { display: flex; align-items: center; justify-content: space-between; }
+  .og-mark {
+    font-family: var(--mono); font-weight: 700; font-size: 14px;
+    letter-spacing: -0.02em; display:flex; align-items:center; gap:7px;
+  }
+  .og-mark .caret { color: var(--amber); }
+  .og-mark .dim { color: var(--text-3); }
+  .og-chip {
+    font-family: var(--mono); font-size: 11px; color: var(--text-2);
+    border: 1px solid var(--line-2); border-radius: 999px;
+    padding: 5px 12px; display:flex; gap:7px; align-items:center;
+  }
+  .og-chip .k { color: var(--text-4); }
+
+  .og-body { flex: 1; display: flex; align-items: center; gap: 22px; margin-top: 4px; }
+  .og-avatar {
+    width: 64px; height: 64px; border-radius: 16px; flex: none;
+    display: grid; place-items: center;
+    font-family: var(--mono); font-weight: 700; font-size: 26px; color: #fff;
+    background: linear-gradient(150deg, #3a7bd5, #2456a6);
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 0 0 0 4px rgba(58,123,213,0.1);
+  }
+  .og-num {
+    font-family: var(--mono); font-weight: 800; font-size: 64px;
+    line-height: .92; letter-spacing: -0.04em; color: var(--text);
+  }
+  .og-num .m { color: var(--amber); }
+  .og-meta {
+    font-family: var(--mono); font-size: 13px; color: var(--text-2);
+    margin-top: 9px; display: flex; align-items: center; gap: 10px;
+  }
+  .og-meta .rank-badge {
+    color: var(--amber); font-weight: 700;
+    background: var(--amber-glow); border: 1px solid rgba(226,183,20,0.3);
+    padding: 2px 9px; border-radius: 7px;
+  }
+  .og-meta .dot { width:3px;height:3px;border-radius:50%;background:var(--text-4); }
+
+  .og-bottom {
+    display: flex; align-items: flex-end; justify-content: space-between;
+  }
+  .og-spark { opacity: .95; }
+  .og-cta {
+    font-family: var(--mono); font-size: 12px; font-weight: 600;
+    color: #0c0c0e; background: var(--amber);
+    padding: 9px 16px; border-radius: 9px; letter-spacing: -0.01em;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .og-cta .url { opacity: .7; font-weight: 500; }
+
+  .footer-note {
+    text-align: center; margin-top: 30px;
+    font-family: var(--mono); font-size: 11px; color: var(--text-4);
+    letter-spacing: 0.02em;
+  }
+</style>
+</head>
+<body>
+
+  <!-- ════════ HEADER ════════ -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="wordmark">
+        <span class="caret">&gt;_</span><span class="tk">tokenboard</span>
+      </div>
+      <nav class="nav">
+        <a href="#" class="">Global</a>
+        <span class="sep">·</span>
+        <a href="#" class="active">My Communities</a>
+        <span class="sep">·</span>
+        <a href="#">Profile</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page">
+
+    <!-- ════════ HERO ════════ -->
+    <section class="hero">
+      <div class="crumb">
+        My Communities <span class="dot"></span> <b>steel-cartel</b>
+      </div>
+
+      <div class="community-head">
+        <div class="community-badge">sc</div>
+        <div class="community-title">
+          <h1>steel-cartel</h1>
+          <div class="sub">A private leaderboard for the terminally agentic.</div>
+        </div>
+      </div>
+
+      <div class="stat-strip">
+        <div class="stat">
+          <div class="label">Members</div>
+          <div class="value tnum">42</div>
+        </div>
+        <div class="stat">
+          <div class="label">Tokens · this week</div>
+          <div class="value tnum">318<span class="unit">M</span> <span class="pill">↑ 18%</span></div>
+        </div>
+        <div class="stat">
+          <div class="label">Avg / member</div>
+          <div class="value tnum">7.6<span class="unit">M</span></div>
+        </div>
+        <div class="stat you">
+          <div class="label">Your rank</div>
+          <div class="value tnum">#5</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════ BOARD ════════ -->
+    <section class="board">
+      <div class="tabs">
+        <div class="tab">Today</div>
+        <div class="tab active">7 days</div>
+        <div class="tab">30 days</div>
+        <div class="tab">All-time</div>
+        <div class="spacer"></div>
+        <div class="live"><span class="dot"></span>live</div>
+      </div>
+
+      <div class="col-head">
+        <div>Rank</div>
+        <div>Dev</div>
+        <div class="r-tokens">Tokens</div>
+        <div>Δ wk</div>
+        <div class="r-spark">7d trend</div>
+      </div>
+
+      <!-- 1 doomslug -->
+      <div class="row">
+        <div class="rank">
+          <div class="medal gold">1</div>
+        </div>
+        <div class="who">
+          <div class="avatar" style="background:linear-gradient(150deg,#c0566f,#8a2f47)">d</div>
+          <div class="handle">doomslug <span class="whale" title="Whale tier · >10M">◆</span></div>
+        </div>
+        <div class="tokens">12.4<span class="m">M</span></div>
+        <div class="delta up"><span class="arrow">▲</span>2</div>
+        <div class="spark"><!--SPARK doomslug--></div>
+      </div>
+
+      <!-- 2 kernelpanic -->
+      <div class="row">
+        <div class="rank">
+          <div class="medal silver">2</div>
+        </div>
+        <div class="who">
+          <div class="avatar" style="background:linear-gradient(150deg,#5c6bc0,#37418a)">k</div>
+          <div class="handle">kernelpanic <span class="whale" title="Whale tier · >10M">◆</span></div>
+        </div>
+        <div class="tokens">11.8<span class="m">M</span></div>
+        <div class="delta up"><span class="arrow">▲</span>1</div>
+        <div class="spark"><!--SPARK kernelpanic--></div>
+      </div>
+
+      <!-- 3 vibe_compiler -->
+      <div class="row">
+        <div class="rank">
+          <div class="medal bronze">3</div>
+        </div>
+        <div class="who">
+          <div class="avatar" style="background:linear-gradient(150deg,#3f9e7a,#2a6b52)">v</div>
+          <div class="handle">vibe_compiler</div>
+        </div>
+        <div class="tokens">9.2<span class="m">M</span></div>
+        <div class="delta down"><span class="arrow">▼</span>1</div>
+        <div class="spark"><!--SPARK vibe_compiler--></div>
+      </div>
+
+      <!-- 4 asyncawait -->
+      <div class="row">
+        <div class="rank"><span class="num">4</span></div>
+        <div class="who">
+          <div class="avatar" style="background:linear-gradient(150deg,#b07b3e,#7d5526)">a</div>
+          <div class="handle">asyncawait</div>
+        </div>
+        <div class="tokens">7.7<span class="m">M</span></div>
+        <div class="delta flat"><span class="arrow">—</span></div>
+        <div class="spark"><!--SPARK asyncawait--></div>
+      </div>
+
+      <!-- 5 devon (YOU) -->
+      <div class="row you">
+        <div class="rank"><span class="num">5</span></div>
+        <div class="who">
+          <div class="avatar" style="background:linear-gradient(150deg,#3a7bd5,#2456a6)">d</div>
+          <div class="handle">devon <span class="you-tag">YOU</span></div>
+        </div>
+        <div class="tokens">6.9<span class="m">M</span></div>
+        <div class="delta up"><span class="arrow">▲</span>3</div>
+        <div class="spark"><!--SPARK devon--></div>
+      </div>
+
+      <!-- 6 promptsmith -->
+      <div class="row">
+        <div class="rank"><span class="num">6</span></div>
+        <div class="who">
+          <div class="avatar" style="background:linear-gradient(150deg,#a05bc0,#6e3a87)">p</div>
+          <div class="handle">promptsmith</div>
+        </div>
+        <div class="tokens">6.1<span class="m">M</span></div>
+        <div class="delta down"><span class="arrow">▼</span>1</div>
+        <div class="spark"><!--SPARK promptsmith--></div>
+      </div>
+
+      <!-- 7 gigachad_io -->
+      <div class="row">
+        <div class="rank"><span class="num">7</span></div>
+        <div class="who">
+          <div class="avatar" style="background:linear-gradient(150deg,#4a90a4,#2d6373)">g</div>
+          <div class="handle">gigachad_io</div>
+        </div>
+        <div class="tokens">5.4<span class="m">M</span></div>
+        <div class="delta flat"><span class="arrow">—</span></div>
+        <div class="spark"><!--SPARK gigachad_io--></div>
+      </div>
+
+      <!-- 8 tinyctx -->
+      <div class="row">
+        <div class="rank"><span class="num">8</span></div>
+        <div class="who">
+          <div class="avatar" style="background:linear-gradient(150deg,#8a9a5b,#5e6b3a)">t</div>
+          <div class="handle">tinyctx</div>
+        </div>
+        <div class="tokens">3.0<span class="m">M</span></div>
+        <div class="delta up"><span class="arrow">▲</span>4</div>
+        <div class="spark"><!--SPARK tinyctx--></div>
+      </div>
+
+      <div class="board-foot">
+        <span>Showing top 8 of 42 · resets Mon 00:00 UTC</span>
+        <a href="#">View full board →</a>
+      </div>
+    </section>
+
+    <!-- ════════ OG SHARE CARD ════════ -->
+    <section class="share-section">
+      <div class="share-label">og share card · 1200 × 630</div>
+      <div class="og-wrap">
+        <div class="og">
+          <div class="og-top">
+            <div class="og-mark"><span class="caret">&gt;_</span>tokenboard</div>
+            <div class="og-chip"><span class="k">community</span> steel-cartel</div>
+          </div>
+
+          <div class="og-body">
+            <div class="og-avatar">d</div>
+            <div>
+              <div class="og-num tnum">6.9<span class="m">M</span></div>
+              <div class="og-meta">
+                <span>tokens this week</span>
+                <span class="dot"></span>
+                <span class="rank-badge">RANK #5</span>
+                <span class="dot"></span>
+                <span>▲ 3 spots</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="og-bottom">
+            <div class="og-spark"><!--SPARK og--></div>
+            <div class="og-cta">join steel-cartel <span class="url">· tokenboard.dev</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-note">@devon burned 6.9M tokens this week. how many did you burn?</div>
+    </section>
+
+  </main>
+
+  <script>
+    // ── Sparkline generator: smooth (Catmull-Rom → bezier) inline SVG ──
+    function smoothPath(pts) {
+      if (pts.length < 2) return "";
+      let d = `M ${pts[0][0]},${pts[0][1]}`;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p0 = pts[i - 1] || pts[i];
+        const p1 = pts[i];
+        const p2 = pts[i + 1];
+        const p3 = pts[i + 2] || p2;
+        const t = 0.5; // tension
+        const c1x = p1[0] + (p2[0] - p0[0]) / 6 * t * 2;
+        const c1y = p1[1] + (p2[1] - p0[1]) / 6 * t * 2;
+        const c2x = p2[0] - (p3[0] - p1[0]) / 6 * t * 2;
+        const c2y = p2[1] - (p3[1] - p1[1]) / 6 * t * 2;
+        d += ` C ${c1x.toFixed(2)},${c1y.toFixed(2)} ${c2x.toFixed(2)},${c2y.toFixed(2)} ${p2[0].toFixed(2)},${p2[1].toFixed(2)}`;
+      }
+      return d;
+    }
+
+    function sparkSVG(data, opts) {
+      opts = opts || {};
+      const w = opts.w || 96;
+      const h = opts.h || 30;
+      const pad = 3;
+      const stroke = opts.stroke || "#6f6f78";
+      const sw = opts.sw || 1.6;
+      const fill = opts.fill || null;
+      const dotColor = opts.dot || stroke;
+      const min = Math.min(...data), max = Math.max(...data);
+      const range = (max - min) || 1;
+      const n = data.length;
+      const pts = data.map((v, i) => {
+        const x = pad + (i / (n - 1)) * (w - pad * 2);
+        const y = h - pad - ((v - min) / range) * (h - pad * 2);
+        return [x, y];
+      });
+      const path = smoothPath(pts);
+      const last = pts[n - 1];
+      const uid = "g" + Math.random().toString(36).slice(2, 8);
+      let svg = `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" fill="none" xmlns="http://www.w3.org/2000/svg">`;
+      if (fill) {
+        svg += `<defs><linearGradient id="${uid}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="${fill}" stop-opacity="0.28"/>
+          <stop offset="1" stop-color="${fill}" stop-opacity="0"/></linearGradient></defs>`;
+        const area = path + ` L ${last[0].toFixed(2)},${h} L ${pts[0][0].toFixed(2)},${h} Z`;
+        svg += `<path d="${area}" fill="url(#${uid})"/>`;
+      }
+      svg += `<path d="${path}" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>`;
+      svg += `<circle cx="${last[0].toFixed(2)}" cy="${last[1].toFixed(2)}" r="${opts.dotR || 2.1}" fill="${dotColor}"/>`;
+      svg += `</svg>`;
+      return svg;
+    }
+
+    const AMBER = "#e2b714", UP = "#71c585", DOWN = "#c97a7a", MUTED = "#6f6f78";
+
+    const series = {
+      doomslug:      { data:[3,4,6,3,9,7,4], color: UP },
+      kernelpanic:   { data:[5,4,6,5,3,7,6], color: UP },
+      vibe_compiler: { data:[9,6,3,2,4,3,2], color: DOWN },
+      asyncawait:    { data:[3,3,4,4,3,5,4], color: MUTED },
+      devon:         { data:[1,2,4,6,9,8,5], color: AMBER },
+      promptsmith:   { data:[6,5,4,3,2,1,2], color: DOWN },
+      gigachad_io:   { data:[4,4,4,5,4,4,4], color: MUTED },
+      tinyctx:       { data:[1,1,2,3,5,6,9], color: UP },
+    };
+
+    // inject row sparklines by walking comment placeholders
+    document.querySelectorAll(".spark").forEach(el => {
+      const m = el.innerHTML.match(/SPARK (\w+)/);
+      if (!m) return;
+      const key = m[1];
+      const s = series[key];
+      const isYou = key === "devon";
+      el.innerHTML = sparkSVG(s.data, {
+        w: 96, h: 30,
+        stroke: s.color,
+        sw: isYou ? 2 : 1.6,
+        fill: isYou ? AMBER : null,
+        dot: s.color,
+        dotR: isYou ? 2.6 : 2.1,
+      });
+    });
+
+    // OG card sparkline — larger, amber, filled
+    document.querySelectorAll(".og-spark").forEach(el => {
+      el.innerHTML = sparkSVG(series.devon.data, {
+        w: 200, h: 56, stroke: AMBER, sw: 2.4, fill: AMBER, dot: AMBER, dotR: 3.4,
+      });
+    });
+  </script>
+
+</body>
+</html>

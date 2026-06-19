@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>tokenboard · steel-cartel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    /* monkeytype palette */
+    --bg:        #323437;
+    --surface:   #2c2e31;
+    --surface-2: #2a2c2e;
+    --sub:       #646669;   /* secondary / muted text */
+    --sub-alt:   #4b4d4f;   /* hairlines, faint marks */
+    --text:      #d1d0c5;   /* primary text */
+    --accent:    #e2b714;   /* monkeytype amber — used sparingly */
+    --accent-dim:#a98c11;
+    --up:        #7eb36a;   /* muted green for gains */
+    --down:      #6b5b5e;   /* very muted for losses */
+
+    --row-h: 56px;
+    --maxw: 720px;
+    --mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 15px;
+    line-height: 1.5;
+    letter-spacing: -0.01em;
+    min-height: 100vh;
+    padding: 64px 24px 96px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+  }
+
+  .wrap { width: 100%; max-width: var(--maxw); }
+
+  /* ───────────── header ───────────── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 40px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    user-select: none;
+  }
+
+  .coin {
+    width: 26px; height: 26px;
+    border: 2px solid var(--accent);
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+
+  .wordmark {
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.03em;
+  }
+  .wordmark .dim { color: var(--sub); }
+
+  nav.tabs {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  nav.tabs a {
+    color: var(--sub);
+    text-decoration: none;
+    padding: 6px 10px;
+    border-radius: 6px;
+    transition: color .12s ease;
+  }
+  nav.tabs a:hover { color: var(--text); }
+  nav.tabs a.active {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* ───────────── community summary ───────────── */
+  .summary {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px 24px;
+    margin-bottom: 28px;
+  }
+  .summary .left { display: flex; flex-direction: column; gap: 8px; }
+  .community-name {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--text);
+  }
+  .community-name .hash { color: var(--sub); font-weight: 500; }
+  .meta {
+    font-size: 13px;
+    color: var(--sub);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    align-items: center;
+  }
+  .meta .dot { color: var(--sub-alt); }
+  .meta b { color: var(--text); font-weight: 600; }
+
+  .week-total { text-align: right; display: flex; flex-direction: column; gap: 2px; }
+  .week-total .num {
+    font-size: 34px;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: -0.04em;
+    line-height: 1;
+  }
+  .week-total .label {
+    font-size: 11px;
+    color: var(--sub);
+    text-transform: lowercase;
+    letter-spacing: 0.04em;
+  }
+  .week-total .label .trend { color: var(--up); font-weight: 600; }
+
+  /* ───────────── leaderboard ───────────── */
+  .board {
+    border-top: 1px solid var(--sub-alt);
+  }
+
+  .colhead {
+    display: grid;
+    grid-template-columns: 40px 1fr 110px 56px 92px;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 14px 10px;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: var(--sub);
+    text-transform: lowercase;
+  }
+  .colhead .r-tok, .colhead .r-delta { text-align: right; }
+  .colhead .r-spark { text-align: right; }
+
+  .row {
+    display: grid;
+    grid-template-columns: 40px 1fr 110px 56px 92px;
+    align-items: center;
+    gap: 14px;
+    padding: 0 14px;
+    height: var(--row-h);
+    border-top: 1px solid rgba(255,255,255,0.035);
+    transition: background .12s ease;
+  }
+  .row:hover { background: rgba(255,255,255,0.018); }
+
+  .rank {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--sub);
+    font-variant-numeric: tabular-nums;
+    display: flex;
+    align-items: center;
+    gap: 0;
+  }
+  .rank .medal {
+    font-size: 15px;
+    font-weight: 800;
+  }
+  .row.top1 .rank { color: var(--accent); }
+  .row.top2 .rank,
+  .row.top3 .rank { color: var(--text); }
+
+  .handle {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+  }
+  .avatar {
+    width: 26px; height: 26px;
+    border-radius: 7px;
+    background: var(--surface);
+    border: 1px solid var(--sub-alt);
+    display: grid;
+    place-items: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--sub);
+    flex-shrink: 0;
+    text-transform: uppercase;
+  }
+  .handle .name {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .handle .you-tag {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--bg);
+    background: var(--accent);
+    padding: 2px 6px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+
+  .tokens {
+    text-align: right;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+  .tokens .unit { color: var(--sub); font-weight: 500; font-size: 13px; }
+
+  .delta {
+    text-align: right;
+    font-size: 13px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .delta.up   { color: var(--up); }
+  .delta.down { color: var(--down); }
+  .delta.flat { color: var(--sub-alt); }
+
+  /* sparkline */
+  .spark {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    gap: 3px;
+    height: 28px;
+  }
+  .spark .bar {
+    width: 5px;
+    border-radius: 1.5px;
+    background: var(--sub-alt);
+    transition: background .12s ease;
+  }
+
+  /* YOU row — the screenshot moment */
+  .row.you {
+    background: rgba(226,183,20,0.07);
+    border-top: 1px solid rgba(226,183,20,0.28);
+    border-bottom: 1px solid rgba(226,183,20,0.28);
+    margin-top: -1px;
+    position: relative;
+  }
+  .row.you::before {
+    content: "";
+    position: absolute;
+    left: 0; top: -1px; bottom: -1px;
+    width: 3px;
+    background: var(--accent);
+  }
+  .row.you:hover { background: rgba(226,183,20,0.10); }
+  .row.you .rank { color: var(--accent); }
+  .row.you .name { color: var(--text); }
+  .row.you .tokens { color: var(--accent); }
+  .row.you .spark .bar { background: var(--accent-dim); }
+  .row.you .avatar { border-color: var(--accent); color: var(--accent); }
+
+  /* ───────────── OG share card ───────────── */
+  .og-section { width: 100%; max-width: var(--maxw); }
+  .og-label {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--sub);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .og-label::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--sub-alt);
+  }
+
+  .og-card {
+    width: 600px;
+    height: 315px;          /* 1200x630 ratio */
+    max-width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--sub-alt);
+    border-radius: 10px;
+    padding: 38px 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+  }
+  /* faint amber edge accent */
+  .og-card::after {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--accent);
+  }
+
+  .og-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .og-brand { display: flex; align-items: center; gap: 9px; }
+  .og-brand .coin { width: 22px; height: 22px; font-size: 10px; border-width: 2px; }
+  .og-brand .wm { font-size: 15px; font-weight: 700; letter-spacing: -0.03em; }
+  .og-brand .wm .dim { color: var(--sub); }
+  .og-community {
+    font-size: 13px;
+    color: var(--sub);
+    font-weight: 500;
+  }
+  .og-community b { color: var(--text); }
+
+  .og-mid { display: flex; flex-direction: column; gap: 4px; }
+  .og-eyebrow {
+    font-size: 13px;
+    color: var(--sub);
+    letter-spacing: 0.02em;
+  }
+  .og-eyebrow .rank-badge {
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .og-number {
+    font-size: 76px;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: -0.05em;
+    line-height: 0.95;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .og-number .suffix {
+    font-size: 26px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.02em;
+  }
+  .og-sub {
+    font-size: 14px;
+    color: var(--sub);
+    margin-top: 6px;
+  }
+  .og-sub b { color: var(--text); font-weight: 600; }
+
+  .og-bottom {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+  .og-spark {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    height: 36px;
+  }
+  .og-spark .bar { width: 7px; border-radius: 2px; background: var(--accent-dim); }
+  .og-cta {
+    font-size: 13px;
+    color: var(--sub);
+    text-align: right;
+  }
+  .og-cta .pill {
+    display: inline-block;
+    margin-top: 6px;
+    color: var(--bg);
+    background: var(--accent);
+    font-weight: 700;
+    font-size: 13px;
+    padding: 7px 14px;
+    border-radius: 7px;
+    letter-spacing: -0.01em;
+  }
+
+  .scale-note {
+    margin-top: 12px;
+    font-size: 11px;
+    color: var(--sub-alt);
+    letter-spacing: 0.02em;
+  }
+
+  /* ───────────── page footer ───────────── */
+  .footer {
+    width: 100%;
+    max-width: var(--maxw);
+    margin-top: 8px;
+    padding-top: 18px;
+    border-top: 1px solid var(--sub-alt);
+    font-size: 12px;
+    color: var(--sub);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .footer .stats { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+  .footer .stats .dot { color: var(--sub-alt); }
+  .footer b { color: var(--text); font-weight: 600; }
+  .footer .trend { color: var(--up); font-weight: 600; }
+  .footer .right { color: var(--sub-alt); }
+
+  @media (max-width: 560px) {
+    body { padding: 40px 16px 64px; }
+    .colhead, .row { grid-template-columns: 32px 1fr 84px 44px; }
+    .colhead .r-spark, .row .spark { display: none; }
+    .community-name { font-size: 22px; }
+    .og-card { padding: 28px; }
+    .og-number { font-size: 56px; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- ════════════════ LEADERBOARD ════════════════ -->
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <div class="coin">$</div>
+        <div class="wordmark">token<span class="dim">board</span></div>
+      </div>
+      <nav class="tabs">
+        <a href="#">today</a>
+        <a href="#" class="active">7 days</a>
+        <a href="#">30 days</a>
+        <a href="#">all-time</a>
+      </nav>
+    </header>
+
+    <section class="summary">
+      <div class="left">
+        <div class="community-name"><span class="hash">#</span>steel-cartel</div>
+        <div class="meta">
+          <span><b>42</b> members</span>
+          <span class="dot">·</span>
+          <span><b>318M</b> tokens this week</span>
+        </div>
+      </div>
+      <div class="week-total">
+        <div class="num">318M</div>
+        <div class="label">tokens · 7 days <span class="trend">↑ 18%</span> vs last</div>
+      </div>
+    </section>
+
+    <div class="board">
+      <div class="colhead">
+        <span>#</span>
+        <span>developer</span>
+        <span class="r-tok">tokens</span>
+        <span class="r-delta">Δ rank</span>
+        <span class="r-spark">last 7d</span>
+      </div>
+
+      <!-- 1 -->
+      <div class="row top1">
+        <div class="rank"><span class="medal">1</span></div>
+        <div class="handle">
+          <div class="avatar">do</div>
+          <span class="name">doomslug</span>
+        </div>
+        <div class="tokens">12.4<span class="unit">M</span></div>
+        <div class="delta up">▲2</div>
+        <div class="spark" data-vals="3,4,6,3,9,7,4"></div>
+      </div>
+
+      <!-- 2 -->
+      <div class="row top2">
+        <div class="rank"><span class="medal">2</span></div>
+        <div class="handle">
+          <div class="avatar">ke</div>
+          <span class="name">kernelpanic</span>
+        </div>
+        <div class="tokens">11.8<span class="unit">M</span></div>
+        <div class="delta up">▲1</div>
+        <div class="spark" data-vals="5,4,6,5,3,7,6"></div>
+      </div>
+
+      <!-- 3 -->
+      <div class="row top3">
+        <div class="rank"><span class="medal">3</span></div>
+        <div class="handle">
+          <div class="avatar">vi</div>
+          <span class="name">vibe_compiler</span>
+        </div>
+        <div class="tokens">9.2<span class="unit">M</span></div>
+        <div class="delta down">▼1</div>
+        <div class="spark" data-vals="9,6,3,2,4,3,2"></div>
+      </div>
+
+      <!-- 4 -->
+      <div class="row">
+        <div class="rank">4</div>
+        <div class="handle">
+          <div class="avatar">as</div>
+          <span class="name">asyncawait</span>
+        </div>
+        <div class="tokens">7.7<span class="unit">M</span></div>
+        <div class="delta flat">—</div>
+        <div class="spark" data-vals="3,3,4,4,3,5,4"></div>
+      </div>
+
+      <!-- 5 — YOU -->
+      <div class="row you">
+        <div class="rank">5</div>
+        <div class="handle">
+          <div class="avatar">de</div>
+          <span class="name">devon</span>
+          <span class="you-tag">YOU</span>
+        </div>
+        <div class="tokens">6.9<span class="unit">M</span></div>
+        <div class="delta up">▲3</div>
+        <div class="spark" data-vals="1,2,4,6,9,8,5"></div>
+      </div>
+
+      <!-- 6 -->
+      <div class="row">
+        <div class="rank">6</div>
+        <div class="handle">
+          <div class="avatar">pr</div>
+          <span class="name">promptsmith</span>
+        </div>
+        <div class="tokens">6.1<span class="unit">M</span></div>
+        <div class="delta down">▼1</div>
+        <div class="spark" data-vals="6,5,4,3,2,1,2"></div>
+      </div>
+
+      <!-- 7 -->
+      <div class="row">
+        <div class="rank">7</div>
+        <div class="handle">
+          <div class="avatar">gi</div>
+          <span class="name">gigachad_io</span>
+        </div>
+        <div class="tokens">5.4<span class="unit">M</span></div>
+        <div class="delta flat">—</div>
+        <div class="spark" data-vals="4,4,4,5,4,4,4"></div>
+      </div>
+
+      <!-- 8 -->
+      <div class="row">
+        <div class="rank">8</div>
+        <div class="handle">
+          <div class="avatar">ti</div>
+          <span class="name">tinyctx</span>
+        </div>
+        <div class="tokens">3.0<span class="unit">M</span></div>
+        <div class="delta up">▲4</div>
+        <div class="spark" data-vals="1,1,2,3,5,6,9"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ OG SHARE CARD ════════════════ -->
+  <div class="og-section">
+    <div class="og-label">og share card · 1200 × 630</div>
+
+    <div class="og-card">
+      <div class="og-top">
+        <div class="og-brand">
+          <div class="coin">$</div>
+          <div class="wm">token<span class="dim">board</span></div>
+        </div>
+        <div class="og-community"><b>#steel-cartel</b> · 42 devs</div>
+      </div>
+
+      <div class="og-mid">
+        <div class="og-eyebrow">@devon is <span class="rank-badge">#5</span> in steel-cartel this week</div>
+        <div class="og-number">6.9<span class="suffix">M tokens</span></div>
+        <div class="og-sub">▲3 ranks · burned <b>6,900,000</b> tokens in 7 days</div>
+      </div>
+
+      <div class="og-bottom">
+        <div class="og-spark" id="ogSpark" data-vals="1,2,4,6,9,8,5"></div>
+        <div class="og-cta">
+          how much have you burned?
+          <div class="pill">join tokenboard →</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="scale-note">shown at ~50% (600 × 315). renders at 1200 × 630 for sharing.</div>
+  </div>
+
+  <!-- ════════════════ FOOTER ════════════════ -->
+  <div class="footer">
+    <div class="stats">
+      <span><b>#steel-cartel</b></span>
+      <span class="dot">·</span>
+      <span><b>42</b> members</span>
+      <span class="dot">·</span>
+      <span><b>318M</b> tokens this week</span>
+      <span class="dot">·</span>
+      <span class="trend">↑ 18%</span> vs last week
+    </div>
+    <div class="right">tokenboard · 7-day window</div>
+  </div>
+
+  <script>
+    // Render sparklines as tiny inline bar charts from data-vals.
+    function renderSpark(el, maxH) {
+      const vals = el.dataset.vals.split(',').map(Number);
+      const peak = Math.max(...vals);
+      el.innerHTML = '';
+      vals.forEach(v => {
+        const bar = document.createElement('div');
+        bar.className = 'bar';
+        bar.style.height = Math.max(3, (v / peak) * maxH) + 'px';
+        el.appendChild(bar);
+      });
+    }
+    document.querySelectorAll('.board .spark').forEach(el => renderSpark(el, 26));
+    const og = document.getElementById('ogSpark');
+    if (og) renderSpark(og, 34);
+  </script>
+
+</body>
+</html>
