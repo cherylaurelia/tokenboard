@@ -2,11 +2,13 @@
 
 # 🪙 tokenboard
 
-**Cursor profiles, but multi-tool and ranked — race your friends.**
+### See who's burning the most tokens.
 
-A public leaderboard for agentic-coding usage. See how many tokens you and your
-friends are burning across Claude Code, Codex, Gemini CLI, and the rest — then
-make a community and compete.
+**Race your friends, not strangers.**
+
+A public leaderboard for agentic-coding usage. tokenboard reads how many tokens
+you burn across Claude Code, Codex, Gemini CLI, and the rest, and ranks you on a
+private leaderboard against the people you invite.
 
 [tokenboard.sh](https://tokenboard.sh) · [Design](./DESIGN.md) · [Architecture](./ARCHITECTURE.md)
 
@@ -21,7 +23,7 @@ and the unit isn't a global board of strangers, it's a **community you and your
 friends create**. You vs your friends, this week, on tokens burned.
 
 - 🪙 **Multi-tool** — aggregates Claude Code + Codex + Gemini CLI + the long tail
-- 🏆 **Ranked** — the thing Cursor profiles don't have: leaderboards
+- 🏆 **Ranked** — usage tools show your number; tokenboard shows where you *rank*
 - 👥 **Communities** — make a room, drop the link in your group chat, race
 - 🔒 **Aggregate-only** — counts leave your machine; prompts, code, and file paths never do
 

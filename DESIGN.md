@@ -8,7 +8,9 @@
 
 **tokenboard** (tokenboard.sh) is a public consumer web product.
 
-**One-liner:** *Cursor profiles, but multi-tool and ranked — race your friends.*
+**One-liner:** *See who's burning the most tokens.* — with the supporting line *Race your friends, not strangers.*
+
+(Voice notes: lead blunt and literal — it reads like a great CLI README. The ownable hook is **"group chat" / "your friends, not strangers"** — keep that phrase in heavy rotation since no competitor can copy it. Do **not** define the product by another product, e.g. the rejected *"Cursor profiles, but ranked."*)
 
 tokenboard aggregates your agentic-coding **usage and spend** across every tool you use (Claude Code first, then the long tail), turns it into a **public vanity profile**, and ranks it on **leaderboards** — but the core unit isn't a global board of strangers, it's a **community you and your friends create**. You vs your friends, this week, on tokens burned.
 
