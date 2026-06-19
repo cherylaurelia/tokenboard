@@ -286,7 +286,7 @@ Board rows show **GitHub avatars** — recognizable faces are what make "you vs 
 |---|---|---|---|
 | **Individual** | Just you, your GitHub identity + vanity profile | GitHub OAuth (verification tier 1) | public profile |
 | **Community / Group** | Anyone creates one; friends join | invite link or 6-char code (`join_policy: open` / `code`) | unlisted or public |
-| **Company** | An org board that auto-groups verified employees | **work-email domain** magic-link/OTP (verification tier 2) → `@amazon.com` proves mailbox control → auto-join + 🏢 badge | public (org-admin can privatize) |
+| **Company** | An org board that auto-groups verified employees | **work-email domain** magic-link/OTP (verification tier 2) → `@acme-corp.com` proves mailbox control → auto-join + 🏢 badge | public (org-admin can privatize) |
 
 **Verification ladder:** tier 1 = **GitHub** (who you are), tier 2 = **work email** (which company you're in). No SAML, no WorkOS — a public consumer product wants the lightweight magic-link path, not enterprise SSO.
 
@@ -538,7 +538,7 @@ Rules: bare `tokenboard` = hero path (sync, then auto-render primary board; comp
 │ 🥉 │ vibe_compiler       │   9.2M   │ [red]▼1[/] │ █▆▃▂▄▃▂          │
 │  4 │ asyncawaitlonger…   │   7.7M   │  ‹dim›–›  │ ▃▃▄▄▃▅▄          │
 ├────┼─────────────────────┼──────────┼───────┼──────────────────┤
-│[inv] ▸ 5 │ **you** ‹dim›(angela)›  │ **6.9M** │ [grn]▲3[/] │ ▁▂▄▆█▇▅ [/inv]│
+│[inv] ▸ 5 │ **you** ‹dim›(devon)›  │ **6.9M** │ [grn]▲3[/] │ ▁▂▄▆█▇▅ [/inv]│
 ├────┼─────────────────────┼──────────┼───────┼──────────────────┤
 │  6 │ promptsmith         │   6.1M   │ [red]▼1[/] │ ▆▅▄▃▂▁▂          │
 │  7 │ gigachad_io ‹gold›◆› │   5.4M   │  ‹dim›–›  │ ▄▄▄▅▄▄▄          │
@@ -577,7 +577,7 @@ Authorization: Bearer <token>
   "community": { "slug": "steel-cartel", "name": "Steel Cartel",
                  "members": 42, "total": 318000000, "wowPct": 0.18 },
   "window": "7d",
-  "me": { "rank": 5, "handle": "angela" },          // server says which row is "you"
+  "me": { "rank": 5, "handle": "devon" },          // server says which row is "you"
   "rows": [
     { "rank": 1, "handle": "doomslug", "tokens": 12400000,
       "delta": 2, "tier": "whale", "spark": [3,4,6,3,9,7,4], "isMe": false }

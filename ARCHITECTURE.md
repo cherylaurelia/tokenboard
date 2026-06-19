@@ -112,7 +112,7 @@ create type device_status     as enum ('active', 'revoked');
 -- ============================================================
 create table users (
   id            uuid primary key default gen_random_uuid(),
-  handle        citext not null,                 -- public profile slug, e.g. /u/angela
+  handle        citext not null,                 -- public profile slug, e.g. /u/devon
   display_name  text,
   avatar_url    text,
   github_id     bigint not null,                 -- numeric GitHub user id (immutable)
@@ -184,13 +184,13 @@ create index communities_type_visibility_idx on communities (type, visibility);
 
 -- ============================================================
 -- community_email_domains — verified work-email domains owning a company board.
--- A confirmed magic-link to angela@amazon.com auto-joins the amazon.com board.
+-- A confirmed magic-link to devon@acme-corp.com auto-joins the acme-corp.com board.
 -- Domain is globally unique: one company board per domain.
 -- ============================================================
 create table community_email_domains (
   id            uuid primary key default gen_random_uuid(),
   community_id  uuid not null references communities(id) on delete cascade,
-  domain        citext not null,                  -- normalized lowercase, e.g. amazon.com
+  domain        citext not null,                  -- normalized lowercase, e.g. acme-corp.com
   created_at    timestamptz not null default now(),
   constraint community_email_domains_domain_key unique (domain)
 );
@@ -434,7 +434,7 @@ Aggregates only — never prompts, code, or paths. The wire shape is camelCase w
   "days_upserted": 2,
   "cost_usd_total": 7.412300,
   "price_table_version": "litellm-2026-06-01",
-  "profile_url": "https://tokenboard.sh/u/angela",
+  "profile_url": "https://tokenboard.sh/u/devon",
   "board_url": "https://tokenboard.sh/c/global"
 }
 ```
@@ -457,7 +457,7 @@ Compact response shape (the canonical full contract is §7.2):
   "window": "7d",
   "metric": "cost",
   "generated_at": "2026-06-19T04:00:00Z",
-  "you": { "rank": 12, "handle": "angela", "value": 41.88 },
+  "you": { "rank": 12, "handle": "devon", "value": 41.88 },
   "rows": [
     { "rank": 1, "handle": "kpatel", "display_name": "Kiran P.", "avatar_url": "https://...", "value": 318.04, "tokens": 51200000, "top_tool": "claude-code", "badges": ["company"] },
     { "rank": 2, "handle": "dvo",    "display_name": "Duy Vo",   "avatar_url": "https://...", "value": 287.61, "tokens": 47800000, "top_tool": "cursor",      "badges": ["company","x"] }
@@ -670,7 +670,7 @@ The **verification ladder** is exactly two rungs: **tier-1 = GitHub** (you exist
 
 ### 5.2 Domain → company-board mapping
 
-- Each company board has a **unique `email_domain`** in `community_email_domains` (e.g. `amazon.com`). At most one company row per domain.
+- Each company board has a **unique `email_domain`** in `community_email_domains` (e.g. `acme-corp.com`). At most one company row per domain.
 - **First-verifier-creates (with optional pre-seed):** when the first user verifies an email at a domain that has no company row, the server **creates** the company community (`type='company'`, `join_policy='email_domain'`, `visibility='public'`, slug derived from the domain), and that first verifier is added as a normal `member` — **not** auto-`admin` (prevents a random early employee from controlling the org board). Well-known orgs can be **pre-seeded** (name, logo, slug) so the board looks right on day one.
 - **Admin claim:** org admin status is granted out-of-band — a later "claim this org" review (corporate signal or manual review). Until claimed, the company board runs with default settings; no individual can privatize it.
 
@@ -682,7 +682,7 @@ GitHub never proves you work somewhere — so company membership requires provin
 2. **Validate the address** before sending anything:
    - **Lowercase + normalize.** Extract `domain`.
    - **Block disposable domains** against a maintained denylist refreshed on a schedule. Reject with a clear message.
-   - **Block plus-subaddressing**: strip/reject `+tag` (`angela+foo@amazon.com` → `angela@amazon.com`; if the normalized local-part is already pending/used, don't allow a second slot). The disposable/free-provider denylist also excludes `gmail.com`, `outlook.com`, etc. from forming company boards.
+   - **Block plus-subaddressing**: strip/reject `+tag` (`devon+foo@acme-corp.com` → `devon@acme-corp.com`; if the normalized local-part is already pending/used, don't allow a second slot). The disposable/free-provider denylist also excludes `gmail.com`, `outlook.com`, etc. from forming company boards.
    - **Domain sanity**: must have an MX record (cheap DNS check) to be eligible to *create* a new company board.
 3. **Mint the 6-digit code** — server generates **one** 6-digit code and stores `email_verifications (user_id, email, domain, code_hash, expires_at ~15m, attempts)`. Sends an email that contains the code **both** as a paste-able OTP **and** embedded in a magic link (`/verify/email/confirm?domain=…&code=…`) — the link and the OTP are the *same* code. Only the `code_hash` is stored. Security rests on attempt-lockout + 15m TTL + send/confirm rate-limits, not on code entropy (it's a 6-digit code, not a high-entropy token).
 4. **Confirm** — user clicks the link (which prefills the code) or pastes the OTP. `POST /api/v1/verify/email/confirm { domain, code }`. Server checks `code_hash`, expiry, and attempt count (lock after ~5 tries).
@@ -690,7 +690,7 @@ GitHub never proves you work somewhere — so company membership requires provin
 
 **Leaving / re-verification cadence:** email proof is point-in-time, so company memberships **expire** on a 180-day re-verification window (`reverify_due`). After expiry the member is moved to `lapsed` (hidden from the live board, not deleted) until they re-verify — this naturally drops people who've left without us needing HR data. Users can **leave** a company board manually at any time (removes the membership row, revokes the badge). If a domain's MX disappears or the company is dissolved, the board is frozen (read-only) rather than deleted.
 
-**Privacy note on public company boards (DECIDED policy):** company boards **show the real company name/logo immediately** — the social pressure ("amazon.com is #3 this week") is the distribution engine — but this is sensitive, so the safety levers are: **alias-by-default for company-scoped rows** (a member's row on a company board defaults to a display alias, so individual identity isn't exposed without opt-in even though the company is named); a **fast self-serve emergency-privatize / takedown path** — any verified member (and, once claimed, the org admin) can flip `visibility='private'` (visible only to verified members of that domain) or request takedown in one click, effective immediately via DB-session revocation; individuals can always fully opt out by leaving the board while keeping their individual profile public; and we display only **aggregates and ranks**, never prompts/code/paths (those never leave the client anyway). This is *not* anonymize-until-claim. Residual risk: a company's aggregate spend trend is briefly public before anyone privatizes it — accepted as the cost of the distribution loop. (See `DESIGN.md` §7.2.)
+**Privacy note on public company boards (DECIDED policy):** company boards **show the real company name/logo immediately** — the social pressure ("acme-corp.com is #3 this week") is the distribution engine — but this is sensitive, so the safety levers are: **alias-by-default for company-scoped rows** (a member's row on a company board defaults to a display alias, so individual identity isn't exposed without opt-in even though the company is named); a **fast self-serve emergency-privatize / takedown path** — any verified member (and, once claimed, the org admin) can flip `visibility='private'` (visible only to verified members of that domain) or request takedown in one click, effective immediately via DB-session revocation; individuals can always fully opt out by leaving the board while keeping their individual profile public; and we display only **aggregates and ranks**, never prompts/code/paths (those never leave the client anyway). This is *not* anonymize-until-claim. Residual risk: a company's aggregate spend trend is briefly public before anyone privatizes it — accepted as the cost of the distribution loop. (See `DESIGN.md` §7.2.)
 
 **ASCII sequence diagram (verify):**
 
@@ -1008,8 +1008,8 @@ GET /api/v1/board?community={slug}&window={7d|30d|all}&me={handle}&metric={token
   "entries": [
     {
       "rank": 1,
-      "handle": "angela",
-      "displayName": "Angela Felicia",
+      "handle": "devon",
+      "displayName": "Devon Lee",
       "avatar": "https://avatars.githubusercontent.com/u/1029384?v=4",
       "tier": "company",
       "tierPill": { "label": "Acme Corp", "kind": "company", "verified": true },
@@ -1055,7 +1055,7 @@ GET /api/v1/board?community={slug}&window={7d|30d|all}&me={handle}&metric={token
     "inTopN": true,
     "rank": 1,
     "totalEntries": 218,
-    "handle": "angela"
+    "handle": "devon"
   }
 }
 ```
@@ -1068,8 +1068,8 @@ GET /api/v1/board?community={slug}&window={7d|30d|all}&me={handle}&metric={token
   "totalEntries": 218,
   "entry": {
     "rank": 147,
-    "handle": "angela",
-    "displayName": "Angela Felicia",
+    "handle": "devon",
+    "displayName": "Devon Lee",
     "avatar": "https://avatars.githubusercontent.com/u/1029384?v=4",
     "tier": "individual",
     "tierPill": { "label": "GitHub", "kind": "individual", "verified": true },
