@@ -139,6 +139,36 @@ The split matters because of a hard constraint: **agent logs prune.** Claude Cod
 
 Postgres is **truth**; Redis is a **fast, disposable read model** for ranking. If Redis is lost, leaderboards rebuild from `usage_day`.
 
+### 4.1 Sync cadence — "always ongoing" without a daemon
+
+The board *feels* live but is not real-time streaming; it's a **scheduled batch sync**. Two independent triggers, both of which just call `sync`:
+
+- **Hourly background cron** (the "always ongoing" feel). `tokenboard install` writes a per-machine cron / launchd job that runs `npx tokenboard@latest sync` silently every hour. Set once, forget — the board moves throughout the day without the user touching anything. (This is the model the internal Amazon `claude-leaderboard` proved.)
+- **Manual run** (`npx tokenboard` or `tokenboard sync`) updates the board *at that moment* — useful right after a big session, or before screenshotting.
+
+**They never conflict.** Whichever fires first wins; the other is a harmless overwrite, because ingest is **idempotent** (re-syncing a day *sets* the row, never adds — §6 / `ARCHITECTURE.md` §6). A manual run between cron ticks just means a fresher number sooner; the next tick is a no-op if nothing changed. Because the server is the system of record, a machine that's been offline for days simply catches up its rolling window on the next sync — no gaps in lifetime totals.
+
+> **No always-on daemon.** We deliberately avoid a resident process watching your logs continuously — it's heavier, creepier, and unnecessary. Hourly is plenty for a leaderboard.
+
+**Cron jitter (required at scale):** the `install` job picks a **stable per-machine minute offset** (e.g. `minute = hash(machineId) % 60`) so 5k machines don't all sync at `:00`. Flattens the load to ~constant req/s (see §13).
+
+### 4.2 Client updates — server is smart, client is dumb
+
+`tokenboard` is published to **npm** (`npm publish`, public). How a user gets updates depends on how they run it:
+
+| Invocation | Auto-updates? |
+|---|---|
+| `npx tokenboard@latest …` (and the cron uses this) | ✅ fetches newest published version every run |
+| `npx tokenboard` (unpinned) | ⚠️ may reuse npx's cached copy — can drift |
+| `npm i -g tokenboard` | ❌ pinned until manual `npm update -g` |
+
+**Design consequence — keep the client dumb so it rarely *needs* updating.** All product logic (cost computation, the pinned LiteLLM price table, ranking, leaderboard rules, board rendering data) lives **server-side**; the web dashboard therefore updates for *everyone* the instant we deploy, with zero client action. The CLI only needs a new version when a **local log format** changes (a tool bumps its schema, or we pin a new `ccusage` major) — rare. When it happens:
+
+- the cron's `@latest` and anyone using `@latest` pick it up automatically next run;
+- everyone else sees an **`update-notifier`** nudge — *"⚡ tokenboard 1.3 available (you're on 1.1) — run `npx tokenboard@latest`"*.
+
+We pin **`ccusage@20`** *internally* so their releases never silently break our parsing, while letting **our own** client float to `@latest` via the cron. Net: the dashboard is always current; the CLI stays current for cron/`@latest` users and politely nags the rest.
+
 ---
 
 ## 5. Usage Counting — the HYBRID decision

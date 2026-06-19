@@ -878,6 +878,39 @@ The DB writes in steps 8–11 run in a single Postgres transaction; Redis writes
 
 **Why double-counting is impossible:** the underlying write is an idempotent `ON CONFLICT` upsert keyed on `(user_id, date, tool, model)`, so even a lost idempotency-ledger row cannot cause double counting. The `Idempotency-Key` layer exists for response consistency and cheap retries; the primary key is the true guard.
 
+### 6.5 CLI commands, cadence & updates
+
+**Commands** (collection/sync subset; board-render commands are in `DESIGN.md` §14):
+
+| Command | Does |
+|---|---|
+| `npx tokenboard` | First-run hero path: local preview → prompt GitHub claim → first `sync`. |
+| `tokenboard sync` | One-shot collect + POST `/api/v1/sync`. Silent-friendly (used by cron). |
+| `tokenboard show-data` | **Dry-run** — prints the exact aggregate payload that *would* upload; no network. Trust unlock; ships before any upload path. |
+| `tokenboard install` | Writes the recurring sync job (cron on Linux, launchd on macOS, Scheduled Task on Windows). |
+| `tokenboard uninstall` | Removes the job + local config/token. |
+
+**Cadence (two triggers, both call `sync`):**
+
+1. **Scheduled** — `tokenboard install` registers a job running **`npx tokenboard@latest sync`** hourly. The job is written with a **stable per-machine minute offset** to avoid the `:00` thundering herd:
+   ```cron
+   # offset = hash(machineId) % 60  → e.g. 37
+   37 * * * *  npx -y tokenboard@latest sync >/dev/null 2>&1
+   ```
+   (macOS uses a launchd plist with `StartCalendarInterval` at the same offset minute.)
+2. **Manual** — `npx tokenboard` / `tokenboard sync` runs on demand and updates the board immediately.
+
+Both paths hit the same idempotent ingest (§6.4), so a manual run between ticks just freshens the rolling window early; the next tick is a no-op if nothing changed. A long-offline machine catches its rolling window up on the next sync — lifetime totals never gap because Postgres is the system of record.
+
+**No resident daemon.** We do not run an always-on process watching logs; hourly batch sync is sufficient and far less invasive.
+
+**Client updates / distribution:**
+
+- Published to **npm** as `tokenboard` (public). The cron and the recommended invocation use **`@latest`**, so scheduled users auto-update every run; `npm i -g` users are pinned until they update.
+- **Keep the client dumb** so updates are rarely needed: cost computation, the pinned LiteLLM table, ranking, and all board logic live server-side and update for everyone on deploy with zero client action. The CLI needs a new version only when a **local log format** changes (a tool's schema, or a new pinned `ccusage` major).
+- The CLI carries **`update-notifier`**: when a newer version exists it prints a one-line nudge (`⚡ tokenboard X available — run npx tokenboard@latest`) without blocking the current run.
+- **`ccusage` is pinned internally to `@20`** (the JS→Rust v15→v20 rewrite was breaking — see `DESIGN.md` §5.2); we bump it deliberately, never float it.
+
 ---
 
 ## 7. Leaderboards
