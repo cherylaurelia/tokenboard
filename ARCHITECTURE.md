@@ -80,7 +80,7 @@ This document uses one consistent vocabulary throughout. Notably:
 
 ### 1.3 Request lifecycle (one paragraph)
 
-A typical end-to-end flow: the user runs `npx tokenboard`, which parses local logs and prints their number instantly with no network identity; when they run `tokenboard claim`, the CLI starts a device-authorization flow, the user approves it in a browser (signing into **GitHub** first if needed), and the server mints a device-bound **ingest token** (storing only its hash in `ingest_devices`); thereafter `tokenboard sync` POSTs count-only aggregates with an `Idempotency-Key` to `/api/v1/sync`, where the Next.js handler resolves the bearer token to a `user_id`, validates and clamps the records, computes **cost server-side** from the pinned LiteLLM price table, performs an idempotent `ON CONFLICT (user_id, date, tool, model)` upsert into `usage_day` in Postgres, then (post-commit) overwrites the affected Redis ZSET leaderboard scores and busts the relevant CDN/ISR caches; finally, anyone — web or CLI — reads the same board via `GET /api/v1/board`, served hot from Redis with a Postgres fallback, with `next/og` producing the shareable card.
+A typical end-to-end flow: the user runs `npx tokenboard`, which parses local logs and prints their number instantly with no network identity; when they run `tokenboard claim`, the CLI starts a device-authorization flow, the user approves it in a browser (signing into **GitHub** first if needed), and the server mints a device-bound **ingest token** (storing only its hash in `ingest_devices`); thereafter `tokenboard sync` POSTs count-only aggregates with an `Idempotency-Key` to `/api/v1/sync`, where the Next.js handler resolves the bearer token to a `(user_id, device_id)`, validates and clamps the records, computes **cost server-side** from the pinned LiteLLM price table, performs an idempotent `ON CONFLICT (user_id, device_id, date, tool, model)` upsert into `usage_day` (then recomputes the cross-device `usage_day_total`) in Postgres, then (post-commit) overwrites the affected Redis ZSET leaderboard scores and busts the relevant CDN/ISR caches; finally, anyone — web or CLI — reads the same board via `GET /api/v1/board`, served hot from Redis with a Postgres fallback, with `next/og` producing the shareable card.
 
 ---
 
@@ -216,12 +216,16 @@ create index memberships_user_idx      on memberships (user_id);
 
 -- ============================================================
 -- usage_day — THE fact table. Idempotent upsert on ingest.
--- PK (user_id, date, tool, model) => one row per dimension per day.
--- Re-uploading the same day overwrites (last-write-wins) — never double counts.
+-- PK (user_id, device_id, date, tool, model) => one row per device per dimension per day.
+-- device_id is in the key so a user's MULTIPLE machines (work + personal laptop) SUM
+-- rather than overwrite each other. A single device re-syncing the same day overwrites
+-- ITS OWN row (last-write-wins, never double counts), because that device's local logs
+-- are the complete picture for that device/day. The cross-device total is a SUM (below).
 -- Cost is computed server-side from a pinned LiteLLM price table; client never sends cost.
 -- ============================================================
 create table usage_day (
   user_id            uuid not null references users(id) on delete cascade,
+  device_id          uuid not null references ingest_devices(id) on delete cascade,
   date               date not null,               -- local calendar day (TZ offset captured at upload)
   tool               text not null,               -- 'claude-code' | 'cursor' | 'codex' | ...
   model              text not null,               -- 'claude-opus-4-8' | 'gpt-5' | ...
@@ -234,20 +238,23 @@ create table usage_day (
   cost_usd           numeric(14,6) not null default 0,  -- server-computed
   price_table_version text not null,              -- which pinned LiteLLM table priced this
   updated_at         timestamptz not null default now(),
-  constraint usage_day_pkey primary key (user_id, date, tool, model)
+  constraint usage_day_pkey primary key (user_id, device_id, date, tool, model)
 );
--- Leaderboard aggregation scans by date window then sums per user.
+-- Leaderboard aggregation scans by date window then sums per user (across devices).
 create index usage_day_date_idx       on usage_day (date);
 create index usage_day_user_date_idx  on usage_day (user_id, date);
 
 -- ============================================================
--- usage_day_total — per-(user,date) rollup across all tools/models.
--- Source for rolling-window sums and sparklines; upserted alongside usage_day.
+-- usage_day_total — per-(user,date) rollup across ALL devices, tools, and models.
+-- This is the cross-device SUM and the leaderboard score source.
+-- Recomputed on every sync from usage_day for the affected (user_id, date):
+--   SUM(tokens), SUM(cost_usd) over all rows sharing (user_id, date).
+-- Source for rolling-window sums and sparklines.
 -- ============================================================
 create table usage_day_total (
   user_id   uuid not null references users(id) on delete cascade,
   date      date not null,
-  tokens    bigint not null default 0,
+  tokens    bigint not null default 0,            -- = SUM over every device+tool+model that day
   cost_usd  numeric(14,6) not null default 0,
   updated_at timestamptz not null default now(),
   constraint usage_day_total_pkey primary key (user_id, date)
@@ -565,7 +572,7 @@ The CLI **never** prompts for login before showing value. `npx tokenboard` parse
 4. In the browser, if the user has no web session they go through the **GitHub OAuth flow (§4.2)** first. Once authenticated, the `/claim` page shows the `user_code` for confirmation ("Approve device WXYZ-1234?") and they click **Approve**.
 5. On approve, server binds the grant to the user: sets `device_grants.user_id`, status `approved`, and mints a **device/ingest token** — a random opaque secret returned to the CLI on its *next poll* (never shown in the browser). Server stores only `sha256(ingest_token)` in `ingest_devices` with `user_id`, `machine_hash`, `created_at`, `last_used_at`, `revoked_at`.
 6. CLI's next poll returns `{ status: "complete", ingest_token }`. CLI writes it to `~/.config/tokenboard/credentials` (mode `600`). The `device_code` is now consumed.
-7. All future `tokenboard sync` calls send `Authorization: Bearer <ingest_token>`. Ingestion is the idempotent upsert keyed `(user_id, date, tool, model)`. The token authorizes *ingest only* — it cannot read other users, manage communities, or act as a web session.
+7. All future `tokenboard sync` calls send `Authorization: Bearer <ingest_token>`. The token resolves to `(user_id, device_id)`; ingestion is the idempotent upsert keyed `(user_id, device_id, date, tool, model)`. The token authorizes *ingest only* — it cannot read other users, manage communities, or act as a web session.
 
 Polling responses follow the OAuth device-grant convention: `authorization_pending`, `slow_down`, `expired_token`, `access_denied`, then success.
 
@@ -758,7 +765,7 @@ Idempotency-Key: 6f0c2e7a-1b3d-4f5a-9c21-7e0a2b4c6d8e
 X-Tokenboard-CLI: 1.4.2
 ```
 
-Request body — **counts only, no cost, no PII**:
+Request body — **counts only, no cost, no PII, no device id** (the server derives `device_id` from the bearer token, so a client can't spoof or merge another device's rows):
 ```json
 {
   "tzOffsetMinutes": -420,
@@ -844,7 +851,7 @@ Error envelope (validation, partial success):
 
 ### 6.4 Server-side processing (numbered, exact order)
 
-1. **Authenticate.** Resolve the `Authorization` bearer → `user_id` via `ingest_devices.token_hash`. Reject `401` if absent/expired/revoked. (No anonymous sync path exists.)
+1. **Authenticate.** Resolve the `Authorization` bearer → **`(user_id, device_id)`** via `ingest_devices.token_hash` (the matched row's `id` is the `device_id`). Reject `401` if absent/expired/revoked. (No anonymous sync path exists.) The `device_id` scopes every write below, so multiple machines under one account accumulate rather than overwrite each other.
 2. **Idempotency check.** Look up `Idempotency-Key` in `sync_requests`. If present and `request_hash` matches the canonicalized body, return the stored `response_json` verbatim (`200`) and stop; if present with a *different* hash → `409 idempotency_key_conflict`. Otherwise reserve the key (insert row with `status='processing'`).
 3. **Schema-validate the payload.** Reject the whole request `400` on malformed JSON. Per-record validation: `date` matches `YYYY-MM-DD`; all six count fields are integers `>= 0`; `tool`/`model` are non-empty strings ≤ 64 chars. Invalid records are collected into `errors[]` and skipped (partial success).
 4. **Clamp the date window.** Drop records with `date` older than the **90-day retention horizon** or in the future (relative to server UTC + the client `tzOffsetMinutes`, ±1 day grace). Skipped records → `DATE_OUT_OF_RANGE`.
@@ -853,22 +860,29 @@ Error envelope (validation, partial success):
 7. **Compute cost server-side.** For each record:
    `cost = input*p.input + output*p.output + cacheRead*p.cache_read + cacheCreate5m*p.cache_write_5m + cacheCreate1h*p.cache_write_1h`
    where `p` is the per-token price for `(model)` from the resolved table. Unknown model ⇒ `cost = 0`, `priced=false`. Compute `tokens = input + output + cacheRead + cacheCreate5m + cacheCreate1h`.
-8. **Idempotent upsert into `usage_day`.** One row per `(user_id, date, tool, model)`. This is an **overwrite-on-conflict** upsert (the client always sends the full per-key aggregate, so we replace, not add):
+8. **Idempotent upsert into `usage_day`.** One row per `(user_id, device_id, date, tool, model)`, using the `device_id` resolved in step 1. This is an **overwrite-on-conflict** upsert (the client always sends the full per-key aggregate for *this device*, so we replace that device's row, not add):
    ```sql
    INSERT INTO usage_day
-     (user_id, date, tool, model, input_tokens, output_tokens, cache_read_tokens,
+     (user_id, device_id, date, tool, model, input_tokens, output_tokens, cache_read_tokens,
       cache_create_5m, cache_create_1h, tokens, cost_usd, price_table_version, updated_at)
-   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, now())
-   ON CONFLICT (user_id, date, tool, model) DO UPDATE SET
+   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13, now())
+   ON CONFLICT (user_id, device_id, date, tool, model) DO UPDATE SET
      input_tokens=EXCLUDED.input_tokens, output_tokens=EXCLUDED.output_tokens,
      cache_read_tokens=EXCLUDED.cache_read_tokens,
      cache_create_5m=EXCLUDED.cache_create_5m, cache_create_1h=EXCLUDED.cache_create_1h,
      tokens=EXCLUDED.tokens, cost_usd=EXCLUDED.cost_usd,
-     price_table_version=EXCLUDED.price_table_version, updated_at=now()
-   RETURNING (xmax = 0) AS inserted, tokens AS new_tokens, cost_usd AS new_cost;
+     price_table_version=EXCLUDED.price_table_version, updated_at=now();
    ```
-   RLS plus the service-role write path ensure a sync can only write rows where `user_id` matches the resolved device owner.
-9. **Compute per-day deltas.** For each affected `(user_id, date)`, recompute the **day total** across all tools/models (`SUM(tokens)`, `SUM(cost_usd)`) and upsert it into `usage_day_total`. The Redis update uses the **new day-total** as the score for that day-bucket (idempotent overwrite — see §7.3), so retries are safe.
+   Overwriting *this device's* row is what keeps a re-sync idempotent; summing across devices happens in step 9. RLS plus the service-role write path ensure a sync can only write rows where `user_id` matches the resolved device owner.
+9. **Recompute the cross-device day total.** For each affected `(user_id, date)`, recompute the **day total across ALL devices, tools, and models** and upsert it into `usage_day_total` — this is where a user's multiple machines combine:
+   ```sql
+   INSERT INTO usage_day_total (user_id, date, tokens, cost_usd, updated_at)
+   SELECT user_id, date, SUM(tokens), SUM(cost_usd), now()
+     FROM usage_day WHERE user_id=$1 AND date=$2 GROUP BY user_id, date
+   ON CONFLICT (user_id, date) DO UPDATE SET
+     tokens=EXCLUDED.tokens, cost_usd=EXCLUDED.cost_usd, updated_at=now();
+   ```
+   The Redis update uses this **new cross-device day-total** as the score for that day-bucket (idempotent overwrite via `ZADD` — see §7.3), so retries and multi-device syncs are both safe.
 10. **Update Redis ZSETs.** For each affected day, write the per-day bucket score and refresh the rolling-window members (full algorithm in §7.3). All `ZADD`s use the user's `handle` as member and the day-total (or window-total) as score — overwrites are inherently idempotent.
 11. **Resolve the user's communities.** `SELECT community_id, slug FROM memberships WHERE user_id=$1` → update each community-scoped board key in addition to the global board. (A user is always a member of the global pseudo-community `g`.)
 12. **Finalize idempotency record.** Update the `sync_requests` row with the full response JSON and `status='done'`. Return `200`.
@@ -876,7 +890,7 @@ Error envelope (validation, partial success):
 
 The DB writes in steps 8–11 run in a single Postgres transaction; Redis writes happen **after** commit (so a rolled-back DB never leaves phantom leaderboard scores). If a Redis write fails post-commit, it's enqueued for retry — Postgres remains the source of truth and Redis is fully rebuildable (§7.6).
 
-**Why double-counting is impossible:** the underlying write is an idempotent `ON CONFLICT` upsert keyed on `(user_id, date, tool, model)`, so even a lost idempotency-ledger row cannot cause double counting. The `Idempotency-Key` layer exists for response consistency and cheap retries; the primary key is the true guard.
+**Why double-counting is impossible:** the underlying write is an idempotent `ON CONFLICT` upsert keyed on `(user_id, device_id, date, tool, model)`, so even a lost idempotency-ledger row cannot cause double counting *within a device*, and distinct devices write distinct rows that are summed (not overwritten) into `usage_day_total`. The `Idempotency-Key` layer exists for response consistency and cheap retries; the primary key is the true guard.
 
 ### 6.5 CLI commands, cadence & updates
 
@@ -1173,7 +1187,7 @@ Token-bucket limits enforced in Upstash Redis, keyed per-user (`uid:<id>`) and p
 | `POST /api/v1/cli/login/poll` | per `interval` (5s) | 60 / min | Device-flow polling respects returned `interval`; faster → `slow_down`. |
 | OAuth callbacks | n/a | 60 / min | State+PKCE validated. |
 
-**Idempotency (sync):** the CLI must send a stable `Idempotency-Key` (ULID) per sync attempt; retries of a failed/timed-out request reuse the same key. The server flow is specified in §6.4 (steps 2 and 12). Keys are retained 30 days, then GC'd. Because the underlying write is itself an idempotent `ON CONFLICT` upsert keyed on `(user_id, date, tool, model)`, even a lost ledger row cannot cause double counting — the idempotency layer is for response consistency and cheap retries; the PK is the true guard.
+**Idempotency (sync):** the CLI must send a stable `Idempotency-Key` (ULID) per sync attempt; retries of a failed/timed-out request reuse the same key. The server flow is specified in §6.4 (steps 2 and 12). Keys are retained 30 days, then GC'd. Because the underlying write is itself an idempotent `ON CONFLICT` upsert keyed on `(user_id, device_id, date, tool, model)`, even a lost ledger row cannot cause double counting — the idempotency layer is for response consistency and cheap retries; the PK is the true guard.
 
 ---
 
@@ -1216,5 +1230,5 @@ Token-bucket limits enforced in Upstash Redis, keyed per-user (`uid:<id>`) and p
 - **Session cookie** — the opaque, `HttpOnly` web credential backed by a `sessions` row; revocable server-side (the reason for DB sessions over JWTs).
 - **System of record** — Postgres. Every leaderboard/cache value is derivable from it; Redis loss is recoverable by rebuild.
 - **Tier pill** — the badge shown on a board row indicating a member's tier (`individual` = GitHub, `community`, `company` = verified work domain).
-- **`usage_day`** — the core fact table, one row per `(user_id, date, tool, model)`; idempotent overwrite-upsert on sync; holds server-computed `cost_usd`.
+- **`usage_day`** — the core fact table, one row per `(user_id, device_id, date, tool, model)`; idempotent overwrite-upsert on sync (per device); holds server-computed `cost_usd`. Cross-device totals live in `usage_day_total`.
 - **`usage_day_total`** — per-`(user, date)` rollup across all tools/models; source for rolling-window sums and sparklines.

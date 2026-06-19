@@ -245,11 +245,13 @@ Postgres, with Row-Level Security. The server is the **system of record** — it
 | **linked_accounts** | `id`, `user_id`, `provider` (`github`/`x`), `provider_handle`, `cached_payload`, `linked_at` | **Separate table on purpose.** X is one cached read at connect time, stored here, removable without a migration. Keeps optional/volatile providers off the core `users` row. |
 | **communities** | `id`, `slug`, `name`, `visibility` (`public`/`unlisted`), `owner_id`, `created_at` | A "room." `slug` → `tokenboard.sh/c/[slug]`. |
 | **memberships** | `community_id`, `user_id`, `role` (`admin`/`member`), `joined_at` | Many-to-many user↔community. |
-| **usage_day** | **PK (`user_id`, `date`, `tool`, `model`)**, `input`, `output`, `cache_read`, `cache_create_5m`, `cache_create_1h`, `cost_usd`, `updated_at` | The atom of usage. One row per user/day/tool/model. |
+| **ingest_devices** | `id`, `user_id`, `token_hash`, `label`, `status`, `created_at` | One row per claimed machine. The device's `id` is the `device_id` in `usage_day`, so a user's laptops accumulate (§7.3). |
+| **usage_day** | **PK (`user_id`, `device_id`, `date`, `tool`, `model`)**, `input`, `output`, `cache_read`, `cache_create_5m`, `cache_create_1h`, `cost_usd`, `updated_at` | The atom of usage. One row per device/day/tool/model. |
+| **usage_day_total** | **PK (`user_id`, `date`)**, `tokens`, `cost_usd` | Cross-device rollup = `SUM` over all of a user's devices/tools/models that day. The leaderboard score source. |
 
-**Idempotent upsert (the load-bearing decision).** Because the client only ever sees a rolling window and re-uploads overlapping ranges every run, ingestion **must** be safe to repeat. The composite PK `(user_id, date, tool, model)` + `INSERT ... ON CONFLICT DO UPDATE` makes re-uploading the same day a no-op rather than a double-count. The client can run as often as it likes; the server stays correct.
+**Idempotent upsert (the load-bearing decision).** Because the client only ever sees a rolling window and re-uploads overlapping ranges every run, ingestion **must** be safe to repeat. The composite PK `(user_id, device_id, date, tool, model)` + `INSERT ... ON CONFLICT DO UPDATE` makes a device re-uploading the same day a no-op rather than a double-count — while *different* devices write *different* rows that sum into `usage_day_total` (§7.3) instead of clobbering each other. The client can run as often as it likes; the server stays correct.
 
-**Server accumulates forever.** Once a `usage_day` row lands, it's permanent — even after the source logs prune off the user's disk. Lifetime totals are a `SUM` over `usage_day`, never dependent on what's currently on any machine.
+**Server accumulates forever.** Once a `usage_day` row lands, it's permanent — even after the source logs prune off the user's disk. Lifetime totals are a `SUM` over `usage_day` (across all the user's devices), never dependent on what's currently on any machine.
 
 **`cost_usd` is computed server-side** by the cost engine (§5.2) at ingest time and stored on the row, so leaderboards never recompute pricing at read time.
 
@@ -283,6 +285,23 @@ All three tiers are the **same table**, differing only by a `type` + `join_polic
 4. **Block disposable domains** (`@mailinator.com`, etc.) and **`+`-subaddress tricks**; rate-limit verification attempts.
 
 Company boards are **public by default** ("Stripe vs Ramp, who burns more tokens" is exactly the X-native content), with an **org-admin private toggle** (see §15 open question on optics).
+
+### 7.3 Multi-device — combining usage across machines
+
+A user has many machines (work laptop + personal laptop + desktop), and their total should be the **sum across all of them**, not whichever synced last. This is *the* reason claim/sign-in must precede public sync: every device's CLI is bound (via the device-authorization claim flow) to the **same `user_id`**, so the server can attribute and combine their usage.
+
+The mechanism is in the fact-table key (`ARCHITECTURE.md` §2):
+
+- `usage_day` is keyed **per device**: `(user_id, device_id, date, tool, model)`. Each device overwrites only *its own* row for a day — so a device re-reading its local logs stays idempotent (no double-count), **and** two devices on the same day produce two rows that **add up** instead of clobbering each other.
+- Your day total = `SUM` over all your devices → rolled into `usage_day_total (user_id, date)`, which is the leaderboard score. *Work 5M + personal 3M = 8M*, exactly as expected.
+
+> **Why local-only can't work.** "Just pull everything from one laptop" fails twice: it can't see your *other* machines, and it can't produce **all-time** totals (local logs prune at ~30 days). Only the signed-in, server-accumulated history spans devices *and* time. This is the payoff of "server is the system of record."
+
+### Time windows (1d / 7d / 30d / all-time)
+
+All four windows are computed **server-side** from accumulated `usage_day` rows (summed across the user's devices):
+- **1d / 7d / 30d** — reconstructable from either local logs or server history; the rolling windows are maintained as per-day Redis buckets (`ARCHITECTURE.md` §7).
+- **all-time** — **server-only**. Local logs prune at ~30 days, so a laptop physically cannot compute a lifetime total; the server is the sole source.
 
 ### X is a BADGE + share rail, NOT login
 
