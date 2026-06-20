@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>tokenboard — a leaderboard for your agentic-coding usage</title>
+<meta name="description" content="A leaderboard for your agentic-coding token usage. Track spend across Claude Code, Codex, Gemini CLI and more — then race your friends." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Press+Start+2P&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    /* deep slate-navy — matched to dashboard tokens */
+    --bg:        #14151f;
+    --bg-2:      #181a26;
+    --panel:     #1f212e;
+    --panel-2:   #262838;
+    --frame:     #34374a;
+    --frame-hi:  #424559;
+
+    --ink:       #e6e6ea;
+    --ink-2:     #a8a9b6;
+    --ink-3:     #76788a;
+    --ink-4:     #565869;
+
+    --coral:     #cc785c;
+    --coral-hi:  #d68d72;
+
+    --teal:      #5f998a;
+
+    --sans:  'Geist', ui-sans-serif, system-ui, sans-serif;
+    --mono:  'Geist Mono', ui-monospace, monospace;
+    --pixel: 'Press Start 2P', monospace;
+
+    --maxw: 1120px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-weight: 400;
+    line-height: 1.55;
+    letter-spacing: -0.01em;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    /* very subtle dotted-grid texture only — no glow */
+    background-image:
+      radial-gradient(900px 520px at 50% -8%, rgba(204,120,92,0.045), transparent 72%),
+      radial-gradient(rgba(120,124,160,0.05) 1px, transparent 1px);
+    background-size: auto, 22px 22px;
+    background-attachment: fixed;
+    overflow-x: hidden;
+  }
+
+  ::selection { background: rgba(204,120,92,0.30); color: #fff; }
+
+  a { color: inherit; text-decoration: none; }
+
+  .wrap { width: 100%; max-width: var(--maxw); margin: 0 auto; padding: 0 32px; }
+
+  /* ─────────────────────────── top nav ─────────────────────────── */
+  .nav {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(20,21,31,0.72);
+    backdrop-filter: saturate(140%) blur(12px);
+    -webkit-backdrop-filter: saturate(140%) blur(12px);
+    border-bottom: 1px solid rgba(52,55,74,0.6);
+  }
+  .nav-inner {
+    display: flex; align-items: center; gap: 28px;
+    height: 64px;
+  }
+  .wordmark {
+    font-family: var(--pixel); font-size: 12px; letter-spacing: 0.5px;
+    color: var(--ink); display: inline-flex; align-items: center; gap: 9px;
+    flex: none; line-height: 1;
+  }
+  .wordmark .caret { color: var(--coral); }
+  .nav-links {
+    display: flex; align-items: center; gap: 28px; margin-left: 8px;
+  }
+  .nav-links a {
+    font-size: 14px; color: var(--ink-3); font-weight: 450;
+    transition: color .15s ease;
+  }
+  .nav-links a:hover { color: var(--ink); }
+  .nav .spacer { flex: 1 1 auto; }
+  .nav-cta {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 13px; font-weight: 500;
+    color: #14151f; background: var(--coral);
+    border: 1px solid var(--coral-hi); border-radius: 9px;
+    padding: 8px 15px; line-height: 1;
+    transition: background .15s ease, transform .15s ease;
+  }
+  .nav-cta:hover { background: var(--coral-hi); transform: translateY(-1px); }
+  .nav-ghost {
+    font-size: 14px; color: var(--ink-2); font-weight: 450;
+  }
+  .nav-ghost:hover { color: var(--ink); }
+
+  .menu-btn { display: none; }
+
+  /* ─────────────────────────── hero ─────────────────────────── */
+  .hero { padding: 104px 0 0; text-align: center; }
+
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em;
+    color: var(--ink-3);
+    border: 1px solid var(--frame); border-radius: 100px;
+    padding: 6px 14px; margin-bottom: 30px;
+    background: rgba(31,33,46,0.5);
+  }
+  .eyebrow .dot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--teal);
+    box-shadow: 0 0 0 3px rgba(95,153,138,0.15);
+  }
+
+  h1.headline {
+    font-size: clamp(40px, 6.4vw, 78px);
+    font-weight: 600; line-height: 1.02; letter-spacing: -0.035em;
+    color: var(--ink);
+    max-width: 17ch; margin: 0 auto;
+  }
+  h1.headline .accent { color: var(--coral); }
+
+  .subline {
+    font-size: clamp(16px, 1.6vw, 19px);
+    color: var(--ink-2); font-weight: 400; line-height: 1.6;
+    max-width: 52ch; margin: 26px auto 0;
+  }
+
+  .cta-row {
+    display: flex; align-items: center; justify-content: center;
+    gap: 14px; margin-top: 38px; flex-wrap: wrap;
+  }
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-family: var(--sans); font-size: 15px; font-weight: 550;
+    color: #14151f; background: var(--coral);
+    border: 1px solid var(--coral-hi); border-radius: 11px;
+    padding: 13px 22px; line-height: 1;
+    transition: background .15s ease, transform .15s ease, box-shadow .15s ease;
+  }
+  .btn-primary:hover { background: var(--coral-hi); transform: translateY(-1px); box-shadow: 0 10px 30px -12px rgba(204,120,92,0.5); }
+  .btn-primary .arr { font-size: 12px; transform: translateY(0.5px); }
+  .btn-secondary {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-size: 15px; font-weight: 500; color: var(--ink);
+    background: var(--panel); border: 1px solid var(--frame);
+    border-radius: 11px; padding: 13px 20px; line-height: 1;
+    transition: border-color .15s ease, transform .15s ease, background .15s ease;
+  }
+  .btn-secondary:hover { border-color: var(--frame-hi); background: var(--panel-2); transform: translateY(-1px); }
+  .btn-secondary svg { width: 16px; height: 16px; fill: var(--ink-2); }
+  .pill-meta {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: var(--mono); font-size: 12px; color: var(--ink-4);
+    padding: 6px 12px; border: 1px solid var(--frame); border-radius: 100px;
+  }
+  .pill-meta .div { width: 1px; height: 11px; background: var(--frame); }
+
+  /* ─────────────────────────── terminal ─────────────────────────── */
+  .term-wrap { margin-top: 56px; max-width: 720px; margin-left: auto; margin-right: auto; text-align: left; }
+  .terminal {
+    background: linear-gradient(180deg, #1a1c28 0%, #16171f 100%);
+    border: 1px solid var(--frame);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 24px 70px -28px rgba(0,0,0,0.75);
+    position: relative;
+  }
+  /* faint scanline texture */
+  .terminal::after {
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background: repeating-linear-gradient(0deg, rgba(255,255,255,0.012) 0 1px, transparent 1px 4px);
+  }
+  .term-bar {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 16px; border-bottom: 1px solid rgba(52,55,74,0.7);
+    background: rgba(20,21,31,0.5);
+  }
+  .dots { display: flex; gap: 7px; }
+  .dots span { width: 11px; height: 11px; border-radius: 50%; display: block; }
+  .dots .r { background: #5a4a48; } .dots .y { background: #5a553f; } .dots .g { background: #45524b; }
+  .term-title {
+    font-family: var(--mono); font-size: 12px; color: var(--ink-4);
+    letter-spacing: 0.02em;
+  }
+  .term-body {
+    padding: 22px 22px 24px;
+    font-family: var(--mono); font-size: 14px; line-height: 2.0;
+    position: relative; z-index: 1;
+    overflow-x: auto;
+  }
+  .term-body::-webkit-scrollbar { height: 6px; }
+  .term-body::-webkit-scrollbar-thumb { background: var(--frame); border-radius: 3px; }
+  .ln { display: flex; align-items: center; gap: 11px; white-space: pre; }
+  .ln .pr { color: var(--coral); font-weight: 500; }
+  .ln .cmd { color: var(--ink); }
+  .ln .cmd b { font-weight: 500; color: #fff; }
+  .ln .cmt { color: var(--ink-4); }
+  .copy-btn {
+    margin-left: auto; flex: none;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em;
+    color: var(--ink-3); background: var(--panel);
+    border: 1px solid var(--frame); border-radius: 6px;
+    padding: 4px 9px; cursor: pointer; line-height: 1;
+    transition: all .15s ease; white-space: nowrap;
+  }
+  .copy-btn:hover { color: var(--ink); border-color: var(--frame-hi); }
+  .copy-btn.done { color: var(--teal); border-color: var(--teal); }
+  .term-out {
+    margin-top: 8px; padding-top: 14px;
+    border-top: 1px dashed rgba(52,55,74,0.7);
+    color: var(--ink-2); white-space: pre-wrap;
+  }
+  .term-out .ok { color: var(--teal); }
+  .term-out .hl { color: var(--coral-hi); }
+  .term-out .you { color: var(--coral); font-weight: 500; }
+
+  /* ─────────────────────────── screenshot hero ─────────────────────────── */
+  .shot-section { padding: 92px 0 0; }
+  .shot-frame {
+    position: relative;
+    border: 1px solid var(--frame);
+    border-radius: 16px;
+    padding: 10px;
+    background: linear-gradient(180deg, rgba(38,40,56,0.55), rgba(24,26,38,0.55));
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.03) inset,
+      0 40px 110px -40px rgba(0,0,0,0.85);
+  }
+  .shot-frame img {
+    display: block; width: 100%; height: auto;
+    border-radius: 9px;
+    border: 1px solid rgba(52,55,74,0.8);
+  }
+  .shot-cap {
+    text-align: center; margin-top: 22px;
+    font-family: var(--mono); font-size: 12.5px; color: var(--ink-4);
+    letter-spacing: 0.01em;
+  }
+  .shot-cap a { color: var(--ink-3); border-bottom: 1px solid var(--frame); padding-bottom: 1px; transition: color .15s; }
+  .shot-cap a:hover { color: var(--coral-hi); border-color: var(--coral-hi); }
+
+  /* ─────────────────────────── works-with row ─────────────────────────── */
+  .works {
+    padding: 64px 0 0; text-align: center;
+  }
+  .works .lbl {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--ink-4); margin-bottom: 20px;
+  }
+  .works .tools {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+    gap: 12px 0;
+    font-family: var(--mono); font-size: 14px; color: var(--ink-3);
+  }
+  .works .tools span.t { padding: 0 18px; white-space: nowrap; }
+  .works .tools span.s { color: var(--frame-hi); }
+  .works .tools .more { color: var(--ink-4); }
+
+  /* ─────────────────────────── features ─────────────────────────── */
+  .features { padding: 108px 0 0; }
+  .feat-head { max-width: 44ch; margin-bottom: 44px; }
+  .feat-head .k {
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--coral); margin-bottom: 14px;
+  }
+  .feat-head h2 {
+    font-size: clamp(26px, 3vw, 34px); font-weight: 600;
+    letter-spacing: -0.025em; line-height: 1.15; color: var(--ink);
+  }
+  .feat-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px;
+  }
+  .feat {
+    background: var(--panel);
+    border: 1px solid var(--frame);
+    border-radius: 14px;
+    padding: 26px 24px 28px;
+    transition: border-color .2s ease, transform .2s ease;
+  }
+  .feat:hover { border-color: var(--frame-hi); transform: translateY(-2px); }
+  .feat .icon {
+    width: 38px; height: 38px; border-radius: 9px;
+    display: grid; place-items: center;
+    border: 1px solid var(--frame); background: var(--panel-2);
+    margin-bottom: 20px;
+  }
+  .feat .icon svg { width: 19px; height: 19px; stroke: var(--coral); fill: none; stroke-width: 1.6; }
+  .feat h3 {
+    font-size: 17px; font-weight: 600; letter-spacing: -0.01em;
+    color: var(--ink); margin-bottom: 9px;
+  }
+  .feat p {
+    font-size: 14.5px; color: var(--ink-2); line-height: 1.6; font-weight: 400;
+  }
+  .feat p .em { color: var(--ink); }
+
+  /* ─────────────────────────── bottom cta ─────────────────────────── */
+  .bottom-cta { padding: 116px 0 12px; text-align: center; }
+  .bottom-cta h2 {
+    font-size: clamp(28px, 3.6vw, 44px); font-weight: 600;
+    letter-spacing: -0.03em; line-height: 1.08; color: var(--ink);
+    max-width: 18ch; margin: 0 auto;
+  }
+  .bottom-cta h2 .accent { color: var(--coral); }
+  .bottom-cta p {
+    font-size: 16px; color: var(--ink-2); margin: 20px auto 0; max-width: 46ch;
+  }
+  .bottom-cta .one-line {
+    display: inline-flex; align-items: center; gap: 12px; margin-top: 34px;
+    font-family: var(--mono); font-size: 15px;
+    background: var(--panel); border: 1px solid var(--frame);
+    border-radius: 11px; padding: 13px 16px 13px 18px;
+  }
+  .bottom-cta .one-line .pr { color: var(--coral); }
+  .bottom-cta .one-line .cmd b { color:#fff; font-weight:500; }
+  .bottom-cta .one-line .copy-btn { margin-left: 4px; }
+
+  /* ─────────────────────────── footer ─────────────────────────── */
+  footer {
+    margin-top: 110px;
+    border-top: 1px solid var(--frame);
+  }
+  .foot-inner {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px;
+    padding: 28px 0 40px;
+    font-size: 13.5px; color: var(--ink-3);
+  }
+  .foot-brand {
+    font-family: var(--pixel); font-size: 11px; color: var(--ink-2);
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .foot-brand .caret { color: var(--coral); }
+  .foot-inner .sep { color: var(--ink-4); }
+  .foot-inner .spacer { flex: 1 1 auto; }
+  .foot-links { display: flex; align-items: center; gap: 18px; }
+  .foot-links a { color: var(--ink-3); transition: color .15s ease; }
+  .foot-links a:hover { color: var(--coral-hi); }
+
+  /* ─────────────────────────── reveal animation ─────────────────────────── */
+  .reveal { opacity: 0; transform: translateY(16px); transition: opacity .7s ease, transform .7s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1; transform: none; transition: none; }
+    html { scroll-behavior: auto; }
+  }
+
+  /* ─────────────────────────── responsive ─────────────────────────── */
+  @media (max-width: 860px) {
+    .feat-grid { grid-template-columns: 1fr; }
+    .nav-links { display: none; }
+    .nav-ghost { display: none; }
+  }
+  @media (max-width: 560px) {
+    .wrap { padding: 0 20px; }
+    .hero { padding: 72px 0 0; }
+    .term-body { font-size: 12.5px; }
+    .cta-row { gap: 10px; }
+    .works .tools span.t { padding: 0 10px; }
+    .works .tools span.s { display: none; }
+    .works .tools { gap: 8px 4px; }
+    .shot-frame { padding: 6px; border-radius: 12px; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- ───────── top nav ───────── -->
+  <nav class="nav">
+    <div class="wrap nav-inner">
+      <a class="wordmark" href="#top"><span class="caret">&gt;_</span>tokenboard</a>
+      <div class="nav-links">
+        <a href="#how">How it works</a>
+        <a href="../dashboard-pixel/index.html">Leaderboard</a>
+        <a href="#" rel="noopener">GitHub</a>
+        <a href="#">Docs</a>
+      </div>
+      <div class="spacer"></div>
+      <a class="nav-ghost" href="#how">Get started</a>
+      <a class="nav-cta" href="../dashboard-pixel/index.html"><span style="font-family:var(--mono)">npx tokenboard</span></a>
+    </div>
+  </nav>
+
+  <main id="top">
+  <div class="wrap">
+
+    <!-- ───────── hero ───────── -->
+    <section class="hero">
+      <div class="eyebrow reveal"><span class="dot"></span> A leaderboard for agentic-coding usage</div>
+      <h1 class="headline reveal" style="transition-delay:.05s">See who's burning the <span class="accent">most tokens.</span></h1>
+      <p class="subline reveal" style="transition-delay:.1s">
+        Track your spend across Claude Code, Codex, Gemini CLI and more —
+        then race your friends to the top of the board.
+      </p>
+      <div class="cta-row reveal" style="transition-delay:.15s">
+        <a class="btn-primary" href="#how">Get started <span class="arr">&#9656;</span></a>
+        <a class="btn-secondary" href="#" rel="noopener">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          GitHub
+        </a>
+        <span class="pill-meta">MIT <span class="div"></span> v0.1.0</span>
+      </div>
+
+      <!-- the npx commands — make it obvious this is a CLI -->
+      <div class="term-wrap reveal" style="transition-delay:.2s">
+        <div class="terminal" id="terminal">
+          <div class="term-bar">
+            <div class="dots"><span class="r"></span><span class="y"></span><span class="g"></span></div>
+            <span class="term-title">~/steel-cartel — zsh</span>
+          </div>
+          <div class="term-body">
+            <div class="ln">
+              <span class="pr">$</span><span class="cmd">npx <b>tokenboard</b></span><span class="cmt">      # see your number + claim your spot</span>
+              <button class="copy-btn" data-copy="npx tokenboard" aria-label="Copy command">Copy</button>
+            </div>
+            <div class="ln">
+              <span class="pr">$</span><span class="cmd">tokenboard <b>sync</b></span><span class="cmt">      # push usage (hourly cron)</span>
+            </div>
+            <div class="ln">
+              <span class="pr">$</span><span class="cmd">tokenboard <b>board</b> steel-cartel</span>
+            </div>
+            <div class="term-out"><span class="ok">&#10003; synced 6.9M tokens</span> <span class="hl">&middot;</span> you're <span class="you">#5</span> in <span class="hl">steel-cartel</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────── hero product screenshot ───────── -->
+    <section class="shot-section reveal">
+      <div class="shot-frame">
+        <img src="../shots/dashboard-pixel.png"
+             alt="The tokenboard leaderboard showing the steel-cartel community ranked by token spend." />
+      </div>
+      <p class="shot-cap">The live board — climb it at <a href="../dashboard-pixel/index.html">tokenboard.dev/steel-cartel</a></p>
+    </section>
+
+    <!-- ───────── works-with row ───────── -->
+    <section class="works reveal">
+      <div class="lbl">Works with</div>
+      <div class="tools">
+        <span class="t">Claude Code</span><span class="s">&middot;</span>
+        <span class="t">Codex</span><span class="s">&middot;</span>
+        <span class="t">Gemini CLI</span><span class="s">&middot;</span>
+        <span class="t">Copilot</span><span class="s">&middot;</span>
+        <span class="t">Aider</span><span class="s">&middot;</span>
+        <span class="t more">+ more via ccusage</span>
+      </div>
+    </section>
+
+    <!-- ───────── features ───────── -->
+    <section class="features" id="how">
+      <div class="feat-head reveal">
+        <div class="k">How it works</div>
+        <h2>One number across every agent. Private by default. Built to be raced.</h2>
+      </div>
+      <div class="feat-grid">
+        <div class="feat reveal">
+          <div class="icon">
+            <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z" opacity=".0"/><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h15A1.5 1.5 0 0 1 21 6.5v11A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5z"/><path d="M7 9l3 3-3 3M13 15h4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <h3>Reads local logs</h3>
+          <p>Parses usage files already on your machine and pushes <span class="em">aggregate counts only</span> — never your code, prompts, or completions.</p>
+        </div>
+        <div class="feat reveal" style="transition-delay:.07s">
+          <div class="icon">
+            <svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg>
+          </div>
+          <h3>Multi-tool</h3>
+          <p>Claude Code, Codex, Gemini CLI, Copilot, Aider — collapsed into <span class="em">one honest number</span> across every agentic CLI you run.</p>
+        </div>
+        <div class="feat reveal" style="transition-delay:.14s">
+          <div class="icon">
+            <svg viewBox="0 0 24 24"><path d="M6 21v-7M12 21V9M18 21v-4M4 14h4M10 9h4M16 17h4" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 3l1.6 3.2 3.4.5-2.5 2.4.6 3.4L12 11.3 8.9 12.9l.6-3.4L7 7.1l3.4-.5z" opacity=".0"/></svg>
+          </div>
+          <h3>Race your friends</h3>
+          <p>Spin up a community, share the invite link, and <span class="em">climb the board</span>. Weekly resets, ELO swings, bragging rights.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────── bottom cta ───────── -->
+    <section class="bottom-cta">
+      <h2 class="reveal">Find out your <span class="accent">number.</span></h2>
+      <p class="reveal" style="transition-delay:.05s">No signup wall. Run one command, claim your spot, then never think about it again — the hourly cron keeps you on the board.</p>
+      <div class="one-line reveal" style="transition-delay:.1s">
+        <span class="pr">$</span><span class="cmd">npx <b>tokenboard</b></span>
+        <button class="copy-btn" data-copy="npx tokenboard" aria-label="Copy command">Copy</button>
+      </div>
+    </section>
+
+  </div>
+  </main>
+
+  <!-- ───────── footer ───────── -->
+  <footer>
+    <div class="wrap foot-inner">
+      <span class="foot-brand"><span class="caret">&gt;_</span> tokenboard</span>
+      <span class="sep">&middot;</span>
+      <span>&copy; 2026</span>
+      <span class="sep">&middot;</span>
+      <span>MIT License</span>
+      <span class="spacer"></span>
+      <div class="foot-links">
+        <a href="#">Privacy</a>
+        <a href="#" rel="noopener">GitHub</a>
+        <a href="#">Contributing</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // copy-to-clipboard for command lines
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const text = btn.dataset.copy || '';
+        const restore = btn.textContent;
+        if (navigator.clipboard) navigator.clipboard.writeText(text).catch(() => {});
+        btn.textContent = 'Copied';
+        btn.classList.add('done');
+        setTimeout(() => { btn.textContent = restore; btn.classList.remove('done'); }, 1300);
+      });
+    });
+
+    // scroll reveal — staggered, gentle
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+    document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+  </script>
+
+</body>
+</html>
