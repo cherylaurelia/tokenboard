@@ -1,23 +1,26 @@
 # tokenboard — design prototype
 
-The chosen visual direction for the dashboard. Open `v3-rich/index.html` directly
-in a browser; a screenshot is in `shots/v3-rich.png`.
+The chosen visual direction. Open `dashboard/index.html` in a browser (◐ toggles
+light/dark). Screenshots in `shots/`.
 
-**v3-rich — the design direction.** Elevated/rich: Linear/Vercel-meets-monkeytype.
-Near-black surfaces, **muted clay coral `#cc785c`** accent used only on meaningful
-bits (the YOU row, your rank, key numbers), mono data + sans labels, neutral-grey
-avatars, smooth inline-SVG sparklines (all grey except the coral YOU row), a top-3
-podium, a stat strip, and the YOU row with a coral left-rail. Has a light/dark
-toggle (◐ top-right; warm off-white light mode). The page also includes the OG
-share card (1200×630) that gets posted to X.
+**The direction:** elevated/refined dark-first dashboard (rounded surfaces, stat
+strip, smooth sparklines, restrained podium, atmospheric coral glow) — Linear/
+Vercel-meets-monkeytype in *restraint*, with our own brand color.
 
-Accent history: started on monkeytype amber `#e2b714` (too clone-y), explored ~10
-alternatives; neon options (flame/lime/magenta/violet/cyan) read "vibecoded", so
-landed on the muted/elegant `#cc785c` clay coral. See `DESIGN.md` §4.3.
+**Type system (the browserarena recipe — grotesk UI + mono numbers):**
+- **Space Grotesk** for all UI — wordmark, nav, titles, labels, handles. Techy,
+  distinctive, pairs tightly with the mono.
+- **IBM Plex Mono** for *numbers only* — tokens, ranks, %, the big OG figure
+  (`--data`). This is what makes data read "technical benchmark," not a vibecoded
+  all-mono wall.
 
-(Two alternative directions — pure-monkeytype and terminal-native — were explored
-and dropped in favor of v3. The terminal-native ideas inform the CLI renderer in
-`DESIGN.md` §14, not the web app.)
+**Accent:** muted clay coral **`#cc785c`**, muted-until-meaningful (YOU row, rank,
+key numbers, brand mark). Everything else is grayscale on near-black (or warm
+off-white in light mode).
 
-This is a static prototype to lock the vibe before building the real thing in
-Next.js + shadcn with a custom monkeytype theme.
+`refs/browserarena.png` is the design reference whose font recipe we adapted
+(it uses DM Sans body + IBM Plex Mono numbers; we use Space Grotesk + IBM Plex Mono).
+
+Earlier explorations (pure-monkeytype, terminal, brutalist, and several UI-font
+candidates) were tried and dropped in favor of this. Build the real app in
+Next.js + shadcn with this exact type + `#cc785c` theme.

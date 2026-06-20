@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>tokenboard — steel-cartel</title>
+<title>tokenboard — steel-cartel [v5]</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
   /* ───────── DARK (default / brand) ───────── */
   :root {
@@ -46,8 +46,12 @@
     --atmo-2: rgba(204,120,92,0.018);
     --shadow: rgba(0,0,0,0.3);
 
-    --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
-    --sans: 'Inter', -apple-system, system-ui, sans-serif;
+    /* browserarena recipe: Space Grotesk for ALL UI/labels/handles,
+       IBM Plex Mono for NUMBERS ONLY (--data). --mono aliases Space Grotesk so v3's
+       existing var(--mono) text becomes grotesk, not a vibecoded mono wall. */
+    --mono: 'Space Grotesk', -apple-system, system-ui, sans-serif;
+    --sans: 'Space Grotesk', -apple-system, system-ui, sans-serif;
+    --data: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
     --radius:    14px;
     --radius-sm: 9px;
   }
@@ -188,7 +192,7 @@
     text-transform: uppercase; color: var(--text-4); margin-bottom: 8px;
   }
   .stat .value {
-    font-family: var(--mono); font-weight: 600; font-size: 21px;
+    font-family: var(--data); font-weight: 600; font-size: 21px;
     color: var(--text); letter-spacing: -0.02em;
     display: flex; align-items: baseline; gap: 7px;
   }
@@ -226,9 +230,26 @@
   .tab:hover { color: var(--text-2); }
   .tab.active { color: var(--text); background: var(--surface-3); border-color: var(--line-2); }
   .tabs .spacer { flex: 1; }
+
+  /* search */
+  .search {
+    display: flex; align-items: center; gap: 7px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 8px; padding: 6px 11px; min-width: 168px;
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .search:focus-within { border-color: var(--amber); background: var(--surface-2); }
+  .search svg { width: 13px; height: 13px; color: var(--text-4); flex: none; }
+  .search input {
+    border: none; outline: none; background: transparent;
+    font-family: var(--mono); font-size: 12px; color: var(--text);
+    width: 100%; letter-spacing: -0.01em;
+  }
+  .search input::placeholder { color: var(--text-4); }
+
   .tabs .live {
     font-family: var(--mono); font-size: 11px; color: var(--text-3);
-    display: flex; align-items: center; gap: 7px; padding-right: 6px;
+    display: flex; align-items: center; gap: 7px; padding: 0 6px 0 10px;
   }
   .tabs .live .dot {
     width: 6px; height: 6px; border-radius: 50%; background: var(--up);
@@ -257,14 +278,14 @@
   .row:hover { background: var(--surface-2); }
 
   .rank {
-    font-family: var(--mono); font-weight: 600; font-size: 14px;
+    font-family: var(--data); font-weight: 600; font-size: 14px;
     color: var(--text-3); display: flex; align-items: center; gap: 9px;
   }
   .rank .num { width: 18px; text-align: right; }
   .medal {
     width: 22px; height: 22px; border-radius: 7px; flex:none;
     display: grid; place-items: center;
-    font-size: 11px; font-weight: 700; font-family: var(--mono);
+    font-size: 11px; font-weight: 700; font-family: var(--data);
   }
   .medal.gold   { color:#0c0c0e; background: linear-gradient(150deg,#f4d04a,#cf9c0c); }
   .medal.silver { color:#0c0c0e; background: linear-gradient(150deg,#dfe2e6,#9ea4ad); }
@@ -301,7 +322,7 @@
   }
 
   .tokens {
-    font-family: var(--mono); font-weight: 600; font-size: 15px;
+    font-family: var(--data); font-weight: 600; font-size: 15px;
     color: var(--text); text-align: right; letter-spacing: -0.01em;
   }
   .tokens .m { color: var(--text-3); font-weight: 400; font-size: 12px; margin-left: 1px; }
@@ -339,6 +360,19 @@
   }
   .board-foot a { color: var(--text-3); text-decoration: none; }
   .board-foot a:hover { color: var(--amber-dim); }
+
+  /* pagination */
+  .pager { display: flex; align-items: center; gap: 4px; }
+  .pager button, .pager .pg {
+    font-family: var(--mono); font-size: 12px; color: var(--text-3);
+    background: transparent; border: 1px solid transparent; border-radius: 7px;
+    min-width: 28px; height: 28px; padding: 0 8px; cursor: pointer;
+    display: grid; place-items: center; transition: all .15s ease; user-select: none;
+  }
+  .pager .pg:hover, .pager button:hover:not(:disabled) { color: var(--text); background: var(--surface-2); }
+  .pager .pg.active { color: var(--text); background: var(--surface-3); border-color: var(--line-2); }
+  .pager button:disabled { opacity: .35; cursor: default; }
+  .pager .ellip { color: var(--text-4); padding: 0 2px; }
 
   /* ───────────────── OG share card ───────────────── */
   .share-section { margin-top: 56px; }
@@ -395,7 +429,7 @@
     border: 1px solid rgba(204,120,92,0.3);
   }
   .og-num {
-    font-family: var(--mono); font-weight: 800; font-size: 64px;
+    font-family: var(--data); font-weight: 700; font-size: 64px;
     line-height: .92; letter-spacing: -0.04em; color: var(--text);
   }
   .og-num .m { color: var(--amber-text); }
@@ -492,6 +526,10 @@
         <div class="tab">30 days</div>
         <div class="tab">All-time</div>
         <div class="spacer"></div>
+        <label class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input type="text" placeholder="Search user…" />
+        </label>
         <div class="live"><span class="dot"></span>live</div>
       </div>
 
@@ -600,8 +638,16 @@
       </div>
 
       <div class="board-foot">
-        <span>Showing top 8 of 42 · resets Mon 00:00 UTC</span>
-        <a href="#">View full board →</a>
+        <span>1–8 of 42 · resets Mon 00:00 UTC</span>
+        <div class="pager">
+          <button disabled aria-label="Previous">←</button>
+          <span class="pg active">1</span>
+          <span class="pg">2</span>
+          <span class="pg">3</span>
+          <span class="ellip">…</span>
+          <span class="pg">6</span>
+          <button aria-label="Next">→</button>
+        </div>
       </div>
     </section>
 
