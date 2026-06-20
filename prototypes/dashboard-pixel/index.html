@@ -302,7 +302,7 @@
   /* ───────── pagination ───────── */
   .pager {
     display: flex; align-items: center; justify-content: center; gap: 6px;
-    margin: 16px 0 4px;
+    margin: 0;
   }
   .pager .pg {
     font-family: var(--term); font-size: 17px; line-height: 1;
@@ -421,14 +421,28 @@
   .invite-btn:hover { background: var(--coral-hi); }
 
   /* ───────── footer ───────── */
+  /* footer — clear brand / copyright / links, higher contrast */
   .foot {
-    text-align: center; padding: 22px 28px 24px;
-    font-family: var(--pixel); font-size: 9px; letter-spacing: 1px;
-    color: var(--ink-4); border-top: 2px solid var(--frame); margin-top: 22px;
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    text-align: center; padding: 16px 28px 18px;
+    font-family: var(--term); font-size: 17px; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--ink-2);
+    border-top: 2px solid var(--frame); margin-top: 18px;
   }
-  .foot .reset {
-    font-family: var(--term); font-size: 15px; letter-spacing: 2px;
-    text-transform: uppercase; color: var(--ink-4); margin-top: 11px;
+  .foot .brand { color: var(--ink); display: inline-flex; align-items: center; gap: 7px; }
+  .foot .brand .coin { color: var(--coral); }
+  .foot .sep { color: var(--ink-4); }
+  .foot a { color: var(--ink-2); text-decoration: none; transition: color .12s steps(2); }
+  .foot a:hover { color: var(--coral-hi); }
+
+  /* pagination row: range label (left) + pager (centered/right) */
+  .pager-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; margin-top: 14px; flex-wrap: wrap;
+  }
+  .pager-row .range {
+    font-family: var(--term); font-size: 16px; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--ink-3);
   }
 
   /* ───────── responsive ───────── */
@@ -588,15 +602,18 @@
 
     </div>
 
-    <!-- pagination -->
-    <div class="pager">
-      <button class="pg nav" disabled>&#9664;</button>
-      <span class="pg active">1</span>
-      <span class="pg">2</span>
-      <span class="pg">3</span>
-      <span class="pg ellip">&middot;&middot;&middot;</span>
-      <span class="pg">6</span>
-      <button class="pg nav">&#9654;</button>
+    <!-- pagination + range -->
+    <div class="pager-row">
+      <span class="range">1&ndash;8 of 42 &middot; resets Mon 00:00 UTC</span>
+      <div class="pager">
+        <button class="pg nav" disabled>&#9664;</button>
+        <span class="pg active">1</span>
+        <span class="pg">2</span>
+        <span class="pg">3</span>
+        <span class="pg ellip">&middot;&middot;&middot;</span>
+        <span class="pg">6</span>
+        <button class="pg nav">&#9654;</button>
+      </div>
     </div>
 
     </div><!-- /.card (main leaderboard) -->
@@ -644,7 +661,13 @@
 
   <!-- footer -->
   <footer class="foot">
-    <div class="reset">1&ndash;8 of 42 &middot; Resets Mon 00:00 UTC</div>
+    <span class="brand"><span class="coin">&gt;_</span> TOKENBOARD</span>
+    <span class="sep">&middot;</span>
+    <span>&copy; 2026</span>
+    <span class="sep">&middot;</span>
+    <a href="#">PRIVACY</a>
+    <span class="sep">&middot;</span>
+    <a href="#">GITHUB</a>
   </footer>
 
   <script>
