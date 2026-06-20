@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>tokenboard — landing font comparison</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Hanken+Grotesk:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Geist:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#14151f; --bg-2:#181a26; --panel:#1f212e; --frame:#34374a;
+    --ink:#e6e6ea; --ink-2:#a8a9b6; --ink-3:#76788a; --ink-4:#565869;
+    --coral:#cc785c; --coral-hi:#d68d72;
+    --mono:'IBM Plex Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--ink); min-height:100vh;
+    font-family:'Geist',system-ui,sans-serif; padding:40px 24px 80px;
+    background-image:radial-gradient(700px 400px at 50% -10%,rgba(204,120,92,0.06),transparent 70%);
+  }
+  .page{max-width:1180px;margin:0 auto}
+  .pg-head{text-align:center;margin-bottom:36px}
+  .pg-head h1{font-family:var(--mono);font-size:14px;letter-spacing:3px;text-transform:uppercase;color:var(--ink-3);font-weight:500}
+  .pg-head p{font-family:var(--mono);font-size:13px;color:var(--ink-4);margin-top:8px}
+
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:22px}
+  @media(max-width:880px){.grid{grid-template-columns:1fr}}
+
+  .card{
+    background:var(--bg-2);border:1px solid var(--frame);border-radius:16px;
+    padding:34px 34px 30px;position:relative;overflow:hidden;
+  }
+  .tag{
+    font-family:var(--mono);font-size:11px;letter-spacing:2px;text-transform:uppercase;
+    color:var(--coral);margin-bottom:22px;display:flex;align-items:center;gap:8px;
+  }
+  .tag .dot{width:6px;height:6px;background:var(--coral);border-radius:1px}
+  .tag .meta{color:var(--ink-4);margin-left:auto;letter-spacing:1px}
+
+  /* the hero specimen — same content, different font per card */
+  .badge{
+    display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);
+    font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);
+    border:1px solid var(--frame);border-radius:999px;padding:5px 12px;margin-bottom:18px;
+  }
+  .h1{font-size:42px;line-height:1.04;letter-spacing:-0.03em;font-weight:700;color:var(--ink)}
+  .h1 .accent{color:var(--coral)}
+  .sub{font-size:16px;line-height:1.5;color:var(--ink-2);margin-top:16px;max-width:30ch}
+  .cta{display:flex;align-items:center;gap:10px;margin-top:22px;flex-wrap:wrap}
+  .btn{font-size:14px;font-weight:600;color:#14151f;background:var(--coral);border:1px solid var(--coral-hi);border-radius:9px;padding:10px 18px;letter-spacing:.2px}
+  .ghost{font-size:14px;color:var(--ink-2);background:var(--panel);border:1px solid var(--frame);border-radius:9px;padding:10px 16px}
+  .ver{font-family:var(--mono);font-size:12px;color:var(--ink-4);border:1px solid var(--frame);border-radius:999px;padding:6px 11px}
+
+  /* per-card font assignments — body+headline use the named family; mono/numbers stay IBM Plex Mono */
+  .f-arcade .h1{font-family:'Press Start 2P',monospace;font-size:23px;line-height:1.3;letter-spacing:0}
+  .f-arcade .sub, .f-arcade .badge, .f-arcade .btn, .f-arcade .ghost{font-family:'Press Start 2P',monospace}
+  .f-arcade .sub{font-size:11px;line-height:1.9}
+  .f-arcade .btn{font-size:11px;padding:12px 16px}
+
+  .f-hanken .h1, .f-hanken .sub, .f-hanken .btn, .f-hanken .ghost{font-family:'Hanken Grotesk',sans-serif}
+  .f-jakarta .h1, .f-jakarta .sub, .f-jakarta .btn, .f-jakarta .ghost{font-family:'Plus Jakarta Sans',sans-serif}
+  .f-geist .h1, .f-geist .sub, .f-geist .btn, .f-geist .ghost{font-family:'Geist',sans-serif}
+
+  .note{font-family:var(--mono);font-size:12px;color:var(--ink-4);margin-top:24px;border-top:1px solid var(--frame);padding-top:14px;line-height:1.6}
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="pg-head">
+      <h1>tokenboard · landing font comparison</h1>
+      <p>same hero, four fonts · numbers/terminal stay IBM Plex Mono in all</p>
+    </div>
+
+    <div class="grid">
+
+      <!-- ARCADE -->
+      <div class="card f-arcade">
+        <div class="tag"><span class="dot"></span>Arcade — Press Start 2P <span class="meta">pixel</span></div>
+        <span class="badge">&gt;_ a leaderboard for agentic coding</span>
+        <div class="h1">See who's burning the <span class="accent">most tokens.</span></div>
+        <div class="sub">Track your spend across Claude Code, Codex, Gemini CLI and more — then race your friends.</div>
+        <div class="cta">
+          <span class="btn">Get started ▸</span>
+          <span class="ghost">★ GitHub</span>
+          <span class="ver">MIT · v0.1.0</span>
+        </div>
+        <div class="note">Most on-brand with the pixel dashboard. Risk: heavy at headline size, low legibility for the sub-line.</div>
+      </div>
+
+      <!-- HANKEN -->
+      <div class="card f-hanken">
+        <div class="tag"><span class="dot"></span>Hanken Grotesk <span class="meta">grotesk</span></div>
+        <span class="badge">&gt;_ a leaderboard for agentic coding</span>
+        <div class="h1">See who's burning the <span class="accent">most tokens.</span></div>
+        <div class="sub">Track your spend across Claude Code, Codex, Gemini CLI and more — then race your friends.</div>
+        <div class="cta">
+          <span class="btn">Get started ▸</span>
+          <span class="ghost">★ GitHub</span>
+          <span class="ver">MIT · v0.1.0</span>
+        </div>
+        <div class="note">Warm, friendly, slightly rounded. Reads designed and approachable.</div>
+      </div>
+
+      <!-- JAKARTA -->
+      <div class="card f-jakarta">
+        <div class="tag"><span class="dot"></span>Plus Jakarta Sans <span class="meta">geometric</span></div>
+        <span class="badge">&gt;_ a leaderboard for agentic coding</span>
+        <div class="h1">See who's burning the <span class="accent">most tokens.</span></div>
+        <div class="sub">Track your spend across Claude Code, Codex, Gemini CLI and more — then race your friends.</div>
+        <div class="cta">
+          <span class="btn">Get started ▸</span>
+          <span class="ghost">★ GitHub</span>
+          <span class="ver">MIT · v0.1.0</span>
+        </div>
+        <div class="note">Geometric, modern, distinctive (browserarena's display font). A touch more character than Geist.</div>
+      </div>
+
+      <!-- GEIST (current) -->
+      <div class="card f-geist">
+        <div class="tag"><span class="dot"></span>Geist <span class="meta">current</span></div>
+        <span class="badge">&gt;_ a leaderboard for agentic coding</span>
+        <div class="h1">See who's burning the <span class="accent">most tokens.</span></div>
+        <div class="sub">Track your spend across Claude Code, Codex, Gemini CLI and more — then race your friends.</div>
+        <div class="cta">
+          <span class="btn">Get started ▸</span>
+          <span class="ghost">★ GitHub</span>
+          <span class="ver">MIT · v0.1.0</span>
+        </div>
+        <div class="note">What the landers use now. Vercel's font — clean/neutral, but you felt it reads a bit AI-default.</div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>
