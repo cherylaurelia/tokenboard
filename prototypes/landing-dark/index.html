@@ -278,32 +278,33 @@
     font-size: clamp(26px, 3vw, 34px); font-weight: 600;
     letter-spacing: -0.025em; line-height: 1.15; color: var(--ink);
   }
-  .feat-grid {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px;
+  /* restrained shell-style list — no icon-card LARP */
+  .feat-list {
+    display: grid; grid-template-columns: 1fr; gap: 0;
+    border-top: 1px solid var(--frame); max-width: 760px;
   }
   .feat {
-    background: var(--panel);
-    border: 1px solid var(--frame);
-    border-radius: 14px;
-    padding: 26px 24px 28px;
-    transition: border-color .2s ease, transform .2s ease;
+    display: grid; grid-template-columns: 22px minmax(150px, 200px) 1fr;
+    gap: 18px; align-items: baseline;
+    padding: 22px 4px; border-bottom: 1px solid var(--frame);
   }
-  .feat:hover { border-color: var(--frame-hi); transform: translateY(-2px); }
-  .feat .icon {
-    width: 38px; height: 38px; border-radius: 9px;
-    display: grid; place-items: center;
-    border: 1px solid var(--frame); background: var(--panel-2);
-    margin-bottom: 20px;
+  .feat .mk {
+    font-family: var(--mono); color: var(--coral); font-size: 16px; line-height: 1.5;
   }
-  .feat .icon svg { width: 19px; height: 19px; stroke: var(--coral); fill: none; stroke-width: 1.6; }
   .feat h3 {
-    font-size: 17px; font-weight: 600; letter-spacing: -0.01em;
-    color: var(--ink); margin-bottom: 9px;
+    font-family: var(--mono); font-size: 14px; font-weight: 500;
+    letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink);
+    margin: 0;
   }
   .feat p {
-    font-size: 14.5px; color: var(--ink-2); line-height: 1.6; font-weight: 400;
+    font-size: 15px; color: var(--ink-2); line-height: 1.6; font-weight: 400; margin: 0;
   }
   .feat p .em { color: var(--ink); }
+  @media(max-width:620px){
+    .feat { grid-template-columns: 16px 1fr; }
+    .feat h3 { grid-column: 2; margin-bottom: 6px; }
+    .feat p { grid-column: 2; }
+  }
 
   /* ─────────────────────────── bottom cta ─────────────────────────── */
   .bottom-cta { padding: 116px 0 12px; text-align: center; }
@@ -396,7 +397,6 @@
 
     <!-- ───────── hero ───────── -->
     <section class="hero">
-      <div class="eyebrow reveal"><span class="dot"></span> A leaderboard for agentic-coding usage</div>
       <h1 class="headline reveal" style="transition-delay:.05s">See who's burning the <span class="accent">most tokens.</span></h1>
       <p class="subline reveal" style="transition-delay:.1s">
         Track your spend across Claude Code, Codex, Gemini CLI and more —
@@ -463,25 +463,19 @@
         <div class="k">How it works</div>
         <h2>One number across every agent. Private by default. Built to be raced.</h2>
       </div>
-      <div class="feat-grid">
+      <div class="feat-list">
         <div class="feat reveal">
-          <div class="icon">
-            <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z" opacity=".0"/><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h15A1.5 1.5 0 0 1 21 6.5v11A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5z"/><path d="M7 9l3 3-3 3M13 15h4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </div>
+          <span class="mk">›</span>
           <h3>Reads local logs</h3>
           <p>Parses usage files already on your machine and pushes <span class="em">aggregate counts only</span> — never your code, prompts, or completions.</p>
         </div>
-        <div class="feat reveal" style="transition-delay:.07s">
-          <div class="icon">
-            <svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg>
-          </div>
+        <div class="feat reveal" style="transition-delay:.06s">
+          <span class="mk">›</span>
           <h3>Multi-tool</h3>
           <p>Claude Code, Codex, Gemini CLI, Copilot, Aider — collapsed into <span class="em">one honest number</span> across every agentic CLI you run.</p>
         </div>
-        <div class="feat reveal" style="transition-delay:.14s">
-          <div class="icon">
-            <svg viewBox="0 0 24 24"><path d="M6 21v-7M12 21V9M18 21v-4M4 14h4M10 9h4M16 17h4" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 3l1.6 3.2 3.4.5-2.5 2.4.6 3.4L12 11.3 8.9 12.9l.6-3.4L7 7.1l3.4-.5z" opacity=".0"/></svg>
-          </div>
+        <div class="feat reveal" style="transition-delay:.12s">
+          <span class="mk">›</span>
           <h3>Race your friends</h3>
           <p>Spin up a community, share the invite link, and <span class="em">climb the board</span>. Weekly resets, ELO swings, bragging rights.</p>
         </div>
