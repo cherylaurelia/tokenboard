@@ -7,7 +7,7 @@
 <meta name="description" content="A leaderboard for your agentic-coding token usage. Track spend across Claude Code, Codex, Gemini CLI and more — then race your friends." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500&family=Press+Start+2P&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet" />
 <style>
   :root {
     /* deep slate-navy — matched to dashboard tokens */
@@ -28,8 +28,9 @@
 
     --teal:      #5f998a;
 
-    --sans:  'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
-    --mono:  'Geist Mono', ui-monospace, monospace;
+    /* tabularag vibe: Fira Code (mono) for everything UI + terminal */
+    --sans:  'Fira Code', ui-monospace, monospace;
+    --mono:  'Fira Code', ui-monospace, monospace;
     --pixel: 'Press Start 2P', monospace;
 
     --maxw: 1120px;
@@ -267,44 +268,13 @@
   .works .tools span.s { color: var(--frame-hi); }
   .works .tools .more { color: var(--ink-4); }
 
-  /* ─────────────────────────── features ─────────────────────────── */
-  .features { padding: 108px 0 0; }
-  .feat-head { max-width: 44ch; margin-bottom: 44px; }
-  .feat-head .k {
-    font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em;
-    text-transform: uppercase; color: var(--coral); margin-bottom: 14px;
+  /* ─────────── one-line "how" (tabularag-minimal) ─────────── */
+  .how-line {
+    margin: 60px 0 0; padding: 16px 0 0; border-top: 1px solid var(--frame);
+    font-family: var(--mono); font-size: 13.5px; letter-spacing: 0.02em;
+    color: var(--ink-3); text-align: center;
   }
-  .feat-head h2 {
-    font-size: clamp(26px, 3vw, 34px); font-weight: 600;
-    letter-spacing: -0.025em; line-height: 1.15; color: var(--ink);
-  }
-  /* restrained shell-style list — no icon-card LARP */
-  .feat-list {
-    display: grid; grid-template-columns: 1fr; gap: 0;
-    border-top: 1px solid var(--frame); max-width: 760px;
-  }
-  .feat {
-    display: grid; grid-template-columns: 22px minmax(150px, 200px) 1fr;
-    gap: 18px; align-items: baseline;
-    padding: 22px 4px; border-bottom: 1px solid var(--frame);
-  }
-  .feat .mk {
-    font-family: var(--mono); color: var(--coral); font-size: 16px; line-height: 1.5;
-  }
-  .feat h3 {
-    font-family: var(--mono); font-size: 14px; font-weight: 500;
-    letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink);
-    margin: 0;
-  }
-  .feat p {
-    font-size: 15px; color: var(--ink-2); line-height: 1.6; font-weight: 400; margin: 0;
-  }
-  .feat p .em { color: var(--ink); }
-  @media(max-width:620px){
-    .feat { grid-template-columns: 16px 1fr; }
-    .feat h3 { grid-column: 2; margin-bottom: 6px; }
-    .feat p { grid-column: 2; }
-  }
+  .how-line .mk { color: var(--coral); margin-right: 6px; }
 
   /* ─────────────────────────── bottom cta ─────────────────────────── */
   .bottom-cta { padding: 116px 0 12px; text-align: center; }
@@ -457,35 +427,14 @@
       </div>
     </section>
 
-    <!-- ───────── features ───────── -->
-    <section class="features" id="how">
-      <div class="feat-head reveal">
-        <div class="k">How it works</div>
-        <h2>One number across every agent. Private by default. Built to be raced.</h2>
-      </div>
-      <div class="feat-list">
-        <div class="feat reveal">
-          <span class="mk">›</span>
-          <h3>Reads local logs</h3>
-          <p>Parses usage files already on your machine and pushes <span class="em">aggregate counts only</span> — never your code, prompts, or completions.</p>
-        </div>
-        <div class="feat reveal" style="transition-delay:.06s">
-          <span class="mk">›</span>
-          <h3>Multi-tool</h3>
-          <p>Claude Code, Codex, Gemini CLI, Copilot, Aider — collapsed into <span class="em">one honest number</span> across every agentic CLI you run.</p>
-        </div>
-        <div class="feat reveal" style="transition-delay:.12s">
-          <span class="mk">›</span>
-          <h3>Race your friends</h3>
-          <p>Spin up a community, share the invite link, and <span class="em">climb the board</span>. Weekly resets, ELO swings, bragging rights.</p>
-        </div>
-      </div>
+    <!-- ───────── one-line "how" (tabularag-minimal) ───────── -->
+    <section class="how-line reveal" id="how">
+      <span class="mk">#</span> reads local logs &middot; aggregate counts only &middot; multi-tool &middot; race your friends
     </section>
 
     <!-- ───────── bottom cta ───────── -->
     <section class="bottom-cta">
       <h2 class="reveal">Find out your <span class="accent">number.</span></h2>
-      <p class="reveal" style="transition-delay:.05s">No signup wall. Run one command, claim your spot, then never think about it again — the hourly cron keeps you on the board.</p>
       <div class="one-line reveal" style="transition-delay:.1s">
         <span class="pr">$</span><span class="cmd">npx <b>tokenboard</b></span>
         <button class="copy-btn" data-copy="npx tokenboard" aria-label="Copy command">Copy</button>
