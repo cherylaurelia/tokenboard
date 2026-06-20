@@ -6,7 +6,7 @@
 <title>tokenboard — steel-cartel [v5]</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
   /* ───────── DARK (default / brand) ───────── */
   :root {
@@ -46,12 +46,14 @@
     --atmo-2: rgba(204,120,92,0.018);
     --shadow: rgba(0,0,0,0.3);
 
-    /* browserarena recipe: Space Grotesk for ALL UI/labels/handles,
-       IBM Plex Mono for NUMBERS ONLY (--data). --mono aliases Space Grotesk so v3's
-       existing var(--mono) text becomes grotesk, not a vibecoded mono wall. */
-    --mono: 'Space Grotesk', -apple-system, system-ui, sans-serif;
-    --sans: 'Space Grotesk', -apple-system, system-ui, sans-serif;
-    --data: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+    /* EXACT browserarena.ai font stack:
+       DM Sans = body/UI/labels/handles · Plus Jakarta Sans = display/headings ·
+       IBM Plex Mono = numbers only (--data). --mono aliases DM Sans so existing
+       var(--mono) UI text is the body grotesk, not a mono wall. */
+    --sans:    'DM Sans', -apple-system, system-ui, sans-serif;          /* body/UI */
+    --display: 'Plus Jakarta Sans', -apple-system, system-ui, sans-serif; /* headings */
+    --mono:    'DM Sans', -apple-system, system-ui, sans-serif;          /* alias → body */
+    --data:    'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace; /* numbers */
     --radius:    14px;
     --radius-sm: 9px;
   }
@@ -125,7 +127,7 @@
     display: flex; align-items: center; justify-content: space-between;
   }
   .wordmark {
-    font-family: var(--mono); font-weight: 700; font-size: 16px;
+    font-family: var(--display); font-weight: 700; font-size: 16px;
     letter-spacing: -0.02em; color: var(--text);
     display: flex; align-items: center; gap: 9px;
   }
@@ -173,7 +175,7 @@
     flex: none;
   }
   .community-title h1 {
-    font-family: var(--mono); font-weight: 700; font-size: 27px;
+    font-family: var(--display); font-weight: 700; font-size: 27px;
     letter-spacing: -0.025em; color: var(--text);
   }
   .community-title .sub { font-size: 13px; color: var(--text-3); margin-top: 2px; }
