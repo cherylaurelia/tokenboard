@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TOKENBOARD — MY COMMUNITIES</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    /* deep slate-navy — matched to the leaderboard */
+    --bg:        #14151f;
+    --bg-2:      #181a26;
+    --panel:     #1f212e;
+    --panel-2:   #262838;
+    --frame:     #34374a;
+    --frame-hi:  #424559;
+
+    --ink:       #e6e6ea;
+    --ink-2:     #a8a9b6;
+    --ink-3:     #76788a;
+    --ink-4:     #565869;
+
+    --coral:     #cc785c;
+    --coral-hi:  #d68d72;
+
+    --bar-yellow: #b8b266;
+    --bar-teal:   #5f998a;
+
+    --pixel:  'Press Start 2P', monospace;
+    --term:   'VT323', monospace;
+    --money:  'Space Mono', ui-monospace, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-font-smoothing: none; }
+
+  body {
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--term);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    background-image:
+      radial-gradient(820px 420px at 50% -12%, rgba(204,120,92,0.05), transparent 72%);
+    background-attachment: fixed;
+  }
+
+  /* ───────── full-width top app bar (identical to the board) ───────── */
+  .appbar {
+    display: flex; align-items: center; gap: 28px;
+    width: 100%;
+    background: var(--bg-2);
+    border-bottom: 1px solid var(--frame);
+    padding: 14px 28px;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .wordmark {
+    font-family: var(--pixel); font-size: 12px; letter-spacing: 1px;
+    color: var(--ink); display: flex; align-items: center; gap: 8px;
+    flex: none; text-decoration: none;
+  }
+  .wordmark .coin { color: var(--coral); font-family: var(--pixel); font-size: 12px; }
+  .nav { display: flex; align-items: center; gap: 22px; }
+  .nav a {
+    font-family: var(--term); font-size: 18px; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--ink-3);
+    text-decoration: none; line-height: 1; padding-bottom: 2px;
+    border-bottom: 2px solid transparent; transition: color .12s steps(2);
+  }
+  .nav a:hover { color: var(--ink); }
+  .nav a.active { color: var(--coral); border-bottom-color: var(--coral); }
+  .appbar .spacer { flex: 1 1 auto; }
+  .claim {
+    font-family: var(--term); font-size: 16px; letter-spacing: 1px;
+    text-transform: uppercase; color: #14151f;
+    background: var(--coral); border: 2px solid var(--coral-hi);
+    border-radius: 7px; padding: 8px 18px 6px; cursor: pointer;
+    transition: all .1s steps(2); line-height: 1; flex: none;
+  }
+  .claim:hover { background: var(--coral-hi); }
+
+  /* ───────── centered content ───────── */
+  .shell {
+    width: 100%; max-width: 1240px; margin: 0 auto;
+    flex: 1 1 auto; padding: 30px 28px 8px;
+  }
+
+  /* page head */
+  .page-head { margin-bottom: 22px; }
+  .page-head .title {
+    font-family: var(--pixel); font-size: 23px; line-height: 1.15;
+    letter-spacing: 1px; color: var(--ink);
+    text-shadow: 2px 2px 0 #0b0c14;
+  }
+  .page-head .title .dim { color: var(--coral); }
+  .page-head .lede {
+    font-family: var(--term); font-size: 20px; letter-spacing: .5px;
+    color: var(--ink-3); margin-top: 10px;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 22px; align-items: start;
+  }
+
+  /* section labels (dashed rule, matches the board) */
+  .sec-label {
+    font-family: var(--term); font-size: 16px; letter-spacing: 3px;
+    text-transform: uppercase; color: var(--ink-4);
+    display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+  }
+  .sec-label::after {
+    content:""; flex:1; height:2px;
+    background: repeating-linear-gradient(90deg, var(--frame) 0 4px, transparent 4px 8px);
+  }
+
+  /* ───────── your boards grid ───────── */
+  .boards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  .ccard {
+    display: flex; flex-direction: column; gap: 0;
+    background: var(--bg-2);
+    border: 1px solid var(--frame);
+    border-radius: 12px;
+    padding: 16px 18px 14px;
+    text-decoration: none; color: inherit;
+    transition: border-color .12s, transform .1s steps(2), background .12s;
+    position: relative;
+  }
+  .ccard:hover { border-color: var(--frame-hi); transform: translateY(-2px); background: var(--panel); }
+  .ccard.owner { }
+
+  .ccard-top { display: flex; align-items: center; gap: 12px; }
+  .ccard .badge {
+    width: 40px; height: 40px; border-radius: 9px; flex: none;
+    display: grid; place-items: center;
+    font-family: var(--pixel); font-size: 13px; color: #14151f;
+    background: var(--coral); border: 1px solid var(--coral-hi);
+  }
+  .ccard .badge.b2 { background: var(--bar-teal); border-color:#4f8676; }
+  .ccard .badge.b3 { background: var(--bar-yellow); border-color:#a39d57; }
+  .ccard .cname {
+    font-family: var(--term); font-size: 24px; line-height: 1; letter-spacing: .5px;
+    color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ccard .ctag {
+    font-family: var(--term); font-size: 12px; letter-spacing: 1px;
+    text-transform: uppercase; line-height: 1; margin-top: 5px;
+    color: var(--ink-4);
+  }
+  .ccard .ctag .pin { color: var(--coral); }
+  .ccard .arrow {
+    margin-left: auto; align-self: flex-start; flex: none;
+    font-family: var(--term); font-size: 20px; color: var(--ink-4);
+    transition: color .12s, transform .12s steps(2);
+  }
+  .ccard:hover .arrow { color: var(--coral); transform: translateX(3px); }
+
+  .ccard-stats {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; margin-top: 14px; padding-top: 12px;
+    border-top: 1px solid var(--frame);
+  }
+  .ccard .you-rank {
+    font-family: var(--term); font-size: 18px; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--ink-3);
+  }
+  .ccard .you-rank b { color: var(--ink); font-weight: 400; }
+  .ccard .you-spend {
+    display: inline-flex; align-items: baseline; gap: 10px;
+  }
+  .ccard .you-spend .big {
+    font-family: var(--money); font-weight: 700; font-size: 20px; line-height: 1;
+    color: var(--ink); font-variant-numeric: tabular-nums;
+  }
+  .ccard .elo {
+    font-family: var(--term); font-size: 16px; letter-spacing: .5px;
+    display: inline-flex; align-items: center; gap: 3px;
+  }
+  .ccard .elo.up   { color: var(--bar-teal); }
+  .ccard .elo.down { color: var(--coral); }
+  .ccard .elo.flat { color: var(--ink-4); }
+  .ccard .elo .ar { font-size: 11px; }
+
+  /* ───────── side rail: join a community ───────── */
+  .rail { display: flex; flex-direction: column; gap: 18px; }
+  .panel {
+    background: var(--bg-2);
+    border: 1px solid var(--frame);
+    border-radius: 12px;
+    padding: 16px 18px 18px;
+  }
+  .panel .phead {
+    font-family: var(--term); font-size: 15px; letter-spacing: 3px;
+    text-transform: uppercase; color: var(--ink-4);
+    display: flex; align-items: center; gap: 10px; margin-bottom: 6px;
+  }
+  .panel .phead::after {
+    content:""; flex:1; height:2px;
+    background: repeating-linear-gradient(90deg, var(--frame) 0 4px, transparent 4px 8px);
+  }
+  .panel .pdesc {
+    font-family: var(--term); font-size: 18px; line-height: 1.25;
+    color: var(--ink-3); margin: 10px 0 14px;
+  }
+  .panel .pdesc .hl { color: var(--ink-2); }
+
+  /* form field */
+  .field { display: flex; flex-direction: column; gap: 8px; }
+  .field label {
+    font-family: var(--term); font-size: 14px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--ink-4);
+  }
+  .input-row { display: flex; gap: 8px; }
+  .field input {
+    flex: 1 1 auto; min-width: 0;
+    font-family: var(--money); font-size: 15px;
+    color: var(--ink); background: var(--bg);
+    border: 1px solid var(--frame); border-radius: 8px;
+    padding: 11px 13px; line-height: 1;
+    transition: border-color .12s;
+  }
+  .field input::placeholder { color: var(--ink-4); }
+  .field input:focus { outline: none; border-color: var(--coral); }
+
+  .btn {
+    font-family: var(--term); font-size: 16px; letter-spacing: 1px;
+    text-transform: uppercase; line-height: 1; cursor: pointer;
+    border-radius: 8px; padding: 11px 16px; flex: none;
+    transition: all .1s steps(2);
+  }
+  .btn-coral {
+    color: #14151f; background: var(--coral); border: 1px solid var(--coral-hi);
+  }
+  .btn-coral:hover { background: var(--coral-hi); }
+  .btn-ghost {
+    color: var(--ink-2); background: var(--panel); border: 1px solid var(--frame);
+  }
+  .btn-ghost:hover { color: var(--ink); border-color: var(--frame-hi); }
+  .btn-full { width: 100%; text-align: center; }
+
+  .field .note {
+    font-family: var(--term); font-size: 15px; letter-spacing: .5px;
+    color: var(--ink-4); line-height: 1.3;
+  }
+  .field .ok { color: var(--bar-teal); }
+
+  /* "or" divider between join methods */
+  .or-div {
+    display: flex; align-items: center; gap: 12px; margin: 18px 0;
+    font-family: var(--term); font-size: 14px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--ink-4);
+  }
+  .or-div::before, .or-div::after {
+    content:""; flex:1; height:1px; background: var(--frame);
+  }
+
+  .create-line {
+    font-family: var(--term); font-size: 17px; letter-spacing: .5px;
+    color: var(--ink-3); text-align: center; margin-top: 4px;
+  }
+  .create-line a { color: var(--coral-hi); text-decoration: none; }
+  .create-line a:hover { text-decoration: underline; }
+
+  /* ───────── footer (identical to the board) ───────── */
+  .foot {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    text-align: center; padding: 16px 28px 18px;
+    font-family: var(--term); font-size: 17px; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--ink-2);
+    border-top: 1px solid var(--frame); margin-top: 18px;
+  }
+  .foot .brand { color: var(--ink); display: inline-flex; align-items: center; gap: 7px; }
+  .foot .brand .coin { color: var(--coral); }
+  .foot .sep { color: var(--ink-4); }
+  .foot a { color: var(--ink-2); text-decoration: none; transition: color .12s steps(2); }
+  .foot a:hover { color: var(--coral-hi); }
+
+  /* ───────── responsive ───────── */
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 620px) {
+    .appbar { flex-wrap: wrap; gap: 14px 20px; padding: 12px 18px; }
+    .nav { gap: 16px; order: 3; width: 100%; }
+    .appbar .spacer { display: none; }
+    .shell { padding: 22px 16px 8px; }
+    .boards { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- full-width top app bar -->
+  <header class="appbar">
+    <a class="wordmark" href="../landing-dark/index.html"><span class="coin">&gt;_</span>TOKENBOARD</a>
+    <nav class="nav">
+      <a href="../landing-dark/index.html">Home</a>
+      <a href="#">Global</a>
+      <a href="#" class="active">My Communities</a>
+      <a href="#">Profile</a>
+    </nav>
+    <div class="spacer"></div>
+    <button class="claim">Claim Your Spot</button>
+  </header>
+
+  <main class="shell">
+
+    <div class="page-head">
+      <h1 class="title">MY <span class="dim">COMMUNITIES</span></h1>
+      <p class="lede">The boards you're racing in. Paste an invite to join a crew, or use your work email for your whole company.</p>
+    </div>
+
+    <div class="layout">
+
+      <!-- ───────── your boards ───────── -->
+      <section>
+        <div class="sec-label">Your Boards</div>
+        <div class="boards">
+
+          <!-- steel-cartel — links to the live leaderboard -->
+          <a class="ccard" href="../dashboard-pixel/index.html">
+            <div class="ccard-top">
+              <div class="badge">SC</div>
+              <div>
+                <div class="cname">steel-cartel</div>
+                <div class="ctag">42 members &middot; invite-only</div>
+              </div>
+              <span class="arrow" aria-hidden="true">&#9656;</span>
+            </div>
+            <div class="ccard-stats">
+              <span class="you-rank">You &middot; <b>#5</b> / 42</span>
+              <span class="you-spend">
+                <span class="big">$640</span>
+                <span class="elo up"><span class="ar">&#9650;</span>120</span>
+              </span>
+            </div>
+          </a>
+
+          <!-- acme-corp — company-email board -->
+          <a class="ccard" href="../dashboard-pixel/index.html">
+            <div class="ccard-top">
+              <div class="badge b2">AC</div>
+              <div>
+                <div class="cname">acme-corp</div>
+                <div class="ctag"><span class="pin">@</span>acme-corp.com &middot; 128 members</div>
+              </div>
+              <span class="arrow" aria-hidden="true">&#9656;</span>
+            </div>
+            <div class="ccard-stats">
+              <span class="you-rank">You &middot; <b>#23</b> / 128</span>
+              <span class="you-spend">
+                <span class="big">$410</span>
+                <span class="elo down"><span class="ar">&#9660;</span>12</span>
+              </span>
+            </div>
+          </a>
+
+          <!-- weekend-warriors — small friends board, you own it -->
+          <a class="ccard owner" href="../dashboard-pixel/index.html">
+            <div class="ccard-top">
+              <div class="badge b3">WW</div>
+              <div>
+                <div class="cname">weekend-warriors</div>
+                <div class="ctag">8 members &middot; you're the owner</div>
+              </div>
+              <span class="arrow" aria-hidden="true">&#9656;</span>
+            </div>
+            <div class="ccard-stats">
+              <span class="you-rank">You &middot; <b>#1</b> / 8</span>
+              <span class="you-spend">
+                <span class="big">$120</span>
+                <span class="elo up"><span class="ar">&#9650;</span>5</span>
+              </span>
+            </div>
+          </a>
+
+        </div>
+      </section>
+
+      <!-- ───────── join a community ───────── -->
+      <aside class="rail">
+
+        <section class="panel">
+          <div class="phead">Join a Community</div>
+
+          <!-- primary: invite link / code — no OTP, you're already signed in via GitHub -->
+          <p class="pdesc">
+            Got a <span class="hl">link or code</span> from a friend's board? Paste it —
+            you're in instantly, no email needed.
+          </p>
+          <form class="field" id="codeForm" autocomplete="off">
+            <label for="code">Invite link or code</label>
+            <div class="input-row">
+              <input id="code" type="text" placeholder="code or a link" />
+              <button type="submit" class="btn btn-coral">Join</button>
+            </div>
+            <span class="note" id="codeNote">Signed in with GitHub already — joining is one tap.</span>
+          </form>
+
+          <div class="or-div">or join your company</div>
+
+          <!-- secondary: work email (domain auto-grouping; needs a verify link) -->
+          <form class="field" id="emailForm" autocomplete="off">
+            <label for="email">Work email</label>
+            <div class="input-row">
+              <input id="email" type="email" placeholder="you@acme-corp.com" />
+              <button type="submit" class="btn btn-ghost">Verify</button>
+            </div>
+            <span class="note" id="emailNote">Everyone on the same domain lands on one board. We email a link to confirm it's you.</span>
+          </form>
+        </section>
+
+        <!-- tertiary: create -->
+        <section class="panel">
+          <p class="create-line">Starting fresh? <a href="#">+ Create a community</a></p>
+        </section>
+
+      </aside>
+
+    </div>
+  </main>
+
+  <!-- footer -->
+  <footer class="foot">
+    <span class="brand"><span class="coin">&gt;_</span> TOKENBOARD</span>
+    <span class="sep">&middot;</span>
+    <span>&copy; 2026</span>
+    <span class="sep">&middot;</span>
+    <a href="#">PRIVACY</a>
+    <span class="sep">&middot;</span>
+    <a href="#">GITHUB</a>
+  </footer>
+
+  <script>
+    // work-email join: show a friendly "check your inbox" confirmation
+    var emailForm = document.getElementById('emailForm');
+    if (emailForm) {
+      emailForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var val = document.getElementById('email').value.trim();
+        var note = document.getElementById('emailNote');
+        if (!val || val.indexOf('@') < 1) {
+          note.textContent = 'Enter a valid work email to get your link.';
+          note.className = 'note';
+          return;
+        }
+        note.innerHTML = '<span class="ok">&#10003; Check your inbox</span> — we sent a one-time link to ' + val;
+        note.className = 'note';
+      });
+    }
+
+    // invite code join (cosmetic)
+    var codeForm = document.getElementById('codeForm');
+    if (codeForm) {
+      codeForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var val = document.getElementById('code').value.trim();
+        var note = document.getElementById('codeNote');
+        if (!val) { note.textContent = 'Enter an invite code to join.'; return; }
+        note.innerHTML = '<span class="ok">&#10003; Joining ' + val + '…</span>';
+      });
+    }
+  </script>
+
+</body>
+</html>
