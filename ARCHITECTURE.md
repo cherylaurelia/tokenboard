@@ -446,6 +446,8 @@ Aggregates only — never prompts, code, or paths. The wire shape is camelCase w
   "board_url": "https://tokenboard.sh/c/global"
 }
 ```
+> Note the **`cost_usd_total`** here is the *internal/diagnostic* sync value, returned at full `numeric(14,6)` precision on purpose — do **not** round it to 2dp. The 2-decimal rule applies only to the user-facing `cost` field on the board JSON and the UI (see §7.2 field semantics).
+
 Replaying the same `Idempotency-Key` returns the stored `response_json` verbatim; reusing the key with a different `request_hash` returns `409 idempotency_key_conflict`. (The full wire payload with the four cache-bucket fields and the server processing order are specified in §6.)
 
 ### 3.2 `GET /api/v1/board`
@@ -1101,7 +1103,7 @@ GET /api/v1/board?community={slug}&window={7d|30d|all}&me={handle}&metric={token
 
 **Field semantics (load-bearing):**
 - **`tokens`** = `input + output + cacheRead + cacheCreate5m + cacheCreate1h` — the all-in token volume, matching the ranked score. (Documented because "tokens" is ambiguous; this is the agreed definition and the CLI must label it the same way.)
-- **`cost`** = server-computed USD at `priceTableVersion`; never client-sent.
+- **`cost`** = server-computed USD at `priceTableVersion`; never client-sent. **Precision rule:** compute and store at full precision (`numeric(14,6)` per record; integer micro-dollars in Redis) and sum at full precision — **round to exactly 2 decimal places only at the display boundary** (the `cost` field in this board JSON, and all UI: `$640.00`, `$38.42`). Never round per-record before summing — a sub-cent record × thousands of records would drift the leaderboard total away from the user's real provider spend. So: full precision through all math → 2dp at the edge.
 - **`tier`** ∈ `individual | community | company`; `tierPill.verified` reflects the verification ladder (GitHub = identity for `individual`; work-email domain proof for `company`).
 - **`delta.direction`** ∈ `up | down | flat | new` (`new` when no previous-period snapshot existed).
 - All `*Change` deltas are vs the **previous equal-length window** (previous 7d for the 7d board, etc.).
