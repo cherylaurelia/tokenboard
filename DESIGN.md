@@ -576,23 +576,13 @@ Rules: bare `tokenboard` = hero path (sync, then auto-render primary board; comp
 
 ### 14.4 Data source & auth
 **Render = fetch JSON + print.** The CLI never computes ranks; the server is source of truth.
+
+The CLI calls the **canonical board endpoint defined in `ARCHITECTURE.md` §7.2** — there is one `GET /api/v1/board` contract, not a CLI-specific one:
 ```
-GET /api/v1/board?c=<slug>&window=7d&top=10&me=1
+GET /api/v1/board?community=<slug>&window=7d&metric=tokens&me=<handle>&format=cli
 Authorization: Bearer <token>
 ```
-```jsonc
-{
-  "community": { "slug": "steel-cartel", "name": "Steel Cartel",
-                 "members": 42, "total": 318000000, "wowPct": 0.18 },
-  "window": "7d",
-  "me": { "rank": 5, "handle": "devon" },          // server says which row is "you"
-  "rows": [
-    { "rank": 1, "handle": "doomslug", "tokens": 12400000,
-      "delta": 2, "tier": "whale", "spark": [3,4,6,3,9,7,4], "isMe": false }
-    // …
-  ]
-}
-```
+The response is the rich shape from §7.2 (`community`, `window`, `metric`, `entries[]` with `rank/handle/tokens/cost/delta{…}/sparkline[…]/isMe/…`, and a `me` object). The **CLI renders only the terminal-showable subset** — rank, `@handle`, tokens (or `cost`), the `delta.direction`+`delta.rankChange` arrow, and an optional inline sparkline — and ignores the web-only fields (`avatar`, `displayName`, `tierPill`, `topTool`). Passing `format=cli` has the server omit those web-only fields for a smaller payload; `--json` still returns the full §7.2 shape.
 - **Server owns** ranking, deltas, sparkline buckets, humanization inputs, and `isMe`. The client only styles — keeps the board tamper-resistant and lets ranking logic change without shipping a new CLI.
 - **Auth:** the first `npx @tokenboard/cli` renders a **local preview** with no account. `tokenboard claim` runs the GitHub device-authorization flow and mints a **device-bound ingest token** (`~/.config/tokenboard/auth.json`, `chmod 600`); the board/render calls send it as the bearer. Every machine claims its own token bound to the same `user_id`, so multiple laptops accumulate (§7.3). There is no permanent anonymous public row — appearing on a public board requires the claim.
 - **Caching:** cache the last board JSON at `~/.cache/tokenboard/<slug>-<window>.json`. On network failure, render the cached board with a dim `‹stale · 2h ago›` tag instead of erroring. `--json` short-circuits all rendering. (Server sends `s-maxage=60, stale-while-revalidate=120` per §13 so 5k pollers collapse to ~1 origin compute/min.)
@@ -610,7 +600,7 @@ Authorization: Bearer <token>
 | **Unicode-hostile terminal** | `--ascii` (or auto-detect via `TERM`/locale) swaps box-drawing for `+ - |` and glyphs for ASCII so the table never becomes mojibake in a screenshot. |
 
 ### 14.6 Implementation note
-Ship the static renderer as one pure `renderBoard(json, {color, width, ascii}) → string`. The post-sync flow, `top`, `board`, and `me` all call it; `--json` bypasses it; the future `ink` mode reuses the same humanize/sparkline/delta helpers. One contract (§14.4 JSON), one renderer, every surface consistent.
+Ship the static renderer as one pure `renderBoard(json, {color, width, ascii}) → string`. The post-sync flow, `top`, `board`, and `me` all call it; `--json` bypasses it; the future `ink` mode reuses the same humanize/sparkline/delta helpers. One contract (the canonical `ARCHITECTURE.md` §7.2 board JSON), one renderer, every surface consistent.
 
 ---
 
