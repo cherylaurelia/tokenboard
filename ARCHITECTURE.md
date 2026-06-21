@@ -116,7 +116,7 @@ create type device_status     as enum ('active', 'revoked');
 -- ============================================================
 create table users (
   id            uuid primary key references auth.users(id) on delete cascade,
-  handle        citext not null,                 -- public profile slug, e.g. /u/devon
+  handle        citext not null,                 -- public profile slug, e.g. /user/devon
   display_name  text,
   avatar_url    text,
   github_id     bigint not null,                 -- numeric GitHub user id (immutable); mirrored from the GitHub identity
@@ -159,7 +159,7 @@ create table linked_accounts (
 create table communities (
   id            uuid primary key default gen_random_uuid(),
   type          community_type not null,
-  slug          citext not null,                  -- /c/<slug>
+  slug          citext not null,                  -- /community/<slug>
   name          text not null,
   description   text,
   join_policy   join_policy not null,
@@ -442,8 +442,8 @@ Aggregates only — never prompts, code, or paths. The wire shape is camelCase w
   "days_upserted": 2,
   "cost_usd_total": 7.412300,
   "price_table_version": "litellm-2026-06-01",
-  "profile_url": "https://tokenboard.sh/u/devon",
-  "board_url": "https://tokenboard.sh/c/global"
+  "profile_url": "https://tokenboard.sh/user/devon",
+  "board_url": "https://tokenboard.sh/community/global"
 }
 ```
 > Note the **`cost_usd_total`** here is the *internal/diagnostic* sync value, returned at full `numeric(14,6)` precision on purpose — do **not** round it to 2dp. The 2-decimal rule applies only to the user-facing `cost` field on the board JSON and the UI (see §7.2 field semantics).
@@ -488,7 +488,7 @@ Content-Type: application/json
 ```
 Response (success):
 ```json
-{ "joined": true, "role": "member", "community": { "slug": "frontend-guild", "name": "Frontend Guild" }, "board_url": "https://tokenboard.sh/c/frontend-guild" }
+{ "joined": true, "role": "member", "community": { "slug": "frontend-guild", "name": "Frontend Guild" }, "board_url": "https://tokenboard.sh/community/frontend-guild" }
 ```
 Failure modes: wrong code → `403 invalid_join_code`; already a member → `200 { "joined": true, "already_member": true }`; company board (`join_policy='email_domain'`) → `409 { "error":"requires_email_verification", "verify_url":"/verify/email?community=..." }`.
 
@@ -635,7 +635,7 @@ The product is a public leaderboard, so the adversary's goal is **inflated rank*
 - **Mitigations:** key everything on immutable **`github_id`** so deleting+recreating a username doesn't dodge bans; **plausibility caps** on ingested aggregates (max tokens/day per human) plus per-`machine_hash` de-dup so one device can't back ten accounts undetected; ban = `users.banned_at` **plus** `supabase.auth.admin.updateUserById({ban_duration})` + `admin.signOut()` to kill the user's Supabase sessions, and device tokens revoked (set `revoked_at`) — note the ban takes effect on next token refresh unless `signOut` deletes the session rows, so we pair it with a short access-token TTL (§4.1). (We deliberately do **not** gate public ranking on GitHub account age/signal — every signed-in user ranks immediately; the social/communities framing, not an eligibility filter, is the anti-cheat posture. See §4.6.)
 
 **Tier 2 — community (slug squatting, invite abuse):**
-- **Threats:** squatting desirable slugs (`/c/openai`); brigading with puppets; leaked join codes.
+- **Threats:** squatting desirable slugs (`/community/openai`); brigading with puppets; leaked join codes.
 - **Mitigations:** **reserved-slug denylist** (company-looking names, trademarks, profanity) — squatting `openai` as a community is blocked; that namespace is reserved for verified company boards; join codes are **6-char, high-entropy, rotatable, and rate-limited**, and an admin can rotate the code or switch `join_policy` to `invite` if a code leaks; per-IP / per-account **rate limits on community creation**; communities are explicitly **lower-trust** in the UI (no verified badge), so squatting yields little.
 
 **Tier 3 — company (fake domains, free-provider abuse):**
@@ -666,7 +666,7 @@ All three tiers are governed by a single principle: a board is "rank the members
 | Representation | `users` row (no community row) | `communities.type='community'` | `communities.type='company'` |
 | **Purpose** | "just you" — your profile/identity | friends, a Discord, a class, a team | everyone at a verified work domain |
 | **Create flow** | Exists as soon as you sign in with GitHub. 1:1 with a user. | Any logged-in user clicks "Create community" → name + slug; becomes `owner`/`admin`. | Auto-materialized by the *first* successful work-email verification for that domain (§5.3), OR pre-seeded for known orgs. |
-| **Join flow** | N/A (you are its only member) | Invite link (`/c/<slug>`) or **6-char join code**; `join_policy` is `open`, `code`, or (invite via code). | Auto-join on work-email verification for the matching domain. No code; the email *is* the join. |
+| **Join flow** | N/A (you are its only member) | Invite link (`/community/<slug>`) or **6-char join code**; `join_policy` is `open`, `code`, or (invite via code). | Auto-join on work-email verification for the matching domain. No code; the email *is* the join. |
 | **Verification** | GitHub identity (tier-1) | None beyond GitHub login; trust is social / code-gated | Work-email domain control (tier-2, magic-link/OTP) |
 | **Default visibility** | Public (it's your profile) | Public; creator may set `private` | **Public by default**; org-admin may privatize once claimed |
 | **`verified_via`** | `github` | `code` / `invite` | `email:<domain>` |

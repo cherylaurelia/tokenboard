@@ -76,7 +76,7 @@ The mantra: **PREVIEW → HOOKED → CLAIM.** You see your real number *locally*
 
 **Create:**
 1. Authenticated user clicks **New Room**, names it (e.g. `the-boys`), picks public/unlisted.
-2. Server mints a community with a slug (`tokenboard.sh/c/the-boys`) and an **invite link**.
+2. Server mints a community with a slug (`tokenboard.sh/community/the-boys`) and an **invite link**.
 3. Creator is auto-added as first member with `role='owner'` (ownership lives in the membership, not an `owner_id` column).
 
 **Join:**
@@ -118,7 +118,7 @@ The split matters because of a hard constraint: **agent logs prune.** Claude Cod
   ┌──────────────────────────── VERCEL / NEXT.JS ─────────────────────────┐
   │  Ingest API  ── idempotent upsert into usage_day                      │
   │  Cost engine ── LiteLLM price table (pinned), 4 buckets, server-side  │
-  │  SSR pages   ── /u/[handle]  /c/[slug]   (crawlable, SEO)             │
+  │  SSR pages   ── /user/[handle]  /community/[slug]  (crawlable, SEO)   │
   │  next/og     ── Satori OG flex cards                                  │
   └───────────┬──────────────────────────────────────┬────────────────────┘
               │                                        │
@@ -269,7 +269,7 @@ Postgres, with Row-Level Security. The server is the **system of record** — it
 |---|---|---|
 | **users** | `id`, `handle` (vanity), `github_id`, `github_avatar_url`, `email`, `verified_badge`, `created_at` | Identity. `handle` is the vanity-URL namespace. |
 | **linked_accounts** | `id`, `user_id`, `provider` (`github`/`x`), `provider_handle`, `cached_payload`, `linked_at` | **Separate table on purpose.** X is one cached read at connect time, stored here, removable without a migration. Keeps optional/volatile providers off the core `users` row. |
-| **communities** | `id`, `slug`, `name`, `visibility` (`public`/`unlisted`), `created_by`, `created_at` | A "room." `slug` → `tokenboard.sh/c/[slug]`. `created_by` records who made it; **ownership lives in `memberships.role='owner'`**, not a column here. |
+| **communities** | `id`, `slug`, `name`, `visibility` (`public`/`unlisted`), `created_by`, `created_at` | A "room." `slug` → `tokenboard.sh/community/[slug]`. `created_by` records who made it; **ownership lives in `memberships.role='owner'`**, not a column here. |
 | **memberships** | `community_id`, `user_id`, `role` (`owner`/`admin`/`member`), `joined_at` | Many-to-many user↔community. `owner` is the creator/controlling member. |
 | **ingest_devices** | `id`, `user_id`, `token_hash`, `label`, `status`, `created_at` | One row per claimed machine. The device's `id` is the `device_id` in `usage_day`, so a user's laptops accumulate (§7.3). |
 | **usage_day** | **PK (`user_id`, `device_id`, `date`, `tool`, `model`)**, `input`, `output`, `cache_read`, `cache_create_5m`, `cache_create_1h`, `cost_usd`, `updated_at` | The atom of usage. One row per device/day/tool/model. |
@@ -338,7 +338,7 @@ This is a hard, cost-driven decision. **In 2026 the X API has no free tier** —
 
 ### Vanity URL / handle namespace
 
-- Profiles: `tokenboard.sh/u/[handle]`. Communities: `tokenboard.sh/c/[slug]`.
+- Profiles: `tokenboard.sh/user/[handle]`. Communities: `tokenboard.sh/community/[slug]`.
 - `handle` and `slug` share no namespace conflict (different path prefixes) but are each unique within their space.
 - The local-preview state shows a provisional handle; **claiming** via GitHub OAuth binds a real vanity handle (defaulting to the GitHub login) and migrates all locally-previewed history onto the account on first sync.
 
@@ -494,8 +494,8 @@ Leaderboards change slowly, so caching is nearly free. **Fix:** Next.js **ISR / 
 > **Post-sync footer (interactive only).** After an interactive sync, print the board, then two affordances that use fields already in the `/sync` response (`board_url`, `profile_url`):
 > ```
 > ✔ synced 6.9M tokens · you're #5 in steel-cartel
-> → live board:  tokenboard.sh/c/steel-cartel
-> → your profile: tokenboard.sh/u/devon
+> → live board:  tokenboard.sh/community/steel-cartel
+> → your profile: tokenboard.sh/user/devon
 > ```
 > This drives web traffic and feeds the share loop (a dev who sees their rank in the terminal clicks through to the shareable web board).
 
