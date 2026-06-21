@@ -281,28 +281,62 @@
   }
   .works .strip .more { color: var(--ink-3); font-weight: 400; }
 
-  /* ─────────────────────────── bottom cta ─────────────────────────── */
-  .bottom-cta { padding: 90px 0 24px; text-align: center; }
-  .bottom-cta h2 {
-    font-size: clamp(28px, 3.6vw, 44px); font-weight: 600;
-    letter-spacing: -0.03em; line-height: 1.08; color: var(--ink);
-    max-width: 18ch; margin: 0 auto;
+  /* ─────────────── bottom cta — big "run it" terminal ─────────────── */
+  .bottom-cta { padding: 104px 0 24px; }
+  .cta-term {
+    max-width: 760px; margin: 0 auto;
+    background: linear-gradient(180deg, #1c1e2b 0%, #15161f 100%);
+    border: 1px solid var(--frame-hi);
+    border-radius: 16px; overflow: hidden;
+    box-shadow:
+      0 0 0 1px rgba(204,120,92,0.10),
+      0 32px 90px -32px rgba(0,0,0,0.85),
+      0 0 70px -30px rgba(204,120,92,0.35);
+    position: relative; text-align: left;
   }
-  .bottom-cta h2 .accent { color: var(--coral); }
-  .bottom-cta p {
-    font-size: 16px; color: var(--ink-2); margin: 20px auto 0; max-width: 46ch;
+  /* faint scanline texture, like the hero terminal */
+  .cta-term::after {
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background: repeating-linear-gradient(0deg, rgba(255,255,255,0.012) 0 1px, transparent 1px 4px);
   }
-  .bottom-cta .one-line {
-    display: inline-flex; align-items: center; gap: 18px; margin: 0 auto;
-    font-family: var(--mono); font-size: 24px;
-    background: var(--panel); border: 1px solid var(--frame-hi);
-    border-radius: 14px; padding: 22px 24px 22px 28px;
+  .cta-term .bar {
+    display: flex; align-items: center; gap: 14px;
+    padding: 13px 18px; border-bottom: 1px solid rgba(52,55,74,0.7);
+    background: rgba(20,21,31,0.6); position: relative; z-index: 1;
   }
-  .bottom-cta .one-line .pr { color: var(--coral); }
-  .bottom-cta .one-line .cmd b { color:#fff; font-weight:600; }
-  .bottom-cta .one-line .copy-btn {
-    margin-left: 6px; font-size: 14px; padding: 8px 14px;
+  .cta-term .bar .dots { display: flex; gap: 7px; }
+  .cta-term .bar .dots span { width: 11px; height: 11px; border-radius: 50%; display: block; }
+  .cta-term .bar .r { background: #5a4a48; } .cta-term .bar .y { background: #5a553f; } .cta-term .bar .g { background: #45524b; }
+  .cta-term .bar .ttl {
+    font-family: var(--mono); font-size: 12px; color: var(--ink-4);
+    letter-spacing: 0.04em; text-transform: uppercase;
   }
+  .cta-term .bar .copy-btn {
+    margin-left: auto; flex: none;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--ink-3); background: var(--panel);
+    border: 1px solid var(--frame); border-radius: 6px;
+    padding: 5px 11px; cursor: pointer; line-height: 1;
+    transition: all .15s ease; white-space: nowrap;
+  }
+  .cta-term .bar .copy-btn:hover { color: var(--ink); border-color: var(--frame-hi); }
+  .cta-term .bar .copy-btn.done { color: var(--teal); border-color: var(--teal); }
+  .cta-term .body {
+    display: flex; align-items: center; gap: 16px;
+    padding: 34px 30px; position: relative; z-index: 1;
+    font-family: var(--mono);
+    font-size: clamp(26px, 4vw, 40px); line-height: 1;
+  }
+  .cta-term .body .pr { color: var(--coral); font-weight: 500; }
+  .cta-term .body .cmd { color: var(--ink); }
+  .cta-term .body .cmd b { color: #fff; font-weight: 600; }
+  .cta-term .body .caret {
+    width: 0.56em; height: 1.05em; background: var(--coral);
+    display: inline-block; border-radius: 2px; margin-left: 2px;
+    animation: blink 1.1s steps(1) infinite;
+  }
+  @keyframes blink { 0%,50% { opacity: 1; } 50.01%,100% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .cta-term .body .caret { animation: none; } }
 
   /* ─────────────────────────── footer ─────────────────────────── */
   footer {
@@ -440,11 +474,17 @@
       </div>
     </section>
 
-    <!-- ───────── bottom cta ───────── -->
+    <!-- ───────── bottom cta — big "run it" terminal ───────── -->
     <section class="bottom-cta">
-      <div class="one-line reveal">
-        <span class="pr">$</span><span class="cmd">npx <b>tokenboard</b></span>
-        <button class="copy-btn" data-copy="npx tokenboard" aria-label="Copy command">Copy</button>
+      <div class="cta-term reveal">
+        <div class="bar">
+          <div class="dots"><span class="r"></span><span class="y"></span><span class="g"></span></div>
+          <span class="ttl">run it</span>
+          <button class="copy-btn" data-copy="npx tokenboard" aria-label="Copy command">Copy</button>
+        </div>
+        <div class="body">
+          <span class="pr">$</span><span class="cmd">npx <b>tokenboard</b></span><span class="caret" aria-hidden="true"></span>
+        </div>
       </div>
     </section>
 
