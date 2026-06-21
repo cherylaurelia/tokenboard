@@ -181,12 +181,17 @@
   .board-label {
     font-family: var(--term); font-size: 16px; letter-spacing: 3px;
     text-transform: uppercase; color: var(--ink-4);
-    display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+    display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
   }
-  .board-label::before, .board-label::after {
-    content:""; flex:1; height:2px;
+  .board-label .rule {
+    flex: 1; height: 2px;
     background: repeating-linear-gradient(90deg, var(--frame) 0 4px, transparent 4px 8px);
   }
+  /* dim legend that explains the ▲▼ delta column once (so no per-row "1w") */
+  .board-label .leg {
+    flex: none; font-size: 14px; letter-spacing: 1px; color: var(--ink-4);
+  }
+  .board-label .leg .ar { font-size: 10px; }
 
   /* flat table — thin dividers between rows, no boxed cards (monkeytype-calm) */
   .board { display: flex; flex-direction: column; }
@@ -241,7 +246,7 @@
 
   /* ELO delta — far right of the $, green/red with arrowhead, weekly tag */
   .elo {
-    flex: none; margin-left: 16px; min-width: 84px; text-align: right;
+    flex: none; margin-left: 16px; min-width: 52px; text-align: right;
     font-family: var(--term); font-size: 18px; letter-spacing: 0.5px;
     display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px;
   }
@@ -249,11 +254,6 @@
   .elo.down { color: var(--coral); }
   .elo.flat { color: var(--ink-4); }
   .elo .ar { font-size: 13px; }
-  /* "1w" weekly tag — dim + small so it reads as a unit, not a value */
-  .elo .w {
-    font-family: var(--money); font-weight: 400; font-size: 11px;
-    color: var(--ink-4); letter-spacing: 0; margin-left: 1px;
-  }
   .tag {
     font-family: var(--term); font-size: 12px; letter-spacing: 1px;
     text-transform: uppercase; line-height: 1;
@@ -488,7 +488,7 @@
     </div>
 
     <!-- board -->
-    <div class="board-label">High Scores</div>
+    <div class="board-label"><span>Standings</span><span class="rule"></span><span class="leg"><span class="ar">▲▼</span> vs last week</span></div>
     <div class="board">
 
       <!-- 1 -->
@@ -498,7 +498,7 @@
         <div class="pl-top" data-usd="$1,180.00" data-usd-w="100" data-tok="12.4M" data-tok-w="100">
           <a class="who-link" href="https://github.com/torvalds" target="_blank" rel="noopener"><span class="at">@torvalds</span></a>
           <span class="tok">12.4<span class="m">M</span></span>
-          <span class="elo up"><span class="ar">▲</span> 85 <span class="w">1w</span></span>
+          <span class="elo up"><span class="ar">▲</span> 85</span>
         </div>
       </div>
 
@@ -509,7 +509,7 @@
         <div class="pl-top" data-usd="$1,090.00" data-usd-w="92" data-tok="11.8M" data-tok-w="95">
           <a class="who-link" href="https://github.com/gaearon" target="_blank" rel="noopener"><span class="at">@gaearon</span></a>
           <span class="tok">11.8<span class="m">M</span></span>
-          <span class="elo up"><span class="ar">▲</span> 60 <span class="w">1w</span></span>
+          <span class="elo up"><span class="ar">▲</span> 60</span>
         </div>
       </div>
 
@@ -520,7 +520,7 @@
         <div class="pl-top" data-usd="$840.50" data-usd-w="71" data-tok="9.2M" data-tok-w="74">
           <a class="who-link" href="https://github.com/sindresorhus" target="_blank" rel="noopener"><span class="at">@sindresorhus</span></a>
           <span class="tok">9.2<span class="m">M</span></span>
-          <span class="elo down"><span class="ar">▼</span> 40 <span class="w">1w</span></span>
+          <span class="elo down"><span class="ar">▼</span> 40</span>
         </div>
       </div>
 
@@ -544,7 +544,7 @@
           <a class="who-link" href="https://github.com/ryoppippi" target="_blank" rel="noopener"><span class="at">@ryoppippi</span></a>
           <span class="tag you">&#9733; You</span>
           <span class="tok">6.9<span class="m">M</span></span>
-          <span class="elo up"><span class="ar">▲</span> 120 <span class="w">1w</span></span>
+          <span class="elo up"><span class="ar">▲</span> 120</span>
         </div>
       </div>
 
@@ -555,7 +555,7 @@
         <div class="pl-top" data-usd="$560.75" data-usd-w="47" data-tok="6.1M" data-tok-w="49">
           <a class="who-link" href="https://github.com/yyx990803" target="_blank" rel="noopener"><span class="at">@yyx990803</span></a>
           <span class="tok">6.1<span class="m">M</span></span>
-          <span class="elo down"><span class="ar">▼</span> 25 <span class="w">1w</span></span>
+          <span class="elo down"><span class="ar">▼</span> 25</span>
         </div>
       </div>
 
@@ -577,7 +577,7 @@
         <div class="pl-top" data-usd="$275.40" data-usd-w="23" data-tok="3.0M" data-tok-w="24">
           <a class="who-link" href="https://github.com/addyosmani" target="_blank" rel="noopener"><span class="at">@addyosmani</span></a>
           <span class="tok">3.0<span class="m">M</span></span>
-          <span class="elo up"><span class="ar">▲</span> 30 <span class="w">1w</span></span>
+          <span class="elo up"><span class="ar">▲</span> 30</span>
         </div>
       </div>
 
@@ -588,7 +588,7 @@
         <div class="pl-top" data-usd="$210.10" data-usd-w="18" data-tok="2.3M" data-tok-w="19">
           <a class="who-link" href="https://github.com/shadcn" target="_blank" rel="noopener"><span class="at">@shadcn</span></a>
           <span class="tok">2.3<span class="m">M</span></span>
-          <span class="elo down"><span class="ar">▼</span> 15 <span class="w">1w</span></span>
+          <span class="elo down"><span class="ar">▼</span> 15</span>
         </div>
       </div>
 
@@ -625,7 +625,7 @@
         </div>
         <div class="standing-stats">
           <span class="big">$640.00</span>
-          <span class="elo up"><span class="ar">▲</span> 120 <span class="w">1w</span></span>
+          <span class="elo up"><span class="ar">▲</span> 120</span>
         </div>
       </section>
 
