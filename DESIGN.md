@@ -489,6 +489,23 @@ Leaderboards change slowly, so caching is nearly free. **Fix:** Next.js **ISR / 
 
 > **Retention MOTD nudge.** The hourly cron sync is silent, so the *next interactive* `npx @tokenboard/cli` run is our one retention surface — use it. On that run, print a one-line terminal MOTD nudge driven by the `delta`/`rankChange` already present in the board JSON (§14.4), e.g. `‹dim›you dropped to #4 — Dana passed you›`. A negative rank change with a named passer is the exact "come back tomorrow" hook from §2; it costs nothing (the data is already in the board payload) and turns a silent background sync into a reason to re-engage.
 
+> **Interactive vs. cron — the load-bearing split.** Everything below (URLs, prompts, nudges) prints **only on an interactive run** (`process.stdout.isTTY`). The scheduled `tokenboard sync` (cron/launchd, §13) stays **silent** — no URLs, and **never an interactive prompt** (a `[y/N]` in a background job would hang forever). The CLI detects TTY and degrades to silent automatically.
+
+> **Post-sync footer (interactive only).** After an interactive sync, print the board, then two affordances that use fields already in the `/sync` response (`board_url`, `profile_url`):
+> ```
+> ✔ synced 6.9M tokens · you're #5 in steel-cartel
+> → live board:  tokenboard.sh/c/steel-cartel
+> → your profile: tokenboard.sh/u/devon
+> ```
+> This drives web traffic and feeds the share loop (a dev who sees their rank in the terminal clicks through to the shareable web board).
+
+> **Work-email verification — an interactive nudge, not a command.** Company boards ("race your coworkers") exist (`ARCHITECTURE.md` §5), but the email magic-link/OTP needs a browser, so we don't make users learn a command. Instead, on an interactive run, **if the user is signed in (claimed) and not yet on any company board**, show a **one-time `[y/N]` prompt**:
+> ```
+> Race your coworkers too? Verify your work email [y/N] › y
+> → opening tokenboard.sh/verify …   (enter your work email there; click the link we email you)
+> ```
+> `y` → open the browser to `tokenboard.sh/verify` (the existing web flow in §5.3 does the rest: enter email → emailed magic-link/OTP → auto-join the domain's company board). `N` (or non-TTY) → do nothing and don't re-ask this session. The terminal stays dumb; all email/link handling is web-side. There is **no `tokenboard verify` command** — this redirect-on-`y` prompt is the entire CLI surface for it.
+
 ### 14.1 Commands
 Minimal surface; the bare command does the 90% thing.
 

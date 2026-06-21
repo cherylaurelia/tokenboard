@@ -938,6 +938,8 @@ The DB writes in steps 8–12 run in a single Postgres transaction; Redis writes
 | `tokenboard install` | Writes the recurring sync job (cron on Linux, launchd on macOS, Scheduled Task on Windows). |
 | `tokenboard uninstall` | Removes the job + local config/token. |
 
+> **Post-sync UX is interactive-only** (gated on `process.stdout.isTTY`; the cron `sync` stays silent — no URLs, no prompts). On an interactive sync the CLI prints the board plus `→ live board: <board_url>` and `→ your profile: <profile_url>` (both already in the §6.3 response), and — for a signed-in user not yet on any company board — a one-time `Verify your work email? [y/N]` prompt that, on `y`, opens `tokenboard.sh/verify` (the §5.3 web flow). There is **no `tokenboard verify` command**; work-email verification is a browser redirect. Full spec: `DESIGN.md` §14.
+
 **Cadence (two triggers, both call `sync`):**
 
 1. **Scheduled** — `tokenboard install` registers a job running **`npx @tokenboard/cli@latest sync`** hourly. The job is written with a **stable per-machine minute offset** to avoid the `:00` thundering herd:
