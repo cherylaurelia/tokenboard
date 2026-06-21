@@ -124,8 +124,8 @@ The split matters because of a hard constraint: **agent logs prune.** Claude Cod
               │                                        │
               ▼                                        ▼
   ┌──────────────────────┐                ┌───────────────────────────────┐
-  │ Postgres (Neon/      │                │ Upstash Redis                 │
-  │ Supabase) + RLS      │                │ sorted sets (ZSET)            │
+  │ Postgres (Supabase)  │                │ Upstash Redis                 │
+  │ + Supabase Auth + RLS│                │ sorted sets (ZSET)            │
   │ SYSTEM OF RECORD     │   read models  │ windowed leaderboards         │
   │ accumulates FOREVER  │ ─────────────► │ create-on-write, TTL keys     │
   │ users, linked_accts, │                │ (7d / 30d / all per scope)    │
@@ -136,7 +136,7 @@ The split matters because of a hard constraint: **agent logs prune.** Claude Cod
 
 **Stack, named:**
 - **Next.js on Vercel** — SSR for crawlable profile/community pages (SEO + share-target unfurls); `next/og` Satori for share cards.
-- **Postgres (Neon or Supabase) + Row-Level Security** — durable system of record.
+- **Supabase (Postgres + Supabase Auth + RLS)** — durable system of record; Supabase Auth runs GitHub login and owns sessions.
 - **Upstash Redis sorted sets** — windowed leaderboards, created on write with TTL keys (cheap, ephemeral, recomputable from Postgres).
 
 Postgres is **truth**; Redis is a **fast, disposable read model** for ranking. If Redis is lost, leaderboards rebuild from `usage_day`.
@@ -456,12 +456,7 @@ Distribution **is** the strategy — it's the gap tokscale left on the table. Th
 **Verdict: 5,000 users is small.** Average write load is ~1.4 req/s, reads collapse to near-zero with caching, Redis ops are microsecond-scale, and row counts stay in the low tens of millions. The architecture (Next.js/Vercel + Postgres + Upstash + next/og) has **10–100× headroom** before any redesign. The risk is not throughput — it is a short list of specific footguns.
 
 ### Postgres connection pooling — the #1 risk (MANDATORY before launch)
-Each Vercel serverless invocation that opens a raw TCP Postgres connection consumes one backend slot. Neon's 0.25 CU free tier exposes only ~**97 usable direct connections** (104 − 7 reserved); a bursty ingest will hit `too many connections` and start dropping writes. **Fix (pick one):**
-- **Neon pooled endpoint** — add `-pooler` to the host (PgBouncer, **transaction mode**, `max_client_conn` 10,000); **or**
-- **`@neondatabase/serverless` HTTP driver** — queries over HTTP/WebSocket, sidesteps TCP connection accounting entirely (ideal for one-shot serverless ingest writes); **or**
-- **Supabase Supavisor** transaction-mode pooler on port `6543`.
-
-When adopting a transaction-mode pooler, configure the client for it: **Prisma** needs `?pgbouncer=true&connection_limit=1`; or prefer the Neon HTTP driver to avoid the prepared-statement / session-state class of issues entirely. Our ingest is a simple idempotent `INSERT … ON CONFLICT DO UPDATE`, which is unaffected by transaction-mode limitations. Co-locate functions and DB in one region (e.g. `iad1`) to cut connection hold time.
+Each Vercel serverless invocation that opens a raw TCP Postgres connection consumes one backend slot; a bursty ingest can hit `too many connections` and start dropping writes. **Fix: route Drizzle through Supabase's Supavisor pooler in transaction mode** (the "Shared Pooler" connection string from the Supabase dashboard — historically port `6543`). With `postgres-js` + Drizzle this means setting **`prepare: false`** (prepared statements aren't supported in transaction-pool mode). Our ingest is a simple idempotent `INSERT … ON CONFLICT DO UPDATE`, unaffected by transaction-mode limitations. Use the **direct** (non-pooled) connection only for long-running/migration tasks, and the **`service_role`** connection for trusted server writes. Co-locate functions and DB in one region (e.g. `iad1`) to cut connection hold time.
 
 ### Write load + cron thundering herd
 5,000 hourly syncs = **~1.4 req/s average** — trivial. The only spike is a naive `0 * * * *` cron firing all 5k at `:00`. Vercel functions auto-scale (≈30,000 concurrency) so the function tier absorbs it; the real victim would be Postgres connections (above). **Fix: client-side jitter.** The CLI picks a stable per-install offset — `sleep(hash(machineId) % 3600s)` after the top of the hour, or a random minute chosen at install — flattening 5k syncs across the full window to ~1.4 req/s with no coordinated spike. Costs nothing; accept-and-queue is overkill at this scale.

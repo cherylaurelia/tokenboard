@@ -37,17 +37,17 @@ This document uses one consistent vocabulary throughout. Notably:
    ┌───────────────────────────────────────────────────────────┐
    │            API LAYER — Vercel / Next.js App Router         │
    │  ┌──────────────┐   route handlers (/api/v1/*)             │
-   │  │ Auth.js (web │   • OAuth callbacks  • /sync (ingest)    │
-   │  │ session) +   │   • /board           • /communities      │
-   │  │ device-token │   • /verify/email    • /profile          │
+   │  │ Supabase Auth│   • OAuth callbacks  • /sync (ingest)    │
+   │  │ (web, GitHub)│   • /board           • /communities      │
+   │  │ + device-tok │   • /verify/email    • /profile          │
    │  │ system (CLI) │   • next/og share-card renderer ─────┐   │
    │  └──────────────┘                                      │   │
    └───────┬───────────────────┬───────────────────┬───────┼───┘
            │                   │                   │       │
    ┌───────▼────────┐  ┌───────▼────────┐  ┌────────▼──┐ ┌──▼──────────┐
-   │ Postgres (Neon)│  │  Redis (Upstash)│  │  next/og  │ │ Vercel Edge │
-   │ SYSTEM OF      │  │  • ZSET leader- │  │  OG share │ │ CDN cache + │
-   │ RECORD         │  │    boards       │  │  card     │ │ ISR tags    │
+   │ Postgres       │  │  Redis (Upstash)│  │  next/og  │ │ Vercel Edge │
+   │ (Supabase)     │  │  • ZSET leader- │  │  OG share │ │ CDN cache + │
+   │ SYSTEM OF REC. │  │    boards       │  │  card     │ │ ISR tags    │
    │ • users        │  │  • rate limits  │  │  images   │ └─────────────┘
    │ • communities  │  │  • profile cache│  └───────────┘
    │ • memberships  │  │  • idempotency  │
@@ -71,8 +71,8 @@ This document uses one consistent vocabulary throughout. Notably:
 ### 1.2 Component responsibilities
 
 - **tokenboard CLI** (`npx @tokenboard/cli`; the installed bin is `tokenboard`) — reads local agentic-coding logs (first-party Claude Code parser + `ccusage` shell-out for the long tail), aggregates **counts only**, renders a local preview with no network identity, and (after `tokenboard claim`/`login`) uploads aggregates via `POST /api/v1/sync` using a device-bound ingest token.
-- **API layer (Vercel / Next.js App Router)** — all business logic lives in route handlers under `/api/v1/*`. Hosts both web auth (Auth.js / GitHub OAuth, opaque DB sessions) and the CLI device-token system, computes server-side cost from the pinned price table, performs idempotent upserts, assembles the shared board contract, and renders share cards via **next/og**.
-- **Postgres (Neon)** — the **system of record**, accessed via **Drizzle**. Holds `users`, `linked_accounts`, `communities`, `community_email_domains`, `memberships`, the `usage_day` fact table, `email_verifications`, `ingest_devices`, and the `sync_requests` idempotency ledger. Every other store is derived from it. Authorization is enforced server-side; Row-Level Security is enabled as defense-in-depth (§2.2).
+- **API layer (Vercel / Next.js App Router)** — all business logic lives in route handlers under `/api/v1/*`. Hosts both web auth (**Supabase Auth** / GitHub OAuth, cookie-based JWT sessions via `@supabase/ssr`) and the CLI device-token system, computes server-side cost from the pinned price table, performs idempotent upserts, assembles the shared board contract, and renders share cards via **next/og**.
+- **Postgres (Supabase)** — the **system of record**, accessed via **Drizzle** (and the Supabase client on the RLS-enforced path). Identity lives in Supabase's `auth.users`; our `public.users` profile is 1:1 with it. Holds `users`, `linked_accounts`, `communities`, `community_email_domains`, `memberships`, the `usage_day` fact table, `email_verifications`, `ingest_devices`, and the `sync_requests` idempotency ledger. Every other store is derived from it. Authorization is enforced server-side; Row-Level Security is enabled as defense-in-depth (§2.2).
 - **Redis (Upstash)** — a **derived, rebuildable index**: sorted-set leaderboards (ZSETs), the previous-period snapshot for deltas, the profile cache, token-bucket rate-limit counters, and idempotency helpers. Never a source of truth.
 - **next/og** — renders OG share-card images for profiles and boards (the X-share artifact), keyed by content hash for immutable CDN caching.
 - **Vercel Edge CDN + ISR** — caches public board JSON and SSR pages with tag-based invalidation driven by the sync handler.
@@ -80,7 +80,7 @@ This document uses one consistent vocabulary throughout. Notably:
 
 ### 1.3 Request lifecycle (one paragraph)
 
-A typical end-to-end flow: the user runs `npx @tokenboard/cli`, which parses local logs and prints their number instantly with no network identity; when they run `tokenboard claim`, the CLI starts a device-authorization flow, the user approves it in a browser (signing into **GitHub** first if needed), and the server mints a device-bound **ingest token** (storing only its hash in `ingest_devices`); thereafter `tokenboard sync` POSTs count-only aggregates with an `Idempotency-Key` to `/api/v1/sync`, where the Next.js handler resolves the bearer token to a `(user_id, device_id)`, validates and clamps the records, computes **cost server-side** from the pinned LiteLLM price table, performs an idempotent `ON CONFLICT (user_id, device_id, date, tool, model)` upsert into `usage_day` (then recomputes the cross-device `usage_day_total`) in Postgres, then (post-commit) overwrites the affected Redis ZSET leaderboard scores and busts the relevant CDN/ISR caches; finally, anyone — web or CLI — reads the same board via `GET /api/v1/board`, served hot from Redis with a Postgres fallback, with `next/og` producing the shareable card.
+A typical end-to-end flow: the user runs `npx @tokenboard/cli`, which parses local logs and prints their number instantly with no network identity; when they run `tokenboard claim`, the CLI starts a device-authorization flow, the user approves it in a browser (signing in with **Supabase Auth → GitHub** first if needed), and the server mints a device-bound **ingest token** (storing only its hash in `ingest_devices`); thereafter `tokenboard sync` POSTs count-only aggregates with an `Idempotency-Key` to `/api/v1/sync`, where the Next.js handler resolves the bearer token to a `(user_id, device_id)`, validates and clamps the records, computes **cost server-side** from the pinned LiteLLM price table, performs an idempotent `ON CONFLICT (user_id, device_id, date, tool, model)` upsert into `usage_day` (then recomputes the cross-device `usage_day_total`) in Postgres, then (post-commit) overwrites the affected Redis ZSET leaderboard scores and busts the relevant CDN/ISR caches; finally, anyone — web or CLI — reads the same board via `GET /api/v1/board`, served hot from Redis with a Postgres fallback, with `next/og` producing the shareable card.
 
 ---
 
@@ -107,22 +107,29 @@ create type account_provider  as enum ('github', 'x');
 create type device_status     as enum ('active', 'revoked');
 
 -- ============================================================
--- users — one row per claimed identity (GitHub OAuth is the spine).
+-- users — public PROFILE row, 1:1 with Supabase's auth.users.
+-- Identity (login/session) lives in Supabase's auth.users; this table holds
+-- only the app-facing profile. id IS the auth.users id (uuid FK, cascade),
+-- so a user is deleted from public.users when their auth identity is removed.
+-- Populated by an `after insert` trigger on auth.users (handle_new_user).
 -- No permanent anonymous users; a row exists only after GitHub sign-in.
 -- ============================================================
 create table users (
-  id            uuid primary key default gen_random_uuid(),
+  id            uuid primary key references auth.users(id) on delete cascade,
   handle        citext not null,                 -- public profile slug, e.g. /u/devon
   display_name  text,
   avatar_url    text,
-  github_id     bigint not null,                 -- numeric GitHub user id (immutable)
+  github_id     bigint not null,                 -- numeric GitHub user id (immutable); mirrored from the GitHub identity
   github_login  citext,                          -- denormalized for display; mutable
-  banned_at     timestamptz,                     -- non-null = banned (sybil/abuse); kills sessions + tokens
+  banned_at     timestamptz,                     -- non-null = banned (sybil/abuse); app-level ban flag (also call auth.admin to kill sessions)
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now(),
   constraint users_handle_key   unique (handle),
   constraint users_github_id_key unique (github_id)
 );
+-- Identity, login, and sessions are owned by Supabase Auth (auth.users /
+-- auth.sessions); we do NOT define our own sessions table. Server-side
+-- revocation uses supabase.auth.admin.signOut() + admin.updateUserById({ban_duration}).
 
 -- ============================================================
 -- linked_accounts — external identities (github primary, x for badge/share).
@@ -142,19 +149,8 @@ create table linked_accounts (
   constraint linked_accounts_user_provider_key unique (user_id, provider)
 );
 
--- ============================================================
--- sessions — opaque web session tokens (Auth.js DB session strategy).
--- The cookie carries only session_token; DB rows enable server-side revocation.
--- ============================================================
-create table sessions (
-  id            uuid primary key default gen_random_uuid(),
-  user_id       uuid not null references users(id) on delete cascade,
-  session_token text not null,                    -- opaque random; the cookie value
-  expires       timestamptz not null,
-  created_at    timestamptz not null default now(),
-  constraint sessions_token_key unique (session_token)
-);
-create index sessions_user_idx on sessions (user_id);
+-- (No `sessions` table — web sessions are Supabase-managed JWTs in auth.sessions.
+--  linked_accounts below still tracks the X connection for the share badge.)
 
 -- ============================================================
 -- communities — both 'community' and 'company' boards live here.
@@ -344,23 +340,25 @@ create index sync_requests_user_idx on sync_requests (user_id, created_at);
 
 ### 2.2 Authorization posture (server-layer first, RLS as backstop)
 
-**Primary authorization happens in the Next.js server layer, not in the database.** Because we use **Auth.js v5 with opaque database sessions** (not a JWT issued to the client — see §4.1), there is no end-user token to hand Postgres on each query, so we do **not** rely on a per-request `auth.uid()`-style identity inside SQL the way a Supabase-Auth app would. Instead, every route handler / server action resolves the session (or the CLI bearer device token) to a `user_id` **in application code**, then runs queries through a trusted connection scoped to that user. This is the load-bearing access control.
+**Two database access paths, and which enforces RLS:**
 
-**Row-Level Security is enabled as defense-in-depth, not as the primary gate.** We still `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` on every table below and express the same predicates as policies, so a coding mistake in the server layer cannot trivially leak another user's rows. Two connection roles:
-- an **app role** used for ordinary reads, under which the public-readable policies (e.g. "non-banned users' profiles and usage are world-readable") hold without needing a per-request identity;
-- a **`service_role`** that bypasses RLS, used only by trusted server routes (ingest, OAuth callback, email confirm, cost computation, leaderboard writes) **after** they have resolved and authorized the `user_id` in code.
+1. **Supabase client (`@supabase/ssr`) → PostgREST.** Queries made through the Supabase client forward the user's access-token JWT; PostgREST validates it, switches the Postgres role (`anon`/`authenticated`), and exposes the claims so **`auth.uid()` resolves automatically** — RLS is enforced per-user with zero extra plumbing. With no/expired token, `auth.uid()` is null and policies fail closed.
+2. **Drizzle → direct/pooled Postgres connection.** This is our main data path (the leaderboard upserts, windowed aggregates, etc.). It does **not** go through PostgREST, so it carries no JWT — `auth.uid()` would be null and per-user RLS would not apply automatically. Therefore **primary authorization for Drizzle queries happens in the Next.js server layer**: every route handler / server action verifies the Supabase session server-side (`getUser()`/`getClaims()`), derives the `user_id`, and scopes the query in app code (e.g. `where(eq(t.userId, user.id))`).
+
+**So: RLS is enabled on every table as defense-in-depth.** We `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` and author the same predicates as policies, so (a) the Supabase-client path is genuinely RLS-gated, and (b) a mistake in server-layer scoping can't trivially leak another user's rows on that path. Roles:
+- the **`authenticated`/`anon`** roles (Supabase-client path) under which the public-readable policies hold (e.g. "non-banned users' profiles and usage are world-readable");
+- a **`service_role`** (BYPASSRLS) used only by trusted server routes (ingest, auth callback, email confirm, cost computation, leaderboard writes) **after** they've resolved and authorized the `user_id` in code — **server-side only, never exposed to the browser**.
 
 The CLI never talks to Postgres directly — it goes through Next.js route handlers that use `service_role` after resolving the bearer device token.
 
-> **Host note (Neon + Drizzle):** policies are authored in Drizzle's schema (`pgPolicy`/`pgRole`, with Neon's `crudPolicy`/`authUid` helpers) and applied via migrations. Where a policy genuinely needs the caller's id inside SQL (rare, given server-layer authz), Neon exposes `auth.user_id()` over a verified JWT — the portable analog of Supabase's `auth.uid()`. We avoid depending on it in the hot path precisely because database sessions don't carry such a JWT; if we ever want true DB-enforced per-row identity we mint a short-lived server-signed JWT and set it on the connection, but that is explicitly **not** required for v1.
+> **Optional DB-enforced RLS over Drizzle:** if we ever want `auth.uid()` to apply to a Drizzle query too, the `drizzle-orm/supabase` integration runs it inside a transaction that does `set local role …` + `set_config('request.jwt.claims', …, true)` from the verified token, then resets. We don't require this for v1 — server-layer authz is the gate; RLS is the backstop.
 
-In the policy gists below, **`auth.uid()` is shorthand for "the authenticated caller's `user_id`"** — the value our server layer has already resolved from the Auth.js session / device token (on Neon this maps to `auth.user_id()` when a JWT is present, or to the `user_id` the server-role connection scopes to). It denotes the identity predicate; it does not imply a Supabase-Auth JWT is in play.
+In the policy gists below, **`auth.uid()` is the Supabase RLS helper** returning the authenticated caller's `user_id` from the JWT (on the Supabase-client path); on the Drizzle path the equivalent identity check is enforced in server code. It denotes the identity predicate either way.
 
 | Table | RLS | Policy gist |
 |---|---|---|
 | `users` | on | **SELECT**: all non-banned rows are world-readable (`banned_at is null`) — individual profiles are always public, so there is no `is_public`/`profile_visibility` column and no "shares a community" branch to gate on. **UPDATE**: only `id = auth.uid()`. **INSERT**: service_role only (created at OAuth callback). |
 | `linked_accounts` | on | **SELECT/UPDATE/DELETE**: only `user_id = auth.uid()`. `access_token` never exposed via PostgREST (column-level revoke); reads go through server. |
-| `sessions` | on | service_role only — opaque session tokens are never client-selectable; revocation is a server `DELETE`. |
 | `communities` | on | **SELECT**: `visibility = 'public'` to everyone; `visibility = 'unlisted'` readable if you know the id (still gated to anon, allowed); `visibility = 'private'` only if `exists (select 1 from memberships m where m.community_id = communities.id and m.user_id = auth.uid())`. **INSERT**: any authenticated user (sets `created_by = auth.uid()`). **UPDATE**: only members with `role in ('admin','owner')`. |
 | `community_email_domains` | on | **SELECT**: readable if parent community is readable (same visibility rule). **INSERT/DELETE**: company-board `owner`/`admin` only, via server. |
 | `memberships` | on | **SELECT**: your own rows always; other rows readable only if the community is readable to you (so public boards expose their roster, private boards do not). **INSERT**: only `user_id = auth.uid()` AND the join is authorized for that community's `join_policy` (open always; code/email_domain enforced server-side via service_role on the join/verify routes). **DELETE**: your own membership (leave), or admins removing a member. |
@@ -377,12 +375,12 @@ Defense-in-depth: leaderboard endpoints do **not** rely solely on RLS; the serve
 
 ## 3. API Surface (v1)
 
-Base path `/api/v1`. Auth column: **none** (public), **session** (Auth.js DB-session cookie from GitHub OAuth), **device** (CLI bearer = `Authorization: Bearer tbd_<token>`).
+Base path `/api/v1`. Auth column: **none** (public), **session** (Supabase Auth JWT cookie from GitHub OAuth, verified server-side via `@supabase/ssr` `getUser()`/`getClaims()`), **device** (CLI bearer = `Authorization: Bearer tbd_<token>`).
 
 | Method | Path | Auth | Request body | Response | Notes |
 |---|---|---|---|---|---|
-| GET | `/api/auth/github` | none | — | 302 redirect | Begins GitHub OAuth. |
-| GET | `/api/auth/github/callback` | none | `?code&state` | 302 → app, sets session cookie | Upserts `users` + `linked_accounts(github)` (service_role); creates `sessions` row. |
+| GET | `/api/auth/login` | none | — | 302 redirect | Calls `signInWithOAuth({provider:'github'})` → Supabase → GitHub. |
+| GET | `/auth/callback` | none | `?code` | 302 → app, sets `sb-…-auth-token` cookie | `exchangeCodeForSession(code)`; the `auth.users` insert trigger upserts the `public.users` profile + `linked_accounts(github)`. |
 | POST | `/api/v1/cli/login/start` | none | `{ client_name, machine_hash }` | `{ device_code, user_code, verification_url, interval, expires_in }` | OAuth device flow; CLI opens `verification_url`. Writes `device_grants`. |
 | POST | `/api/v1/cli/login/poll` | none | `{ device_code }` | `{ status:"pending" }` / `{ status:"slow_down" }` / `{ status:"complete", ingest_token, user:{handle} }` | On complete, mints `ingest_devices` row; raw token returned once. |
 | GET | `/api/v1/devices` | session | — | `{ devices:[{id,label,last_used_at,status}] }` | Manage CLI devices. |
@@ -502,78 +500,64 @@ This section specifies how tokenboard establishes identity, authenticates CLI de
 
 ### 4.1 Session-layer decision
 
-**Decision: Auth.js v5 (NextAuth) with the GitHub provider, configured for a database session strategy backed by Postgres, plus a separate hand-rolled device-token system for the CLI.**
+**Decision: Supabase Auth (GoTrue) with the GitHub provider for the web, plus a separate hand-rolled device-token system for the CLI.** Identity lives in Supabase's `auth.users`; our app data hangs off it via a `public.users` profile row keyed 1:1 to `auth.users.id`.
 
 Rationale:
 
-- **Auth.js for the *web*** because it already implements the GitHub OAuth 2.0 dance (state, PKCE where supported, token exchange, account linking) correctly, ships first-class App Router support (`handlers`, `auth()`), and lets us drop session/account/user rows into our own Neon Postgres via the **`@auth/drizzle-adapter`** (matching our Drizzle ORM choice). We do not want to re-implement CSRF-safe OAuth by hand.
-- **Database sessions (not pure JWT)** because tokenboard needs *server-side revocation* — when a company privatizes a board, when a user is banned for sybil abuse (`users.banned_at`), or when a device token is revoked, we must be able to kill a session immediately. Stateless JWTs can't be revoked without a denylist, at which point you've reinvented DB sessions. The session cookie is therefore an opaque, `HttpOnly`, `Secure`, `SameSite=Lax` session-id cookie; the row lives in `sessions`.
-- **The CLI does NOT use Auth.js sessions.** Browsers get cookies; the CLI gets a long-lived **ingest token** (opaque, hashed at rest in `ingest_devices`) minted through a device-authorization-style claim flow (§4.3). Mixing the two is the most common auth bug in CLI+web products, so they are kept as separate credential types against the same `users` table.
+- **Supabase Auth for the *web*** because it runs the entire GitHub OAuth 2.0 dance for us (state, PKCE, token exchange, the `auth.users` row), ships first-class Next.js App Router support via **`@supabase/ssr`** (cookie-based sessions, a middleware "proxy" that refreshes tokens), and — because the database and the auth system are the same platform — gives us **`auth.uid()` inside RLS for free** (see §2.2). We don't re-implement CSRF-safe OAuth, and we don't hand-roll a session store.
+- **Sessions are Supabase-managed JWTs, and server-side revocation still works.** Supabase issues a short-lived access-token **JWT** (default ≤1h) plus a single-use rotating refresh token, both in an `HttpOnly` cookie (`sb-<ref>-auth-token`) via `@supabase/ssr`. Each access token's `session_id` claim maps to a row in `auth.sessions`, so we keep the *server-side revocation* tokenboard needs — ban for sybil abuse, privatize, force-logout — via `supabase.auth.admin.signOut(jwt, scope)` and `admin.updateUserById(uid, { ban_duration })`. **Caveat (load-bearing):** a ban/revoke is enforced on the *next token refresh*, not instantly; to kill a session immediately we call `admin.signOut` (deletes the `auth.sessions` rows) **and** keep the access-token TTL short. This is why we don't need a custom opaque-DB-session layer — Supabase already provides revocable sessions.
+- **The CLI does NOT use Supabase sessions.** Supabase Auth is an OAuth *client/relying-party*, not an authorization server — it has **no RFC 8628 device grant** and no long-lived headless API token. So the CLI keeps its own **ingest token** (opaque, hashed at rest in `ingest_devices`) minted through our hand-rolled device-authorization claim flow (§4.3). The only change vs. an Auth.js design: the browser `/claim` "approve device" page resolves the **Supabase** session (`getUser()` / `getClaims()` via `@supabase/ssr`) to a `user_id` before binding the grant. Web and CLI stay separate credential types against the same identity.
 
 ```
                  ┌───────────────────────────┐
-   Browser  ───▶ │ Auth.js (GitHub provider) │ ──▶ sessions (opaque cookie)
-                 └───────────────────────────┘
-                                │ same users table
+   Browser  ───▶ │ Supabase Auth (GitHub)    │ ──▶ auth.users + JWT cookie
+                 └───────────────────────────┘   (sb-<ref>-auth-token, HttpOnly)
+                                │ public.users.id = auth.users.id (1:1)
    CLI      ───▶ ┌───────────────────────────┐
                  │ device-claim → ingest_token│ ──▶ ingest_devices (hashed)
                  └───────────────────────────┘
 ```
 
-### 4.2 GitHub OAuth 2.0 flow (web)
+### 4.2 GitHub OAuth 2.0 flow (web, via Supabase Auth)
 
-Scopes requested: **`read:user`** (profile: login, id, avatar, name) and **`user:email`** (to read the user's verified primary email — used only to pre-fill the *optional* company-verification step in §5; it is **not** treated as proof of work-email control). We deliberately request nothing else — no `repo`, no `org` — to keep the consent screen trustworthy and the blast radius minimal.
+**Supabase Auth runs the OAuth dance; we don't hand-roll it.** GitHub is configured as a social provider in the Supabase dashboard (Client ID + Secret from a GitHub OAuth App whose callback URL is `https://<project-ref>.supabase.co/auth/v1/callback`). The browser kicks off login with `supabase.auth.signInWithOAuth({ provider: 'github', options: { redirectTo } })`; Supabase (GoTrue) owns `state`, PKCE, the `code → token` exchange (the GitHub `client_secret` lives only in Supabase, never in our app), and writing the GitHub identity into `auth.users`. GitHub returns an already-verified primary email, so **no confirmation email is sent** on GitHub login (our only email dependency is the deliberate work-email verification via Resend, §5.3).
 
-Security parameters:
-- **`state`** — random 32-byte value, stored in a short-lived `HttpOnly` cookie, compared on callback. Mandatory CSRF defense; Auth.js handles it.
-- **PKCE** — Auth.js sends `code_challenge`/`code_verifier` for providers that support it. GitHub's standard OAuth App flow is `state`-protected; if we register as a GitHub **App** (or use the newer PKCE-capable flow) PKCE is enabled too. Either way `state` is the load-bearing CSRF control here.
-- **Token exchange happens server-side only** — the `client_secret` never reaches the browser; the `code → access_token` swap is a server-to-server POST.
+**Profile mirror.** On first login we ensure a `public.users` row keyed 1:1 to `auth.users.id` (a uuid FK, `on delete cascade`), populated by an `after insert` trigger on `auth.users`. This `public.users` row holds the app-facing profile (`handle`, `display_name`, `avatar_url`, `github_id`, `github_login`, `banned_at`) — Supabase's `auth.users` stays the identity system of record; we never duplicate auth fields. We still key dedup/bans on the **immutable `github_id`** (mirrored from the GitHub identity), never on mutable `login`.
+
+**Sessions.** `@supabase/ssr` stores the access-token JWT + rotating refresh token in an `HttpOnly` cookie (`sb-<ref>-auth-token`); Next.js middleware refreshes them. **Server code authorizes with `supabase.auth.getClaims()` (verifies the JWT signature) or `getUser()` (revalidates against the Auth server) — never `getSession()`, whose cookie can be spoofed.**
 
 **Numbered sequence:**
 
-1. **Authorize** — User clicks "Sign in with GitHub." Server (Auth.js route) generates `state` + PKCE verifier, sets them in `HttpOnly` cookies, and 302-redirects the browser to `https://github.com/login/oauth/authorize?client_id=…&scope=read:user%20user:email&state=…&redirect_uri=…`.
-2. **Consent** — GitHub authenticates the user and shows the consent screen for the requested scopes.
-3. **Callback** — GitHub redirects to the callback with `?code&state`. Server verifies the returned `state` matches the cookie (reject on mismatch).
-4. **Token exchange** — Server POSTs `code` + `client_id` + `client_secret` (+ PKCE `code_verifier`) to `https://github.com/login/oauth/access_token`, receiving a GitHub `access_token`. This is server-to-server.
-5. **Fetch user** — Server calls `GET https://api.github.com/user` and `GET https://api.github.com/user/emails` with the token to get `id` (immutable numeric), `login`, `avatar_url`, `name`, and the verified primary email.
-6. **Upsert `users` row** — Idempotent upsert keyed on **`github_id`** (never `login`, which is mutable/reusable). Store `github_login`, `avatar_url`, `display_name`, and the GitHub email *as a hint only*. (The user's individual board is simply their `users` row — there is no separate community row for an individual.)
-7. **Session cookie** — Server inserts a `sessions` row (random `session_token`, `expires`) and sets the opaque `HttpOnly; Secure; SameSite=Lax` cookie. The short-lived GitHub `access_token` is **discarded** — we don't need ongoing GitHub API access, so we never store it.
-8. **Land** — Browser is redirected to the user's profile / the board they were claiming. They now appear publicly.
+1. **Authorize** — User clicks "Sign in with GitHub." The client calls `signInWithOAuth({ provider:'github', options:{ redirectTo:'…/auth/callback' } })`; Supabase 302-redirects the browser to GitHub with `state` + PKCE it manages.
+2. **Consent** — GitHub authenticates the user and shows the consent screen (we request only the default profile + email scopes; no `repo`/`org`).
+3. **Callback** — GitHub redirects to Supabase's `/auth/v1/callback`, which validates `state`/PKCE, exchanges the code (server-to-server, with the secret), and creates the `auth.users` row + session, then redirects to our `redirectTo` route with a `code`.
+4. **Code exchange** — Our `/auth/callback` route handler calls `supabase.auth.exchangeCodeForSession(code)`, which sets the `sb-<ref>-auth-token` cookie.
+5. **Profile mirror** — The `after insert` trigger on `auth.users` (or our callback, idempotently) upserts the `public.users` row keyed on `auth.users.id`, recording `github_id`, `github_login`, `avatar_url`, `display_name`.
+6. **Land** — Browser is redirected to the user's profile / the board they were claiming. They now appear publicly.
 
 **ASCII sequence diagram:**
 
 ```
- User           Browser            tokenboard (Next.js)          GitHub
-  │  click sign-in  │                       │                       │
-  │────────────────▶│                       │                       │
-  │                 │  GET /signin/github   │                       │
-  │                 │──────────────────────▶│ set state+PKCE cookie │
-  │                 │   302 → github.com    │                       │
-  │                 │◀──────────────────────│                       │
-  │                 │   authorize?state=…   │                       │
-  │                 │──────────────────────────────────────────────▶│
-  │   consent       │                       │                       │
-  │◀───────────────────────────────────────────────────────────────│
-  │  approve        │                       │                       │
-  │────────────────────────────────────────────────────────────────▶│
-  │                 │  302 → /callback?code=…&state=…               │
-  │                 │◀──────────────────────────────────────────────│
-  │                 │  GET /callback        │                       │
-  │                 │──────────────────────▶│ verify state==cookie  │
-  │                 │                       │  POST oauth/access_token (code+secret+verifier)
-  │                 │                       │──────────────────────▶│
-  │                 │                       │   { access_token }    │
-  │                 │                       │◀──────────────────────│
-  │                 │                       │  GET /user, /user/emails
-  │                 │                       │──────────────────────▶│
-  │                 │                       │   {id,login,email}    │
-  │                 │                       │◀──────────────────────│
-  │                 │                       │ UPSERT users (github_id)
-  │                 │                       │ INSERT sessions       │
-  │                 │  Set-Cookie: session  │ (discard gh token)    │
-  │                 │◀──────────────────────│                       │
-  │  see my profile │  302 → /me            │                       │
-  │◀────────────────│                       │                       │
+ User           Browser          tokenboard (Next.js)      Supabase Auth        GitHub
+  │  click sign-in  │                    │                      │                  │
+  │────────────────▶│ signInWithOAuth    │                      │                  │
+  │                 │───────────────────────────────────────────▶│ build state+PKCE │
+  │                 │           302 → github.com authorize       │─────────────────▶│
+  │                 │◀───────────────────────────────────────────│                  │
+  │   consent + approve                                          │                  │
+  │────────────────────────────────────────────────────────────────────────────────▶│
+  │                 │      302 → supabase /auth/v1/callback?code │                  │
+  │                 │◀───────────────────────────────────────────────────────────────│
+  │                 │                    │   code exchange (secret), create auth.users + session
+  │                 │                    │                      │◀────────────────▶│
+  │                 │   302 → /auth/callback?code=…              │                  │
+  │                 │◀───────────────────────────────────────────│                  │
+  │                 │ GET /auth/callback │ exchangeCodeForSession│                  │
+  │                 │───────────────────▶│─────────────────────▶│ set sb-…-auth cookie
+  │                 │ Set-Cookie: sb-…   │ trigger: upsert public.users (auth.users.id)
+  │                 │◀───────────────────│                      │                  │
+  │  see my profile │  302 → /me         │                      │                  │
+  │◀────────────────│                    │                      │                  │
 ```
 
 ### 4.3 Value-first, login-to-claim CLI flow (the critical UX)
@@ -589,7 +573,7 @@ The CLI **never** prompts for login before showing value. `npx @tokenboard/cli` 
 1. CLI POSTs `/api/v1/cli/login/start` with `{ client_name, machine_hash }` (machine_hash = salted hash of a stable machine id, used only for "this device" labeling and de-dup, never PII).
 2. Server creates a `device_grants` row: a `device_code` (long, secret, CLI-held), a short human `user_code` (e.g. `WXYZ-1234`), `expires_at` (~10 min), `interval` (poll seconds), status `pending`. Returns `{ device_code, user_code, verification_url, interval, expires_in }`.
 3. CLI opens the browser to `verification_url` = `https://tokenboard.sh/claim?code=WXYZ-1234` and **also prints** the URL + code in case the browser can't open. CLI begins polling `/api/v1/cli/login/poll` with `device_code` every `interval` seconds.
-4. In the browser, if the user has no web session they go through the **GitHub OAuth flow (§4.2)** first. Once authenticated, the `/claim` page shows the `user_code` for confirmation ("Approve device WXYZ-1234?") and they click **Approve**.
+4. In the browser, if the user has no web session they go through the **Supabase Auth GitHub flow (§4.2)** first. The `/claim` route handler then resolves the **Supabase** session server-side (`getUser()` / `getClaims()` via `@supabase/ssr`) to a `user_id`; the page shows the `user_code` for confirmation ("Approve device WXYZ-1234?") and they click **Approve**.
 5. On approve, server binds the grant to the user: sets `device_grants.user_id`, status `approved`, and mints a **device/ingest token** — a random opaque secret returned to the CLI on its *next poll* (never shown in the browser). Server stores only `sha256(ingest_token)` in `ingest_devices` with `user_id`, `machine_hash`, `created_at`, `last_used_at`, `revoked_at`.
 6. CLI's next poll returns `{ status: "complete", ingest_token }`. CLI writes it to `~/.config/tokenboard/credentials` (mode `600`). The `device_code` is now consumed.
 7. All future `tokenboard sync` calls send `Authorization: Bearer <ingest_token>`. The token resolves to `(user_id, device_id)`; ingestion is the idempotent upsert keyed `(user_id, device_id, date, tool, model)`. The token authorizes *ingest only* — it cannot read other users, manage communities, or act as a web session.
@@ -608,7 +592,7 @@ Polling responses follow the OAuth device-grant convention: `authorization_pendi
   │              │ open browser → /claim?code=WXYZ-1234                      │
   │              │─────────────────────────────────────────────────────────▶│
   │              │ print "go to <url>, code WXYZ-1234"                       │
-  │   (sees code)│                                 │   ┌── GitHub OAuth (§4.2) if no session
+  │   (sees code)│                                 │   ┌── Supabase Auth GitHub (§4.2) if no session
   │              │                                 │◀──┘  → session cookie   │
   │              │  ── poll loop ──▶               │                        │
   │              │ POST /cli/login/poll(device_code)                        │
@@ -637,9 +621,9 @@ Why device-flow and not a localhost redirect: a localhost callback works on a de
 
 | Credential | Holder | Storage | Revocable | Authorizes |
 |---|---|---|---|---|
-| Session cookie | Browser | `sessions` row, opaque `HttpOnly` cookie | Yes (delete row) | Full web app as that user |
+| Supabase session | Browser | access-token JWT + refresh token in `HttpOnly` cookie (`sb-…-auth-token`); session row in `auth.sessions` | Yes (`admin.signOut` deletes the `auth.sessions` row; effective on next refresh + short TTL) | Full web app as that user |
 | Ingest/device token | CLI | `ingest_devices`, **sha256 only** | Yes (set `revoked_at`); also has sliding `expires_at` (bumped each sync, silent re-mint on cron) | Ingest aggregates only |
-| GitHub `access_token` | — | **Discarded** after first fetch | n/a | Nothing (not retained) |
+| GitHub `access_token` | — | Held by **Supabase Auth**, not by us | n/a (Supabase-managed) | Nothing we retain |
 | Email verification | transient | `email_verifications`, **hashes only**, ~15m TTL | Expires | One-time company join |
 
 ### 4.5 Abuse / sybil considerations
@@ -648,7 +632,7 @@ The product is a public leaderboard, so the adversary's goal is **inflated rank*
 
 **Tier 1 — GitHub identity (sock puppets):**
 - **Threat:** a user spins up many GitHub accounts to flood a board or fake a community.
-- **Mitigations:** key everything on immutable **`github_id`** so deleting+recreating a username doesn't dodge bans; **plausibility caps** on ingested aggregates (max tokens/day per human) plus per-`machine_hash` de-dup so one device can't back ten accounts undetected; ban = `users.banned_at`, with DB sessions + device tokens revoked immediately (this is *why* we chose DB sessions in §4.1). (We deliberately do **not** gate public ranking on GitHub account age/signal — every signed-in user ranks immediately; the social/communities framing, not an eligibility filter, is the anti-cheat posture. See §4.6.)
+- **Mitigations:** key everything on immutable **`github_id`** so deleting+recreating a username doesn't dodge bans; **plausibility caps** on ingested aggregates (max tokens/day per human) plus per-`machine_hash` de-dup so one device can't back ten accounts undetected; ban = `users.banned_at` **plus** `supabase.auth.admin.updateUserById({ban_duration})` + `admin.signOut()` to kill the user's Supabase sessions, and device tokens revoked (set `revoked_at`) — note the ban takes effect on next token refresh unless `signOut` deletes the session rows, so we pair it with a short access-token TTL (§4.1). (We deliberately do **not** gate public ranking on GitHub account age/signal — every signed-in user ranks immediately; the social/communities framing, not an eligibility filter, is the anti-cheat posture. See §4.6.)
 
 **Tier 2 — community (slug squatting, invite abuse):**
 - **Threats:** squatting desirable slugs (`/c/openai`); brigading with puppets; leaked join codes.
@@ -1246,12 +1230,12 @@ Token-bucket limits enforced in Upstash Redis, keyed per-user (`uid:<id>`) and p
 | Component | Choice | Why |
 |---|---|---|
 | Hosting / runtime | **Vercel + Next.js (App Router)** | One platform for SSR pages, API route handlers, Edge CDN, and ISR tag invalidation; route handlers hold all business logic. |
-| System of record | **Neon (serverless Postgres)** | Relational integrity for users/communities/memberships, the `usage_day` fact table, and idempotency ledger; scale-to-zero + per-branch databases (a throwaway DB per Vercel preview/PR) fit the serverless deploy model; the source every other store rebuilds from. Authorization is server-layer-first with RLS as a backstop (§2.2). |
-| ORM / migrations | **Drizzle** | TypeScript-first, zero-dependency query builder that fits serverless cold starts; native `INSERT … ON CONFLICT` upserts (the idempotent sync write) and inline `sql\`…\`` window functions (the leaderboard's ranked aggregates) without leaving the typed layer; in-schema RLS policies via Neon's `crudPolicy`/`authUid` helpers; editable SQL migrations for hand-tuned leaderboard indexes. |
-| Two Neon transports | **`neon-http` + `neon-serverless`** | One-shot HTTP driver for the hot path (leaderboard SUM reads, single-statement upserts — lowest latency); WebSocket pool driver only where Auth.js database sessions need interactive multi-statement transactions. |
+| System of record | **Supabase (Postgres)** | Relational integrity for users/communities/memberships, the `usage_day` fact table, and idempotency ledger; the source every other store rebuilds from. Same platform as Supabase Auth, so identity (`auth.users`) and `auth.uid()` RLS are first-class. Authorization is server-layer-first with RLS as a backstop (§2.2). *Tradeoff vs Neon: free-tier projects pause after 7 days idle and need a manual restore — keep a warming ping or move to Pro ($25/mo) before launch.* |
+| ORM / migrations | **Drizzle** | TypeScript-first, zero-dependency query builder that fits serverless cold starts; native `INSERT … ON CONFLICT` upserts (the idempotent sync write) and inline `sql\`…\`` window functions (the leaderboard's ranked aggregates) without leaving the typed layer; editable SQL migrations for hand-tuned leaderboard indexes; in-schema RLS via the `drizzle-orm/supabase` helpers when DB-enforced policies are wanted. |
+| DB driver | **`postgres-js` via the Supabase pooler** | Drizzle over Supabase's Supavisor pooler (`prepare: false` in transaction-pool mode) for the hot path; service-role connection for trusted server writes. The Supabase client (`@supabase/ssr`) is used for the auth/RLS-enforced path. |
 | Leaderboard / cache store | **Redis (Upstash)** | `O(log N)` ranked ZSET reads/writes for hot leaderboards; also hosts rate-limit buckets, profile cache, and previous-period snapshots. Derived & rebuildable. |
 | Scheduled jobs | **Upstash QStash** | Cron-like schedules that POST to a Next.js route with per-minute precision, automatic retries, a DLQ, and signed delivery — on the Upstash account we already run (no Vercel Pro upgrade, no new vendor). Drives the nightly leaderboard sweep + snapshot (§7.3). |
-| Web auth | **Auth.js v5 (NextAuth) + GitHub provider, DB sessions** | Correct, CSRF-safe OAuth out of the box; **database** sessions give server-side revocation (ban, privatize, device revoke) that JWTs can't. |
+| Web auth | **Supabase Auth (GoTrue) + GitHub provider** | Runs the GitHub OAuth dance, owns `auth.users`, issues cookie-based JWT sessions via `@supabase/ssr`; server-side revocation via `admin.signOut`/`updateUserById({ban_duration})`; gives `auth.uid()` RLS for free. No hand-rolled OAuth or session store. |
 | CLI auth | **Hand-rolled device-authorization flow → ingest token** | A CLI can't receive an OAuth redirect; device flow works over SSH/containers/remote boxes where agentic coding lives. Token hashed at rest, ingest-only scope. |
 | Cost computation | **Pinned LiteLLM price table (server-side)** | Counts in, cost out: clients can't game cost boards; versioned pinning enables deterministic historical re-pricing. |
 | Local log parsing | **First-party Claude Code parser + `ccusage` shell-out** | First-party parser for the primary tool; `ccusage` covers the long tail (Cursor, Codex, Aider, Copilot, Gemini) with graceful degradation. |
@@ -1281,7 +1265,7 @@ Token-bucket limits enforced in Upstash Redis, keyed per-user (`uid:<id>`) and p
 - **Profile cache** — Redis hash `prof:{user_id}` (handle, display name, avatar, tier, pill) joined onto leaderboard members (`user_id`) at read time; Postgres-backed, lazily refilled.
 - **Rolling window** — `7d` / `30d` / `all` ranking horizons computed by unioning day buckets (with a nightly sweep for correct decay) plus incremental write-path freshness.
 - **Scope** — `g` (global) or `c:{community_id}`; the first segment of a Redis board key.
-- **Session cookie** — the opaque, `HttpOnly` web credential backed by a `sessions` row; revocable server-side (the reason for DB sessions over JWTs).
+- **Session cookie** — the Supabase-managed web credential: an access-token JWT + rotating refresh token in an `HttpOnly` cookie (`sb-…-auth-token`), backed by an `auth.sessions` row; revocable server-side via `admin.signOut` (the reason a stateless-only JWT wasn't enough).
 - **System of record** — Postgres. Every leaderboard/cache value is derivable from it; Redis loss is recoverable by rebuild.
 - **Tier pill** — the badge shown on a board row indicating a member's tier (`individual` = GitHub, `community`, `company` = verified work domain).
 - **`usage_day`** — the core fact table, one row per `(user_id, device_id, date, tool, model)`; idempotent overwrite-upsert on sync (per device); holds server-computed `cost_usd`. Cross-device totals live in `usage_day_total`.

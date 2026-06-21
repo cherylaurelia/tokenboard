@@ -51,12 +51,11 @@ implementation. Start here:
 
 ## Stack
 
-TypeScript end to end — **Next.js** (web + API) on **Vercel**, **Neon** (serverless
-Postgres) as the system of record via **Drizzle**, **Upstash Redis** sorted sets for
-leaderboards (and **QStash** for the nightly sweep), **Auth.js** for GitHub login,
-**Resend** for work-email verification, **next/og** for share cards. The CLI is a thin
-Node client that wraps [`ccusage`](https://github.com/ryoppippi/ccusage) for parsing
-the long tail.
+TypeScript end to end — **Next.js** (web + API) on **Vercel**, **Supabase** (Postgres)
+as the system of record via **Drizzle**, **Supabase Auth** for GitHub login, **Upstash
+Redis** sorted sets for leaderboards (and **QStash** for the nightly sweep), **Resend**
+for work-email verification, **next/og** for share cards. The CLI is a thin Node client
+that wraps [`ccusage`](https://github.com/ryoppippi/ccusage) for parsing the long tail.
 
 ## Privacy
 
