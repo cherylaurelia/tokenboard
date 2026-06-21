@@ -119,9 +119,8 @@
   /* ───────── header block (left-aligned in the main column) ───────── */
   .head { text-align: left; padding: 0 0 12px; }
   .title {
-    font-family: var(--pixel); font-size: 23px; line-height: 1.15;
-    letter-spacing: 1px; color: var(--ink);
-    text-shadow: 2px 2px 0 #0b0c14;   /* subtle drop only, no glow */
+    font-family: var(--money); font-weight: 700; font-size: 30px; line-height: 1.12;
+    letter-spacing: 0; color: var(--ink);
     margin-bottom: 0;
   }
   .title .dash { color: var(--coral); }
@@ -239,9 +238,9 @@
   .who-link:hover .at { color: var(--coral-hi); text-decoration: underline; }
   .pl.you .who-link .at { color: var(--coral-hi); }
 
-  /* ELO delta — far right of the $, green/red with arrowhead */
+  /* ELO delta — far right of the $, green/red with arrowhead, weekly tag */
   .elo {
-    flex: none; margin-left: 16px; min-width: 64px; text-align: right;
+    flex: none; margin-left: 16px; min-width: 84px; text-align: right;
     font-family: var(--term); font-size: 18px; letter-spacing: 0.5px;
     display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px;
   }
@@ -249,6 +248,11 @@
   .elo.down { color: var(--coral); }
   .elo.flat { color: var(--ink-4); }
   .elo .ar { font-size: 13px; }
+  /* "1w" weekly tag — dim + small so it reads as a unit, not a value */
+  .elo .w {
+    font-family: var(--money); font-weight: 400; font-size: 11px;
+    color: var(--ink-4); letter-spacing: 0; margin-left: 1px;
+  }
   .tag {
     font-family: var(--term); font-size: 12px; letter-spacing: 1px;
     text-transform: uppercase; line-height: 1;
@@ -487,43 +491,43 @@
     <div class="board">
 
       <!-- 1 -->
-      <div class="pl r1" data-usd="$1,180" data-usd-w="100" data-tok="12.4M" data-tok-w="100">
+      <div class="pl r1" data-usd="$1,180.00" data-usd-w="100" data-tok="12.4M" data-tok-w="100">
         <div class="rk">1</div>
         <img class="pfp" src="https://github.com/torvalds.png?size=80" alt="" loading="lazy" />
-        <div class="pl-top" data-usd="$1,180" data-usd-w="100" data-tok="12.4M" data-tok-w="100">
+        <div class="pl-top" data-usd="$1,180.00" data-usd-w="100" data-tok="12.4M" data-tok-w="100">
           <a class="who-link" href="https://github.com/torvalds" target="_blank" rel="noopener"><span class="at">@torvalds</span></a>
           <span class="tok">12.4<span class="m">M</span></span>
-          <span class="elo up"><span class="ar">▲</span> 85</span>
+          <span class="elo up"><span class="ar">▲</span> 85 <span class="w">1w</span></span>
         </div>
       </div>
 
       <!-- 2 -->
-      <div class="pl r2" data-usd="$1,090" data-usd-w="92" data-tok="11.8M" data-tok-w="95">
+      <div class="pl r2" data-usd="$1,090.00" data-usd-w="92" data-tok="11.8M" data-tok-w="95">
         <div class="rk">2</div>
         <img class="pfp" src="https://github.com/gaearon.png?size=80" alt="" loading="lazy" />
-        <div class="pl-top" data-usd="$1,090" data-usd-w="92" data-tok="11.8M" data-tok-w="95">
+        <div class="pl-top" data-usd="$1,090.00" data-usd-w="92" data-tok="11.8M" data-tok-w="95">
           <a class="who-link" href="https://github.com/gaearon" target="_blank" rel="noopener"><span class="at">@gaearon</span></a>
           <span class="tok">11.8<span class="m">M</span></span>
-          <span class="elo up"><span class="ar">▲</span> 60</span>
+          <span class="elo up"><span class="ar">▲</span> 60 <span class="w">1w</span></span>
         </div>
       </div>
 
       <!-- 3 -->
-      <div class="pl r3" data-usd="$840" data-usd-w="71" data-tok="9.2M" data-tok-w="74">
+      <div class="pl r3" data-usd="$840.50" data-usd-w="71" data-tok="9.2M" data-tok-w="74">
         <div class="rk">3</div>
         <img class="pfp" src="https://github.com/sindresorhus.png?size=80" alt="" loading="lazy" />
-        <div class="pl-top" data-usd="$840" data-usd-w="71" data-tok="9.2M" data-tok-w="74">
+        <div class="pl-top" data-usd="$840.50" data-usd-w="71" data-tok="9.2M" data-tok-w="74">
           <a class="who-link" href="https://github.com/sindresorhus" target="_blank" rel="noopener"><span class="at">@sindresorhus</span></a>
           <span class="tok">9.2<span class="m">M</span></span>
-          <span class="elo down"><span class="ar">▼</span> 40</span>
+          <span class="elo down"><span class="ar">▼</span> 40 <span class="w">1w</span></span>
         </div>
       </div>
 
       <!-- 4 -->
-      <div class="pl r4" data-usd="$710" data-usd-w="60" data-tok="7.7M" data-tok-w="62">
+      <div class="pl r4" data-usd="$710.25" data-usd-w="60" data-tok="7.7M" data-tok-w="62">
         <div class="rk">4</div>
         <img class="pfp" src="https://github.com/tj.png?size=80" alt="" loading="lazy" />
-        <div class="pl-top" data-usd="$710" data-usd-w="60" data-tok="7.7M" data-tok-w="62">
+        <div class="pl-top" data-usd="$710.25" data-usd-w="60" data-tok="7.7M" data-tok-w="62">
           <a class="who-link" href="https://github.com/tj" target="_blank" rel="noopener"><span class="at">@tj</span></a>
           <span class="tok">7.7<span class="m">M</span></span>
           <span class="elo flat"><span class="ar">–</span></span>
@@ -531,34 +535,34 @@
       </div>
 
       <!-- 5 — YOU -->
-      <div class="pl you" data-usd="$640" data-usd-w="54" data-tok="6.9M" data-tok-w="56">
+      <div class="pl you" data-usd="$640.00" data-usd-w="54" data-tok="6.9M" data-tok-w="56">
         <span class="star">&#9656;</span>
         <div class="rk">5</div>
         <img class="pfp" src="https://github.com/ryoppippi.png?size=80" alt="" loading="lazy" />
-        <div class="pl-top" data-usd="$640" data-usd-w="54" data-tok="6.9M" data-tok-w="56">
+        <div class="pl-top" data-usd="$640.00" data-usd-w="54" data-tok="6.9M" data-tok-w="56">
           <a class="who-link" href="https://github.com/ryoppippi" target="_blank" rel="noopener"><span class="at">@ryoppippi</span></a>
           <span class="tag you">&#9733; You</span>
           <span class="tok">6.9<span class="m">M</span></span>
-          <span class="elo up"><span class="ar">▲</span> 120</span>
+          <span class="elo up"><span class="ar">▲</span> 120 <span class="w">1w</span></span>
         </div>
       </div>
 
       <!-- 6 -->
-      <div class="pl r6" data-usd="$560" data-usd-w="47" data-tok="6.1M" data-tok-w="49">
+      <div class="pl r6" data-usd="$560.75" data-usd-w="47" data-tok="6.1M" data-tok-w="49">
         <div class="rk">6</div>
         <img class="pfp" src="https://github.com/yyx990803.png?size=80" alt="" loading="lazy" />
-        <div class="pl-top" data-usd="$560" data-usd-w="47" data-tok="6.1M" data-tok-w="49">
+        <div class="pl-top" data-usd="$560.75" data-usd-w="47" data-tok="6.1M" data-tok-w="49">
           <a class="who-link" href="https://github.com/yyx990803" target="_blank" rel="noopener"><span class="at">@yyx990803</span></a>
           <span class="tok">6.1<span class="m">M</span></span>
-          <span class="elo down"><span class="ar">▼</span> 25</span>
+          <span class="elo down"><span class="ar">▼</span> 25 <span class="w">1w</span></span>
         </div>
       </div>
 
       <!-- 7 -->
-      <div class="pl r7" data-usd="$500" data-usd-w="42" data-tok="5.4M" data-tok-w="44">
+      <div class="pl r7" data-usd="$500.00" data-usd-w="42" data-tok="5.4M" data-tok-w="44">
         <div class="rk">7</div>
         <img class="pfp" src="https://github.com/kentcdodds.png?size=80" alt="" loading="lazy" />
-        <div class="pl-top" data-usd="$500" data-usd-w="42" data-tok="5.4M" data-tok-w="44">
+        <div class="pl-top" data-usd="$500.00" data-usd-w="42" data-tok="5.4M" data-tok-w="44">
           <a class="who-link" href="https://github.com/kentcdodds" target="_blank" rel="noopener"><span class="at">@kentcdodds</span></a>
           <span class="tok">5.4<span class="m">M</span></span>
           <span class="elo flat"><span class="ar">–</span></span>
@@ -566,13 +570,24 @@
       </div>
 
       <!-- 8 -->
-      <div class="pl r8" data-usd="$275" data-usd-w="23" data-tok="3.0M" data-tok-w="24">
+      <div class="pl r8" data-usd="$275.40" data-usd-w="23" data-tok="3.0M" data-tok-w="24">
         <div class="rk">8</div>
         <img class="pfp" src="https://github.com/addyosmani.png?size=80" alt="" loading="lazy" />
-        <div class="pl-top" data-usd="$275" data-usd-w="23" data-tok="3.0M" data-tok-w="24">
+        <div class="pl-top" data-usd="$275.40" data-usd-w="23" data-tok="3.0M" data-tok-w="24">
           <a class="who-link" href="https://github.com/addyosmani" target="_blank" rel="noopener"><span class="at">@addyosmani</span></a>
           <span class="tok">3.0<span class="m">M</span></span>
-          <span class="elo up"><span class="ar">▲</span> 30</span>
+          <span class="elo up"><span class="ar">▲</span> 30 <span class="w">1w</span></span>
+        </div>
+      </div>
+
+      <!-- 9 -->
+      <div class="pl r9" data-usd="$210.10" data-usd-w="18" data-tok="2.3M" data-tok-w="19">
+        <div class="rk">9</div>
+        <img class="pfp" src="https://github.com/shadcn.png?size=80" alt="" loading="lazy" />
+        <div class="pl-top" data-usd="$210.10" data-usd-w="18" data-tok="2.3M" data-tok-w="19">
+          <a class="who-link" href="https://github.com/shadcn" target="_blank" rel="noopener"><span class="at">@shadcn</span></a>
+          <span class="tok">2.3<span class="m">M</span></span>
+          <span class="elo down"><span class="ar">▼</span> 15 <span class="w">1w</span></span>
         </div>
       </div>
 
@@ -580,7 +595,7 @@
 
     <!-- pagination + range -->
     <div class="pager-row">
-      <span class="range">1&ndash;8 of 42 &middot; resets Mon 00:00 UTC</span>
+      <span class="range">1&ndash;9 of 42 &middot; resets Mon 00:00 UTC</span>
       <div class="pager">
         <button class="pg nav" disabled>&#9664;</button>
         <span class="pg active">1</span>
@@ -608,8 +623,8 @@
           </div>
         </div>
         <div class="standing-stats">
-          <span class="big">$640</span>
-          <span class="elo up"><span class="ar">▲</span> 120</span>
+          <span class="big">$640.00</span>
+          <span class="elo up"><span class="ar">▲</span> 120 <span class="w">1w</span></span>
         </div>
       </section>
 

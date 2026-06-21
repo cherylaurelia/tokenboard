@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>tokenboard — board title font comparison</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Space+Mono:wght@400;700&family=Fira+Code:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#14151f; --bg-2:#181a26; --frame:#34374a; --frame-hi:#424559;
+    --ink:#e6e6ea; --ink-2:#a8a9b6; --ink-3:#76788a; --ink-4:#565869;
+    --coral:#cc785c; --coral-hi:#d68d72;
+    --pixel:'Press Start 2P',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{ background:var(--bg); color:var(--ink); font-family:'Space Mono',monospace;
+    padding:36px 30px 60px;
+    background-image:radial-gradient(820px 420px at 50% -12%, rgba(204,120,92,0.05), transparent 72%); }
+  .h{ font-family:var(--pixel); font-size:13px; margin-bottom:6px; }
+  .sub{ font-size:12px; color:var(--ink-3); margin-bottom:28px; }
+  .row{ border:1px solid var(--frame); border-radius:14px; background:var(--bg-2);
+    padding:22px 26px; margin-bottom:16px; max-width:760px; }
+  .tag{ font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase;
+    color:var(--coral); margin-bottom:4px; }
+  .note{ font-size:11px; color:var(--ink-4); margin-bottom:16px; }
+  /* the actual title element + its coral dash */
+  .title{ color:var(--ink); line-height:1.12; }
+  .title .dash{ color:var(--coral); }
+
+  /* CURRENT */
+  .t-pixel{ font-family:var(--pixel); font-size:23px; letter-spacing:1px; text-shadow:2px 2px 0 #0b0c14; }
+  /* candidates */
+  .t-jb-xb{ font-family:'JetBrains Mono',monospace; font-weight:800; font-size:34px; letter-spacing:-0.5px; }
+  .t-jb-b { font-family:'JetBrains Mono',monospace; font-weight:700; font-size:34px; letter-spacing:0; }
+  .t-space{ font-family:'Space Mono',monospace; font-weight:700; font-size:32px; letter-spacing:0; }
+  .t-fira { font-family:'Fira Code',monospace; font-weight:700; font-size:33px; letter-spacing:-0.5px; }
+  .t-plex { font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:33px; letter-spacing:0; }
+  .t-grot { font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:36px; letter-spacing:-0.5px; }
+  /* uppercase vs as-typed both shown via content */
+</style>
+</head>
+<body>
+  <div class="h">tokenboard · board title font</div>
+  <div class="sub">"STEEL-CARTEL" heading · current (pixel) vs softer candidates · coral dash kept</div>
+
+  <div id="grid"></div>
+  <script>
+    const opts = [
+      ['t-pixel','Press Start 2P (CURRENT — too harsh)','the blocky pixel font you want to change'],
+      ['t-jb-xb','JetBrains Mono ExtraBold','matches the @handles + landing terminals; bold but smooth'],
+      ['t-jb-b','JetBrains Mono Bold','same family, a touch lighter'],
+      ['t-space','Space Mono Bold','crisp slab; pairs with the $ numbers'],
+      ['t-fira','Fira Code Bold','the landing-page font; clean/neutral'],
+      ['t-plex','IBM Plex Mono Bold','warmer, humanist'],
+      ['t-grot','Space Grotesk Bold (sans)','drop mono for the title; modern, softest'],
+    ];
+    const grid = document.getElementById('grid');
+    opts.forEach(([cls,tag,note])=>{
+      const d = document.createElement('div');
+      d.className='row';
+      d.innerHTML = `<div class="tag">${tag}</div><div class="note">${note}</div>`+
+        `<div class="title ${cls}">STEEL<span class="dash">-</span>CARTEL</div>`;
+      grid.appendChild(d);
+    });
+  </script>
+</body>
+</html>
