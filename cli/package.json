@@ -1,0 +1,25 @@
+{
+  "name": "@tokenboard/cli",
+  "version": "0.0.1",
+  "description": "A leaderboard for your agentic-coding token usage — race your friends, not strangers. CLI in active development.",
+  "bin": {
+    "tokenboard": "bin/tokenboard.js"
+  },
+  "files": [
+    "bin"
+  ],
+  "keywords": [
+    "tokenboard",
+    "leaderboard",
+    "claude-code",
+    "ccusage",
+    "tokens",
+    "agentic",
+    "cli"
+  ],
+  "license": "MIT",
+  "homepage": "https://tokenboard.sh",
+  "engines": {
+    "node": ">=18"
+  }
+}
