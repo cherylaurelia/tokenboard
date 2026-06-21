@@ -7,7 +7,7 @@
 **Race your friends, not strangers.**
 
 A public leaderboard for agentic-coding usage. tokenboard reads how many tokens
-you burn across Claude Code, Codex, Gemini CLI, and the rest, and ranks you on a
+you burn across Claude Code, Codex, opencode, and the rest, and ranks you on a
 private leaderboard against the people you invite.
 
 [tokenboard.sh](https://tokenboard.sh) · [Design](./DESIGN.md) · [Architecture](./ARCHITECTURE.md)
@@ -22,7 +22,7 @@ Most usage tools show you *your* numbers. tokenboard shows you **where you rank*
 and the unit isn't a global board of strangers, it's a **community you and your
 friends create**. You vs your friends, this week, on tokens burned.
 
-- 🪙 **Multi-tool** — aggregates Claude Code + Codex + Gemini CLI + the long tail
+- 🪙 **Multi-tool** — aggregates Claude Code + Codex + opencode + the long tail
 - 🏆 **Ranked** — usage tools show your number; tokenboard shows where you *rank*
 - 👥 **Communities** — make a room, drop the link in your group chat, race
 - 🔒 **Aggregate-only** — counts leave your machine; prompts, code, and file paths never do
@@ -30,13 +30,13 @@ friends create**. You vs your friends, this week, on tokens burned.
 ## How it works
 
 ```bash
-npx tokenboard          # see your number locally (no login)
+npx @tokenboard/cli     # see your number locally (no login)
                         # then claim your spot with GitHub
 ```
 
 - A small CLI reads the usage logs your agentic tools already write **on your machine**
 - It uploads **aggregate token counts only** — run `tokenboard show-data` to see the exact
-  payload before anything is sent
+  payload before anything is sent (after a global install the command is just `tokenboard`)
 - The web dashboard ranks you within your communities, over rolling time windows
 - Sync hourly in the background (or any time you run the CLI)
 
@@ -51,10 +51,12 @@ implementation. Start here:
 
 ## Stack
 
-TypeScript end to end — **Next.js** (web + API) on **Vercel**, **Postgres** (Neon) as
-the system of record, **Upstash Redis** sorted sets for leaderboards, **next/og** for
-share cards. The CLI is a thin Node client that wraps
-[`ccusage`](https://github.com/ccusage/ccusage) for parsing the long tail.
+TypeScript end to end — **Next.js** (web + API) on **Vercel**, **Neon** (serverless
+Postgres) as the system of record via **Drizzle**, **Upstash Redis** sorted sets for
+leaderboards (and **QStash** for the nightly sweep), **Auth.js** for GitHub login,
+**Resend** for work-email verification, **next/og** for share cards. The CLI is a thin
+Node client that wraps [`ccusage`](https://github.com/ryoppippi/ccusage) for parsing
+the long tail.
 
 ## Privacy
 
@@ -65,5 +67,5 @@ leaves your machine.
 
 ## License
 
-[MIT](./LICENSE). Built on the shoulders of [ccusage](https://github.com/ccusage/ccusage)
+[MIT](./LICENSE). Built on the shoulders of [ccusage](https://github.com/ryoppippi/ccusage)
 and [LiteLLM](https://github.com/BerriAI/litellm) — see [NOTICES.md](./NOTICES.md).

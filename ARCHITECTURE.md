@@ -45,7 +45,7 @@ This document uses one consistent vocabulary throughout. Notably:
    └───────┬───────────────────┬───────────────────┬───────┼───┘
            │                   │                   │       │
    ┌───────▼────────┐  ┌───────▼────────┐  ┌────────▼──┐ ┌──▼──────────┐
-   │   Postgres     │  │  Redis (Upstash)│  │  next/og  │ │ Vercel Edge │
+   │ Postgres (Neon)│  │  Redis (Upstash)│  │  next/og  │ │ Vercel Edge │
    │ SYSTEM OF      │  │  • ZSET leader- │  │  OG share │ │ CDN cache + │
    │ RECORD         │  │    boards       │  │  card     │ │ ISR tags    │
    │ • users        │  │  • rate limits  │  │  images   │ └─────────────┘
@@ -61,7 +61,7 @@ This document uses one consistent vocabulary throughout. Notably:
                           │  Authorization: Bearer tbd_<token>  (ingest only)
               ┌───────────┴────────────┐
               │   tokenboard CLI       │
-              │  npx tokenboard        │
+              │  npx @tokenboard/cli   │
               │  • Claude Code parser  │
               │  • ccusage shell-out   │
               │  • local preview       │
@@ -70,9 +70,9 @@ This document uses one consistent vocabulary throughout. Notably:
 
 ### 1.2 Component responsibilities
 
-- **tokenboard CLI** (`npx tokenboard`) — reads local agentic-coding logs (first-party Claude Code parser + `ccusage` shell-out for the long tail), aggregates **counts only**, renders a local preview with no network identity, and (after `tokenboard claim`/`login`) uploads aggregates via `POST /api/v1/sync` using a device-bound ingest token.
+- **tokenboard CLI** (`npx @tokenboard/cli`; the installed bin is `tokenboard`) — reads local agentic-coding logs (first-party Claude Code parser + `ccusage` shell-out for the long tail), aggregates **counts only**, renders a local preview with no network identity, and (after `tokenboard claim`/`login`) uploads aggregates via `POST /api/v1/sync` using a device-bound ingest token.
 - **API layer (Vercel / Next.js App Router)** — all business logic lives in route handlers under `/api/v1/*`. Hosts both web auth (Auth.js / GitHub OAuth, opaque DB sessions) and the CLI device-token system, computes server-side cost from the pinned price table, performs idempotent upserts, assembles the shared board contract, and renders share cards via **next/og**.
-- **Postgres** — the **system of record**. Holds `users`, `linked_accounts`, `communities`, `community_email_domains`, `memberships`, the `usage_day` fact table, `email_verifications`, `ingest_devices`, and the `sync_requests` idempotency ledger. Every other store is derived from it. Row-Level Security gates all client-reachable reads.
+- **Postgres (Neon)** — the **system of record**, accessed via **Drizzle**. Holds `users`, `linked_accounts`, `communities`, `community_email_domains`, `memberships`, the `usage_day` fact table, `email_verifications`, `ingest_devices`, and the `sync_requests` idempotency ledger. Every other store is derived from it. Authorization is enforced server-side; Row-Level Security is enabled as defense-in-depth (§2.2).
 - **Redis (Upstash)** — a **derived, rebuildable index**: sorted-set leaderboards (ZSETs), the previous-period snapshot for deltas, the profile cache, token-bucket rate-limit counters, and idempotency helpers. Never a source of truth.
 - **next/og** — renders OG share-card images for profiles and boards (the X-share artifact), keyed by content hash for immutable CDN caching.
 - **Vercel Edge CDN + ISR** — caches public board JSON and SSR pages with tag-based invalidation driven by the sync handler.
@@ -80,7 +80,7 @@ This document uses one consistent vocabulary throughout. Notably:
 
 ### 1.3 Request lifecycle (one paragraph)
 
-A typical end-to-end flow: the user runs `npx tokenboard`, which parses local logs and prints their number instantly with no network identity; when they run `tokenboard claim`, the CLI starts a device-authorization flow, the user approves it in a browser (signing into **GitHub** first if needed), and the server mints a device-bound **ingest token** (storing only its hash in `ingest_devices`); thereafter `tokenboard sync` POSTs count-only aggregates with an `Idempotency-Key` to `/api/v1/sync`, where the Next.js handler resolves the bearer token to a `(user_id, device_id)`, validates and clamps the records, computes **cost server-side** from the pinned LiteLLM price table, performs an idempotent `ON CONFLICT (user_id, device_id, date, tool, model)` upsert into `usage_day` (then recomputes the cross-device `usage_day_total`) in Postgres, then (post-commit) overwrites the affected Redis ZSET leaderboard scores and busts the relevant CDN/ISR caches; finally, anyone — web or CLI — reads the same board via `GET /api/v1/board`, served hot from Redis with a Postgres fallback, with `next/og` producing the shareable card.
+A typical end-to-end flow: the user runs `npx @tokenboard/cli`, which parses local logs and prints their number instantly with no network identity; when they run `tokenboard claim`, the CLI starts a device-authorization flow, the user approves it in a browser (signing into **GitHub** first if needed), and the server mints a device-bound **ingest token** (storing only its hash in `ingest_devices`); thereafter `tokenboard sync` POSTs count-only aggregates with an `Idempotency-Key` to `/api/v1/sync`, where the Next.js handler resolves the bearer token to a `(user_id, device_id)`, validates and clamps the records, computes **cost server-side** from the pinned LiteLLM price table, performs an idempotent `ON CONFLICT (user_id, device_id, date, tool, model)` upsert into `usage_day` (then recomputes the cross-device `usage_day_total`) in Postgres, then (post-commit) overwrites the affected Redis ZSET leaderboard scores and busts the relevant CDN/ISR caches; finally, anyone — web or CLI — reads the same board via `GET /api/v1/board`, served hot from Redis with a Postgres fallback, with `next/og` producing the shareable card.
 
 ---
 
@@ -342,9 +342,19 @@ create table sync_requests (
 create index sync_requests_user_idx on sync_requests (user_id, created_at);
 ```
 
-### 2.2 Row-Level Security posture
+### 2.2 Authorization posture (server-layer first, RLS as backstop)
 
-`ALTER TABLE ... ENABLE ROW LEVEL SECURITY` on every table below. The app connects as an **`authenticated`** Postgres role carrying `request.jwt.claims->>'sub'` = the user's UUID (Supabase-style `auth.uid()`); the **`service_role`** bypasses RLS and is used only by trusted server routes (ingest, OAuth callback, email confirm, cost computation). The CLI never talks to Postgres directly — it goes through Next.js route handlers that use `service_role` after resolving the bearer device token.
+**Primary authorization happens in the Next.js server layer, not in the database.** Because we use **Auth.js v5 with opaque database sessions** (not a JWT issued to the client — see §4.1), there is no end-user token to hand Postgres on each query, so we do **not** rely on a per-request `auth.uid()`-style identity inside SQL the way a Supabase-Auth app would. Instead, every route handler / server action resolves the session (or the CLI bearer device token) to a `user_id` **in application code**, then runs queries through a trusted connection scoped to that user. This is the load-bearing access control.
+
+**Row-Level Security is enabled as defense-in-depth, not as the primary gate.** We still `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` on every table below and express the same predicates as policies, so a coding mistake in the server layer cannot trivially leak another user's rows. Two connection roles:
+- an **app role** used for ordinary reads, under which the public-readable policies (e.g. "non-banned users' profiles and usage are world-readable") hold without needing a per-request identity;
+- a **`service_role`** that bypasses RLS, used only by trusted server routes (ingest, OAuth callback, email confirm, cost computation, leaderboard writes) **after** they have resolved and authorized the `user_id` in code.
+
+The CLI never talks to Postgres directly — it goes through Next.js route handlers that use `service_role` after resolving the bearer device token.
+
+> **Host note (Neon + Drizzle):** policies are authored in Drizzle's schema (`pgPolicy`/`pgRole`, with Neon's `crudPolicy`/`authUid` helpers) and applied via migrations. Where a policy genuinely needs the caller's id inside SQL (rare, given server-layer authz), Neon exposes `auth.user_id()` over a verified JWT — the portable analog of Supabase's `auth.uid()`. We avoid depending on it in the hot path precisely because database sessions don't carry such a JWT; if we ever want true DB-enforced per-row identity we mint a short-lived server-signed JWT and set it on the connection, but that is explicitly **not** required for v1.
+
+In the policy gists below, **`auth.uid()` is shorthand for "the authenticated caller's `user_id`"** — the value our server layer has already resolved from the Auth.js session / device token (on Neon this maps to `auth.user_id()` when a JWT is present, or to the `user_id` the server-role connection scopes to). It denotes the identity predicate; it does not imply a Supabase-Auth JWT is in play.
 
 | Table | RLS | Policy gist |
 |---|---|---|
@@ -496,7 +506,7 @@ This section specifies how tokenboard establishes identity, authenticates CLI de
 
 Rationale:
 
-- **Auth.js for the *web*** because it already implements the GitHub OAuth 2.0 dance (state, PKCE where supported, token exchange, account linking) correctly, ships first-class App Router support (`handlers`, `auth()`), and lets us drop session/account/user rows into our own Postgres via the `@auth/pg-adapter`. We do not want to re-implement CSRF-safe OAuth by hand.
+- **Auth.js for the *web*** because it already implements the GitHub OAuth 2.0 dance (state, PKCE where supported, token exchange, account linking) correctly, ships first-class App Router support (`handlers`, `auth()`), and lets us drop session/account/user rows into our own Neon Postgres via the **`@auth/drizzle-adapter`** (matching our Drizzle ORM choice). We do not want to re-implement CSRF-safe OAuth by hand.
 - **Database sessions (not pure JWT)** because tokenboard needs *server-side revocation* — when a company privatizes a board, when a user is banned for sybil abuse (`users.banned_at`), or when a device token is revoked, we must be able to kill a session immediately. Stateless JWTs can't be revoked without a denylist, at which point you've reinvented DB sessions. The session cookie is therefore an opaque, `HttpOnly`, `Secure`, `SameSite=Lax` session-id cookie; the row lives in `sessions`.
 - **The CLI does NOT use Auth.js sessions.** Browsers get cookies; the CLI gets a long-lived **ingest token** (opaque, hashed at rest in `ingest_devices`) minted through a device-authorization-style claim flow (§4.3). Mixing the two is the most common auth bug in CLI+web products, so they are kept as separate credential types against the same `users` table.
 
@@ -568,12 +578,12 @@ Security parameters:
 
 ### 4.3 Value-first, login-to-claim CLI flow (the critical UX)
 
-The CLI **never** prompts for login before showing value. `npx tokenboard` parses local logs and prints the user's number plus a *local-only* board immediately. Only when the user wants to appear on the public web board do we authenticate — and we do it via a **device-authorization-style claim**, because a CLI can't receive an OAuth redirect and we never want the user pasting tokens by hand.
+The CLI **never** prompts for login before showing value. `npx @tokenboard/cli` parses local logs and prints the user's number plus a *local-only* board immediately. Only when the user wants to appear on the public web board do we authenticate — and we do it via a **device-authorization-style claim**, because a CLI can't receive an OAuth redirect and we never want the user pasting tokens by hand.
 
 **Phase A — local preview (no network identity, no login):**
-1. `npx tokenboard` runs the local parser (first-party Claude Code parser + `ccusage` shell-out for the long tail).
+1. `npx @tokenboard/cli` runs the local parser (first-party Claude Code parser + `ccusage` shell-out for the long tail).
 2. It prints the aggregate (tokens/day/tool/model) and a **local board** (this machine's history). Cost is *not* computed here authoritatively — that's server-side from the pinned LiteLLM table — so the local preview shows token counts and an estimate labeled as such.
-3. Footer: `Sign in with GitHub to claim your spot → npx tokenboard claim`. No anonymous identity is created or persisted server-side.
+3. Footer: `Sign in with GitHub to claim your spot → tokenboard claim`. No anonymous identity is created or persisted server-side.
 
 **Phase B — claim (device flow → ingest token):**
 1. CLI POSTs `/api/v1/cli/login/start` with `{ client_name, machine_hash }` (machine_hash = salted hash of a stable machine id, used only for "this device" labeling and de-dup, never PII).
@@ -589,7 +599,7 @@ Polling responses follow the OAuth device-grant convention: `authorization_pendi
 **ASCII sequence diagram:**
 
 ```
- User        CLI (npx tokenboard claim)     tokenboard server          Browser+GitHub
+ User        CLI (npx @tokenboard/cli claim)     tokenboard server          Browser+GitHub
   │  run claim   │                                 │                        │
   │─────────────▶│ POST /cli/login/start           │                        │
   │              │────────────────────────────────▶│ create device_grant    │
@@ -741,7 +751,7 @@ This section specifies the count-only data contract between the tokenboard CLI a
 
 ### 6.1 What the CLI collects
 
-The CLI is a stateless, side-effect-light Node binary run as `npx tokenboard` (or `tokenboard sync`). It reads **local agentic-coding logs only**, aggregates them, and uploads **counts** — never prompts, code, file paths, or repo names.
+The CLI is a stateless, side-effect-light Node binary run as `npx @tokenboard/cli` (or `tokenboard sync`). It reads **local agentic-coding logs only**, aggregates them, and uploads **counts** — never prompts, code, file paths, or repo names.
 
 Two collectors feed one normalizer:
 
@@ -927,7 +937,7 @@ The DB writes in steps 8–12 run in a single Postgres transaction; Redis writes
 
 | Command | Does |
 |---|---|
-| `npx tokenboard` | First-run hero path: local preview → prompt GitHub claim → first `sync`. |
+| `npx @tokenboard/cli` | First-run hero path: local preview → prompt GitHub claim → first `sync`. |
 | `tokenboard sync` | One-shot collect + POST `/api/v1/sync`. Silent-friendly (used by cron). |
 | `tokenboard show-data` | **Dry-run** — prints the exact aggregate payload that *would* upload; no network. Trust unlock; ships before any upload path. |
 | `tokenboard install` | Writes the recurring sync job (cron on Linux, launchd on macOS, Scheduled Task on Windows). |
@@ -935,13 +945,13 @@ The DB writes in steps 8–12 run in a single Postgres transaction; Redis writes
 
 **Cadence (two triggers, both call `sync`):**
 
-1. **Scheduled** — `tokenboard install` registers a job running **`npx tokenboard@latest sync`** hourly. The job is written with a **stable per-machine minute offset** to avoid the `:00` thundering herd:
+1. **Scheduled** — `tokenboard install` registers a job running **`npx @tokenboard/cli@latest sync`** hourly. The job is written with a **stable per-machine minute offset** to avoid the `:00` thundering herd:
    ```cron
    # offset = hash(machineId) % 60  → e.g. 37
-   37 * * * *  npx -y tokenboard@latest sync >/dev/null 2>&1
+   37 * * * *  npx -y @tokenboard/cli@latest sync >/dev/null 2>&1
    ```
    (macOS uses a launchd plist with `StartCalendarInterval` at the same offset minute.)
-2. **Manual** — `npx tokenboard` / `tokenboard sync` runs on demand and updates the board immediately.
+2. **Manual** — `npx @tokenboard/cli` / `tokenboard sync` runs on demand and updates the board immediately.
 
 Both paths hit the same idempotent ingest (§6.4), so a manual run between ticks just freshens the rolling window early; the next tick is a no-op if nothing changed. A long-offline machine catches its rolling window up on the next sync — lifetime totals never gap because Postgres is the system of record.
 
@@ -951,7 +961,7 @@ Both paths hit the same idempotent ingest (§6.4), so a manual run between ticks
 
 - Published to **npm** as `tokenboard` (public). The cron and the recommended invocation use **`@latest`**, so scheduled users auto-update every run; `npm i -g` users are pinned until they update.
 - **Keep the client dumb** so updates are rarely needed: cost computation, the pinned LiteLLM table, ranking, and all board logic live server-side and update for everyone on deploy with zero client action. The CLI needs a new version only when a **local log format** changes (a tool's schema, or a new pinned `ccusage` major).
-- The CLI carries **`update-notifier`**: when a newer version exists it prints a one-line nudge (`⚡ tokenboard X available — run npx tokenboard@latest`) without blocking the current run.
+- The CLI carries **`update-notifier`**: when a newer version exists it prints a one-line nudge (`⚡ tokenboard X available — run npx @tokenboard/cli@latest`) without blocking the current run.
 - **`ccusage` is pinned internally to `@20`** (the JS→Rust v15→v20 rewrite was breaking — see `DESIGN.md` §5.2); we bump it deliberately, never float it.
 
 ### 6.6 The LiteLLM price table — sourcing, vendoring & versioning
@@ -996,7 +1006,7 @@ Member = the user's **`user_id`** (the immutable uuid PK), never the `handle` �
 
 ### 7.2 The board JSON contract (shared by web + CLI)
 
-One endpoint, one shape. The web SSR page and the `npx tokenboard` table both call `GET /api/v1/board` and render identically (CLI just ASCII-renders the same fields).
+One endpoint, one shape. The web SSR page and the `npx @tokenboard/cli` table both call `GET /api/v1/board` and render identically (CLI just ASCII-renders the same fields).
 
 **Request:**
 ```
@@ -1131,7 +1141,7 @@ A naïve "7d board" decays continuously — yesterday's contribution must silent
 
    This is exact and idempotent: the score is always the recomputed truth, so retries and out-of-order syncs converge. Cost is `O(1)` Redis writes + 3 small indexed Postgres aggregates per affected user.
 
-**Decay side (the part a pure write-path can't do):** a member who *stops syncing* must still fall out of the 7d window as days roll over. We run a **daily sweep cron at 00:10 UTC** that, for each active board scope, recomputes the rolling windows via **ZUNIONSTORE over day buckets** (O(buckets), self-cleaning):
+**Decay side (the part a pure write-path can't do):** a member who *stops syncing* must still fall out of the 7d window as days roll over. A **daily sweep at 00:10 UTC** — triggered by an **Upstash QStash schedule** that POSTs to a signed Next.js route handler (`app/api/cron/leaderboard-sweep`) — recomputes the rolling windows for each active board scope via **ZUNIONSTORE over day buckets** (O(buckets), self-cleaning). QStash gives per-minute precision, automatic retries, and a DLQ on the Upstash account we already run; the route verifies the QStash signature and is idempotent (it `ZUNIONSTORE`s authoritative values), so a retried or double-fired sweep is safe:
 ```
 # Rebuild the global 7d tokens board from the last 7 day-buckets:
 ZUNIONSTORE lb:g:t:7d 7 \
@@ -1170,7 +1180,7 @@ Handles, avatars, tiers, and deltas are **not** in Redis — they're joined from
 2. `ZREVRANGE lb:{scope}:{metric}:{window} 0 {limit-1} WITHSCORES` → ordered `[user_id, score]`.
 3. If `me` present: pipeline `ZREVRANK` + `ZSCORE` + `ZCARD` for the caller's `user_id`.
 4. Batch-load profiles for all returned `user_id`s (+ caller) from the **profile cache** (Redis hash `prof:{user_id}` → handle, displayName, avatar, tier, top community pill) with Postgres fallback.
-5. **Deltas:** compare current window score to the previous-period snapshot stored in `lbsnap:{scope}:{metric}:{window}` (a daily-frozen copy of the board taken by the same 00:10 cron). `rankChange` = previous rank − current rank; `tokensChange` = current − previous score.
+5. **Deltas:** compare current window score to the previous-period snapshot stored in `lbsnap:{scope}:{metric}:{window}` (a daily-frozen copy of the board taken by the same 00:10 QStash-triggered sweep, **before** it rebuilds `lb:*`). `rankChange` = previous rank − current rank; `tokensChange` = current − previous score.
 6. **Sparklines:** one Postgres query `SELECT date, SUM(tokens) FROM usage_day_total WHERE user_id = ANY($ids) AND date BETWEEN windowStart AND windowEnd GROUP BY ...`, zero-filling missing days. This per-board query is cached (§8).
 7. Serialize. The CLI consumes the identical JSON and renders an ASCII table; the web renders rows + sparkline SVGs + the next/og share card.
 
@@ -1236,8 +1246,11 @@ Token-bucket limits enforced in Upstash Redis, keyed per-user (`uid:<id>`) and p
 | Component | Choice | Why |
 |---|---|---|
 | Hosting / runtime | **Vercel + Next.js (App Router)** | One platform for SSR pages, API route handlers, Edge CDN, and ISR tag invalidation; route handlers hold all business logic. |
-| System of record | **Postgres** (Supabase-style with RLS) | Relational integrity for users/communities/memberships, the `usage_day` fact table, and idempotency ledger; RLS gates client-reachable reads; the source every other store rebuilds from. |
+| System of record | **Neon (serverless Postgres)** | Relational integrity for users/communities/memberships, the `usage_day` fact table, and idempotency ledger; scale-to-zero + per-branch databases (a throwaway DB per Vercel preview/PR) fit the serverless deploy model; the source every other store rebuilds from. Authorization is server-layer-first with RLS as a backstop (§2.2). |
+| ORM / migrations | **Drizzle** | TypeScript-first, zero-dependency query builder that fits serverless cold starts; native `INSERT … ON CONFLICT` upserts (the idempotent sync write) and inline `sql\`…\`` window functions (the leaderboard's ranked aggregates) without leaving the typed layer; in-schema RLS policies via Neon's `crudPolicy`/`authUid` helpers; editable SQL migrations for hand-tuned leaderboard indexes. |
+| Two Neon transports | **`neon-http` + `neon-serverless`** | One-shot HTTP driver for the hot path (leaderboard SUM reads, single-statement upserts — lowest latency); WebSocket pool driver only where Auth.js database sessions need interactive multi-statement transactions. |
 | Leaderboard / cache store | **Redis (Upstash)** | `O(log N)` ranked ZSET reads/writes for hot leaderboards; also hosts rate-limit buckets, profile cache, and previous-period snapshots. Derived & rebuildable. |
+| Scheduled jobs | **Upstash QStash** | Cron-like schedules that POST to a Next.js route with per-minute precision, automatic retries, a DLQ, and signed delivery — on the Upstash account we already run (no Vercel Pro upgrade, no new vendor). Drives the nightly leaderboard sweep + snapshot (§7.3). |
 | Web auth | **Auth.js v5 (NextAuth) + GitHub provider, DB sessions** | Correct, CSRF-safe OAuth out of the box; **database** sessions give server-side revocation (ban, privatize, device revoke) that JWTs can't. |
 | CLI auth | **Hand-rolled device-authorization flow → ingest token** | A CLI can't receive an OAuth redirect; device flow works over SSH/containers/remote boxes where agentic coding lives. Token hashed at rest, ingest-only scope. |
 | Cost computation | **Pinned LiteLLM price table (server-side)** | Counts in, cost out: clients can't game cost boards; versioned pinning enables deterministic historical re-pricing. |

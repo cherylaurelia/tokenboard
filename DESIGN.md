@@ -51,7 +51,7 @@ The global board still exists — it's a fun ceiling and an aspirational backdro
 The mantra: **PREVIEW → HOOKED → CLAIM.** You see your real number *locally* before you create anything; GitHub login is the step — taken while you're already hooked — that puts you on the public board. There is **no permanent anonymous public presence** (§7): the only pre-auth state is the local preview.
 
 ```
-  $ npx tokenboard
+  $ npx @tokenboard/cli
   ─────────────────────────────────────────────
   scanning ~/.claude/projects ...        ✓ 1,207 sessions
   computing aggregate usage ...          ✓
@@ -66,7 +66,7 @@ The mantra: **PREVIEW → HOOKED → CLAIM.** You see your real number *locally*
   ─────────────────────────────────────────────
 ```
 
-1. **Preview (~30s, no login).** `npx tokenboard` harvests local usage and renders your number — and a *local* teaser board — **right in the terminal**, before any account exists. This is the dopamine hit and it happens first. Nothing is uploaded yet.
+1. **Preview (~30s, no login).** `npx @tokenboard/cli` harvests local usage and renders your number — and a *local* teaser board — **right in the terminal**, before any account exists. This is the dopamine hit and it happens first. Nothing is uploaded yet.
 2. **Hooked.** You see your real burn, beautifully rendered (§14). The CLI's call to action: *"Sign in with GitHub to claim your spot & see your community."*
 3. **Claim → appear.** Click through → GitHub OAuth (one click for devs) → a device token binds to your account, your previewed history uploads, you pick a vanity URL, get the **verified badge**, and now you're on the **public** board and can create/join communities.
 
@@ -80,7 +80,7 @@ The mantra: **PREVIEW → HOOKED → CLAIM.** You see your real number *locally*
 3. Creator is auto-added as first member with `role='owner'` (ownership lives in the membership, not an `owner_id` column).
 
 **Join:**
-1. Open an invite link → if logged in, one-click join; if not, sign in with GitHub (after the local `npx tokenboard` preview), then join. Company boards instead auto-join on **work-email verification** (§7.2).
+1. Open an invite link → if logged in, one-click join; if not, sign in with GitHub (after the local `npx @tokenboard/cli` preview), then join. Company boards instead auto-join on **work-email verification** (§7.2).
 2. On join, your existing `usage_day` history backfills the room's windowed leaderboard (you don't start at zero — you start with your real numbers).
 
 ### 3.3 The X share loop (numbered)
@@ -88,7 +88,7 @@ The mantra: **PREVIEW → HOOKED → CLAIM.** You see your real number *locally*
 1. You hit a milestone or just want to flex — your profile or room renders an **OG flex card** (`next/og` / Satori) at a crawlable URL.
 2. You click **Share** → a client-side `x.com/intent/post` link opens, pre-filled with text + the card URL. **$0 — no API call, ever.**
 3. The card posts to X as a rich link unfurl (large image). Your followers see your number, your rank, and your room.
-4. A friend sees it, thinks *"I burn way more than that,"* clicks through, runs `npx tokenboard`, and **appears** on the board.
+4. A friend sees it, thinks *"I burn way more than that,"* clicks through, runs `npx @tokenboard/cli`, and **appears** on the board.
 5. They don't want to be in *your* room as a guest — they spin up *their own* room and pull *their* friends. **The loop closes and forks.** Every share is a potential new mini-launch.
 
 ---
@@ -97,14 +97,14 @@ The mantra: **PREVIEW → HOOKED → CLAIM.** You see your real number *locally*
 
 Two surfaces, one system of record:
 
-- **CLI (`npx tokenboard`)** = the *install / harvest* surface. Runs on your machine, reads local logs, uploads **aggregates only**.
+- **CLI (`npx @tokenboard/cli`)** = the *install / harvest* surface. Runs on your machine, reads local logs, uploads **aggregates only**.
 - **Web (Next.js on Vercel)** = the *view / share* surface. SSR profile and community pages for SEO and crawlable share targets; `next/og` Satori cards.
 
 The split matters because of a hard constraint: **agent logs prune.** Claude Code keeps roughly a rolling ~30-day window on disk. The client therefore only ever *sees* a window. **The server is the system of record** — it accumulates daily aggregates **forever**, so your lifetime total survives long after the local logs that produced it are gone.
 
 ```
   ┌──────────────────────────── YOUR MACHINE ────────────────────────────┐
-  │  npx tokenboard                                                       │
+  │  npx @tokenboard/cli                                                  │
   │    ├─ Claude Code parser (OURS) ── ~/.claude/projects/**/*.jsonl      │
   │    └─ ccusage (shell out, source-first) ── 14 other tools             │
   │        `ccusage <source> daily --json --offline`                      │
@@ -145,8 +145,8 @@ Postgres is **truth**; Redis is a **fast, disposable read model** for ranking. I
 
 The board *feels* live but is not real-time streaming; it's a **scheduled batch sync**. Two independent triggers, both of which just call `sync`:
 
-- **Hourly background cron** (the "always ongoing" feel). `tokenboard install` writes a per-machine cron / launchd job that runs `npx tokenboard@latest sync` silently every hour. Set once, forget — the board moves throughout the day without the user touching anything. (This is the model the internal Amazon `claude-leaderboard` proved.)
-- **Manual run** (`npx tokenboard` or `tokenboard sync`) updates the board *at that moment* — useful right after a big session, or before screenshotting.
+- **Hourly background cron** (the "always ongoing" feel). `tokenboard install` writes a per-machine cron / launchd job that runs `npx @tokenboard/cli@latest sync` silently every hour. Set once, forget — the board moves throughout the day without the user touching anything. (This is the model the internal Amazon `claude-leaderboard` proved.)
+- **Manual run** (`npx @tokenboard/cli` or `tokenboard sync`) updates the board *at that moment* — useful right after a big session, or before screenshotting.
 
 **They never conflict.** Whichever fires first wins; the other is a harmless overwrite, because ingest is **idempotent** (re-syncing a day *sets* the row, never adds — §6 / `ARCHITECTURE.md` §6). A manual run between cron ticks just means a fresher number sooner; the next tick is a no-op if nothing changed. Because the server is the system of record, a machine that's been offline for days simply catches up its rolling window on the next sync — no gaps in lifetime totals.
 
@@ -160,14 +160,14 @@ The board *feels* live but is not real-time streaming; it's a **scheduled batch 
 
 | Invocation | Auto-updates? |
 |---|---|
-| `npx tokenboard@latest …` (and the cron uses this) | ✅ fetches newest published version every run |
-| `npx tokenboard` (unpinned) | ⚠️ may reuse npx's cached copy — can drift |
+| `npx @tokenboard/cli@latest …` (and the cron uses this) | ✅ fetches newest published version every run |
+| `npx @tokenboard/cli` (unpinned) | ⚠️ may reuse npx's cached copy — can drift |
 | `npm i -g tokenboard` | ❌ pinned until manual `npm update -g` |
 
 **Design consequence — keep the client dumb so it rarely *needs* updating.** All product logic (cost computation, the pinned LiteLLM price table, ranking, leaderboard rules, board rendering data) lives **server-side**; the web dashboard therefore updates for *everyone* the instant we deploy, with zero client action. The CLI only needs a new version when a **local log format** changes (a tool bumps its schema, or we pin a new `ccusage` major) — rare. When it happens:
 
 - the cron's `@latest` and anyone using `@latest` pick it up automatically next run;
-- everyone else sees an **`update-notifier`** nudge — *"⚡ tokenboard 1.3 available (you're on 1.1) — run `npx tokenboard@latest`"*.
+- everyone else sees an **`update-notifier`** nudge — *"⚡ tokenboard 1.3 available (you're on 1.1) — run `npx @tokenboard/cli@latest`"*.
 
 We pin **`ccusage@20`** *internally* so their releases never silently break our parsing, while letting **our own** client float to `@latest` via the cron. Net: the dashboard is always current; the CLI stays current for cron/`@latest` users and politely nags the rest.
 
@@ -287,7 +287,7 @@ Postgres, with Row-Level Security. The server is the **system of record** — it
 
 **GitHub OAuth is primary and MANDATORY to appear on a public board.** It's the right identity for a developer audience, gives us a real avatar for the board for free, and `github_id` is a strong, stable anti-sock-puppet anchor. We require it (rather than allowing permanent anonymous users) to **maximize captured identity** — every public row is a real, claimable account. **Email magic-link is the fallback** for people who won't OAuth, and is *also* the mechanism for company-board membership (§7.2).
 
-> **Value-first, not login-first.** Requiring GitHub does *not* mean a login wall at the door. `npx tokenboard` first renders a **local preview** (your number + a local board) with **no login**, *then* prompts *"Sign in with GitHub to claim your spot & see your community."* Order is **appear → hooked → claim** (§3.1). The login happens while the user is already hooked, not before they've seen value. There are **no permanent anonymous public users** — the local preview is the only pre-auth state.
+> **Value-first, not login-first.** Requiring GitHub does *not* mean a login wall at the door. `npx @tokenboard/cli` first renders a **local preview** (your number + a local board) with **no login**, *then* prompts *"Sign in with GitHub to claim your spot & see your community."* Order is **appear → hooked → claim** (§3.1). The login happens while the user is already hooked, not before they've seen value. There are **no permanent anonymous public users** — the local preview is the only pre-auth state.
 
 Board rows show **GitHub avatars** — recognizable faces are what make "you vs your friends" legible at a glance.
 
@@ -384,7 +384,7 @@ The single biggest adoption blocker for a "run this CLI and it reads your dev lo
 
 - **`tokenboard show-data` — the trust unlock.** A **dry-run** command that prints *exactly* what would upload, to the byte, **before any upload ever happens.** This is built **first** and is the thing that converts a skeptic.
 - **Aggregate-only, by construction.** **No prompts, no code, no file paths ever leave the machine.** Only aggregate token counts per (day, tool, model). The privacy promise is enforced by the upload schema itself — there is no field in the normalized record that *could* carry sensitive content.
-- **`npx`, not `curl | bash`.** Installation is `npx tokenboard` — inspectable, versioned, no opaque piped shell scripts. (The internal `claude-leaderboard` used curl|bash; for a *public* product, npx is the trust-correct choice.)
+- **`npx`, not `curl | bash`.** Installation is `npx @tokenboard/cli` — inspectable, versioned, no opaque piped shell scripts. (The internal `claude-leaderboard` used curl|bash; for a *public* product, npx is the trust-correct choice.)
 - **Open-source CLI.** The harvester is open source so anyone can verify the aggregate-only claim instead of taking our word for it.
 - **Credit ccusage.** We lean on the community standard for the long tail and **say so, publicly.** It's both the correct license behavior (MIT) and the aura-positive, credible move in a small scene.
 
@@ -409,7 +409,7 @@ Distribution **is** the strategy — it's the gap tokscale left on the table. Th
                                           more than that"
                                                     │
                                                     ▼
-                                          npx tokenboard → APPEARS
+                                          npx @tokenboard/cli → APPEARS
                                                     │
                                                     ▼
                                           spins up THEIR OWN room,
@@ -422,7 +422,7 @@ Distribution **is** the strategy — it's the gap tokscale left on the table. Th
 
 1. **OG card.** Profile/room renders a crawlable flex card via `next/og`.
 2. **Intent share.** Client-side `x.com/intent/post` — pre-filled text + card URL, **$0**, never the paid API.
-3. **Friend rivalry.** A follower sees the unfurl, gets competitive, runs `npx tokenboard`, and **appears**.
+3. **Friend rivalry.** A follower sees the unfurl, gets competitive, runs `npx @tokenboard/cli`, and **appears**.
 4. **They make their own room.** Rather than joining as a guest, they create *their* community and recruit *their* circle — a brand-new mini-launch with a built-in audience. The loop doesn't just repeat, it **forks and multiplies.**
 
 ---
@@ -490,9 +490,9 @@ Leaderboards change slowly, so caching is nearly free. **Fix:** Next.js **ISR / 
 
 ## 14. CLI Leaderboard
 
-> **Goal:** after `npx tokenboard` syncs, render the user's community leaderboard right in the terminal — screenshot-worthy, instant, and graceful when there's no community, no color, or no data. A great terminal board is itself a share artifact (devs post their terminals), so this doubles as a second distribution surface alongside the web OG card.
+> **Goal:** after `npx @tokenboard/cli` syncs, render the user's community leaderboard right in the terminal — screenshot-worthy, instant, and graceful when there's no community, no color, or no data. A great terminal board is itself a share artifact (devs post their terminals), so this doubles as a second distribution surface alongside the web OG card.
 
-> **Retention MOTD nudge.** The hourly cron sync is silent, so the *next interactive* `npx tokenboard` run is our one retention surface — use it. On that run, print a one-line terminal MOTD nudge driven by the `delta`/`rankChange` already present in the board JSON (§14.4), e.g. `‹dim›you dropped to #4 — Dana passed you›`. A negative rank change with a named passer is the exact "come back tomorrow" hook from §2; it costs nothing (the data is already in the board payload) and turns a silent background sync into a reason to re-engage.
+> **Retention MOTD nudge.** The hourly cron sync is silent, so the *next interactive* `npx @tokenboard/cli` run is our one retention surface — use it. On that run, print a one-line terminal MOTD nudge driven by the `delta`/`rankChange` already present in the board JSON (§14.4), e.g. `‹dim›you dropped to #4 — Dana passed you›`. A negative rank change with a named passer is the exact "come back tomorrow" hook from §2; it costs nothing (the data is already in the board payload) and turns a silent background sync into a reason to re-engage.
 
 ### 14.1 Commands
 Minimal surface; the bare command does the 90% thing.
@@ -599,7 +599,7 @@ Authorization: Bearer <token>
 }
 ```
 - **Server owns** ranking, deltas, sparkline buckets, humanization inputs, and `isMe`. The client only styles — keeps the board tamper-resistant and lets ranking logic change without shipping a new CLI.
-- **Auth:** the first `npx tokenboard` renders a **local preview** with no account. `tokenboard claim` runs the GitHub device-authorization flow and mints a **device-bound ingest token** (`~/.config/tokenboard/auth.json`, `chmod 600`); the board/render calls send it as the bearer. Every machine claims its own token bound to the same `user_id`, so multiple laptops accumulate (§7.3). There is no permanent anonymous public row — appearing on a public board requires the claim.
+- **Auth:** the first `npx @tokenboard/cli` renders a **local preview** with no account. `tokenboard claim` runs the GitHub device-authorization flow and mints a **device-bound ingest token** (`~/.config/tokenboard/auth.json`, `chmod 600`); the board/render calls send it as the bearer. Every machine claims its own token bound to the same `user_id`, so multiple laptops accumulate (§7.3). There is no permanent anonymous public row — appearing on a public board requires the claim.
 - **Caching:** cache the last board JSON at `~/.cache/tokenboard/<slug>-<window>.json`. On network failure, render the cached board with a dim `‹stale · 2h ago›` tag instead of erroring. `--json` short-circuits all rendering. (Server sends `s-maxage=60, stale-while-revalidate=120` per §13 so 5k pollers collapse to ~1 origin compute/min.)
 
 ### 14.5 Edge cases
@@ -624,4 +624,4 @@ Ship the static renderer as one pure `renderBoard(json, {color, width, ascii}) �
 1. **`isApiErrorMessage` rule** *(small empirical check, not a design debate).* When Claude Code errors mid-response, it still writes an assistant line tagged `isApiErrorMessage: true` — and a partial/failed generation may still have **billed real tokens** (model emitted 500 tokens then errored → you paid for 500). So: do we **count** those tokens or **skip** them? Counting tokens Anthropic didn't bill → our number reads *high*; skipping tokens it *did* bill → our number reads *low*. Either way the board disagrees with the user's Anthropic console on error-heavy days, which erodes trust. **Resolution: run one day of real logs through the parser both ways and compare totals to the Anthropic console; pick whichever rule matches.** A 30-minute reconciliation during parser build, not a blocker.
 2. **Community visibility defaults & abuse.** Public rooms are discoverable and SEO-valuable but invite spam/squatting on good slugs; unlisted rooms are safer but spread worse. What's the right default, and do we need slug reservation / reporting before public launch? *(See `ARCHITECTURE.md` for the company-domain verification + slug-namespace design.)*
 
-> **Resolved since v1 of this doc** (moved out of open questions): *Auth* — GitHub OAuth is **mandatory to appear on a public board** (maximize captured identity), but `npx tokenboard` shows a **local preview with no login first** (value-first, then "Sign in with GitHub to claim"); see §7. This removes the old "anonymous-tier retention" question — there are **no permanent anonymous public users**. *ccusage integration* — client-side shell-out, source-first syntax, no importable library; see §5.2. *Public company-board optics* — **DECIDED**: show the real company name/logo immediately (the brand is the distribution), with **alias-by-default for company-scoped rows** + a **fast self-serve emergency-privatize/takedown path** (one-click, immediate); not anonymize-until-claim. Residual risk: brief public exposure of aggregate spend before privatize. See §7.2.
+> **Resolved since v1 of this doc** (moved out of open questions): *Auth* — GitHub OAuth is **mandatory to appear on a public board** (maximize captured identity), but `npx @tokenboard/cli` shows a **local preview with no login first** (value-first, then "Sign in with GitHub to claim"); see §7. This removes the old "anonymous-tier retention" question — there are **no permanent anonymous public users**. *ccusage integration* — client-side shell-out, source-first syntax, no importable library; see §5.2. *Public company-board optics* — **DECIDED**: show the real company name/logo immediately (the brand is the distribution), with **alias-by-default for company-scoped rows** + a **fast self-serve emergency-privatize/takedown path** (one-click, immediate); not anonymize-until-claim. Residual risk: brief public exposure of aggregate spend before privatize. See §7.2.
