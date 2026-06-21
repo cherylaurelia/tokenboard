@@ -566,7 +566,7 @@ The CLI **never** prompts for login before showing value. `npx @tokenboard/cli` 
 
 **Phase A — local preview (no network identity, no login):**
 1. `npx @tokenboard/cli` runs the local parser (first-party Claude Code parser + `ccusage` shell-out for the long tail).
-2. It prints the aggregate (tokens/day/tool/model) and a **local board** (this machine's history). Cost is *not* computed here authoritatively — that's server-side from the pinned LiteLLM table — so the local preview shows token counts and an estimate labeled as such.
+2. It prints the aggregate (tokens/day/tool/model) and a **local board** (this machine's history), **always with a dollar figure** — tokens *and* `$`. Because the preview runs offline with no server, the CLI computes this `$` from a **pinned LiteLLM pricing snapshot bundled in the CLI release** and renders it as a labeled estimate (e.g. `~$1,180`). This snapshot is used **only** for the cosmetic preview estimate — it never feeds the leaderboard. Authoritative cost is still computed **server-side** on sync from the server's pinned table (§6.4 step 7), which is what ranks and what the board shows; the board self-corrects if the CLI snapshot has drifted (a new model, a stale pin), and `npx …@latest` refreshes the snapshot. So "counts in, cost out, server is truth for the board" holds — the client only produces a labeled local estimate.
 3. Footer: `Sign in with GitHub to claim your spot → tokenboard claim`. No anonymous identity is created or persisted server-side.
 
 **Phase B — claim (device flow → ingest token):**
@@ -575,7 +575,7 @@ The CLI **never** prompts for login before showing value. `npx @tokenboard/cli` 
 3. CLI opens the browser to `verification_url` = `https://tokenboard.sh/claim?code=WXYZ-1234` and **also prints** the URL + code in case the browser can't open. CLI begins polling `/api/v1/cli/login/poll` with `device_code` every `interval` seconds.
 4. In the browser, if the user has no web session they go through the **Supabase Auth GitHub flow (§4.2)** first. The `/claim` route handler then resolves the **Supabase** session server-side (`getUser()` / `getClaims()` via `@supabase/ssr`) to a `user_id`; the page shows the `user_code` for confirmation ("Approve device WXYZ-1234?") and they click **Approve**.
 5. On approve, server binds the grant to the user: sets `device_grants.user_id`, status `approved`, and mints a **device/ingest token** — a random opaque secret returned to the CLI on its *next poll* (never shown in the browser). Server stores only `sha256(ingest_token)` in `ingest_devices` with `user_id`, `machine_hash`, `created_at`, `last_used_at`, `revoked_at`.
-6. CLI's next poll returns `{ status: "complete", ingest_token }`. CLI writes it to `~/.config/tokenboard/credentials` (mode `600`). The `device_code` is now consumed.
+6. CLI's next poll returns `{ status: "complete", ingest_token }`. CLI writes it to **`~/.config/tokenboard/auth.json`** (mode `0600`, XDG-aware via `$XDG_CONFIG_HOME`; Windows `%APPDATA%\tokenboard\auth.json`) as JSON: `{ "token": "tbd_…", "userId": "<uuid>", "handle": "devon", "createdAt": "<iso8601>" }`. The `device_code` is now consumed. (The rolling sync watermark lives separately in `state.json` in the same dir.)
 7. All future `tokenboard sync` calls send `Authorization: Bearer <ingest_token>`. The token resolves to `(user_id, device_id)`; ingestion is the idempotent upsert keyed `(user_id, device_id, date, tool, model)`. The token authorizes *ingest only* — it cannot read other users, manage communities, or act as a web session.
 
 Polling responses follow the OAuth device-grant convention: `authorization_pending`, `slow_down`, `expired_token`, `access_denied`, then success.
@@ -608,7 +608,7 @@ Polling responses follow the OAuth device-grant convention: `authorization_pendi
   │              │  { status:"complete",            │                        │
   │              │    ingest_token }                │                        │
   │              │◀────────────────────────────────│                        │
-  │              │ write ~/.config/tokenboard/credentials (600)             │
+  │              │ write ~/.config/tokenboard/auth.json (0600)              │
   │  later: sync                                   │                        │
   │              │ POST /api/v1/sync  Bearer <token>│                        │
   │              │────────────────────────────────▶│ verify sha256, upsert  │
@@ -955,7 +955,7 @@ Both paths hit the same idempotent ingest (§6.4), so a manual run between ticks
 **Client updates / distribution:**
 
 - Published to **npm** as `tokenboard` (public). The cron and the recommended invocation use **`@latest`**, so scheduled users auto-update every run; `npm i -g` users are pinned until they update.
-- **Keep the client dumb** so updates are rarely needed: cost computation, the pinned LiteLLM table, ranking, and all board logic live server-side and update for everyone on deploy with zero client action. The CLI needs a new version only when a **local log format** changes (a tool's schema, or a new pinned `ccusage` major).
+- **Keep the client dumb** so updates are rarely needed: *authoritative* cost computation, the pinned LiteLLM table for the **board**, ranking, and all board logic live server-side and update for everyone on deploy with zero client action. The one exception is a **read-only LiteLLM pricing snapshot bundled in the CLI** used solely to render the offline local-preview `$` estimate (§4.3) — it never feeds the board, and a stale snapshot only affects the labeled estimate (refreshed by `npx …@latest`). The CLI otherwise needs a new version only when a **local log format** changes (a tool's schema, or a new pinned `ccusage` major) or to refresh that snapshot.
 - The CLI carries **`update-notifier`**: when a newer version exists it prints a one-line nudge (`⚡ tokenboard X available — run npx @tokenboard/cli@latest`) without blocking the current run.
 - **`ccusage` is pinned internally to `@20`** (the JS→Rust v15→v20 rewrite was breaking — see `DESIGN.md` §5.2); we bump it deliberately, never float it.
 
