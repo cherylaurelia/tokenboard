@@ -6,7 +6,7 @@
 <title>TOKENBOARD — STEEL-CARTEL [ARCADE]</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Space+Mono:wght@400;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Space+Mono:wght@400;700&family=JetBrains+Mono:wght@400;500;600&family=Geist+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
   :root {
     /* deep slate-navy — calmer, less purple/saturated */
@@ -36,7 +36,8 @@
 
     --pixel:  'Press Start 2P', monospace;
     --term:   'VT323', monospace;
-    --money:  'Space Mono', ui-monospace, monospace;  /* crisp, legible numbers */
+    --money:  'Space Mono', ui-monospace, monospace;  /* title + invite code */
+    --num:    'Geist Mono', ui-monospace, monospace;  /* the $ money amounts */
     --handle: 'JetBrains Mono', ui-monospace, monospace;  /* legible @handles */
   }
 
@@ -265,7 +266,7 @@
   .tag.you       { color: var(--coral); background: rgba(204,120,92,0.12); }
   .tok {
     margin-left: auto; flex: none;
-    font-family: var(--money); font-weight: 700; font-size: 16px; line-height: 1;
+    font-family: var(--num); font-weight: 700; font-size: 16px; line-height: 1;
     letter-spacing: 0; color: var(--ink); font-variant-numeric: tabular-nums;
   }
   .tok .m { font-size: 12px; color: var(--ink-3); margin-left: 1px; }
@@ -354,7 +355,7 @@
     border-top: 1px solid var(--frame);
   }
   .standing-stats .big {
-    font-family: var(--money); font-weight: 700; font-size: 30px; line-height: 1;
+    font-family: var(--num); font-weight: 700; font-size: 30px; line-height: 1;
     color: var(--coral-hi); font-variant-numeric: tabular-nums;
   }
   .standing-stats .elo {

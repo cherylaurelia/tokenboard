@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>tokenboard — money font comparison</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=JetBrains+Mono:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=Fira+Code:wght@400;500;700&family=Roboto+Mono:wght@400;500;700&family=Geist+Mono:wght@400;500;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#14151f; --bg-2:#181a26; --panel:#1f212e; --panel-2:#262838;
+    --frame:#34374a; --frame-hi:#424559;
+    --ink:#e6e6ea; --ink-2:#a8a9b6; --ink-3:#76788a; --ink-4:#565869;
+    --coral:#cc785c; --coral-hi:#d68d72; --bar-teal:#5f998a;
+    --term:'IBM Plex Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{ background:var(--bg); color:var(--ink); font-family:'IBM Plex Mono',monospace;
+    padding:34px 30px 60px;
+    background-image:radial-gradient(820px 420px at 50% -12%, rgba(204,120,92,0.05), transparent 72%); }
+  .h{ font-weight:700; font-size:16px; margin-bottom:4px; }
+  .sub{ font-size:12px; color:var(--ink-3); margin-bottom:28px; }
+  .grid{ display:grid; grid-template-columns:1fr 1fr; gap:20px; max-width:1180px; }
+  @media(max-width:980px){ .grid{grid-template-columns:1fr;} }
+
+  .card{ background:var(--bg-2); border:1px solid var(--frame); border-radius:14px; padding:18px 22px 18px; }
+  .tag{ font-weight:700; font-size:12px; letter-spacing:1px; text-transform:uppercase; color:var(--coral); margin-bottom:3px; }
+  .note{ font-size:11px; color:var(--ink-4); margin-bottom:16px; }
+
+  /* a column of money values to show tabular alignment + the 2dp */
+  .col{ display:flex; flex-direction:column; gap:7px; margin-bottom:16px; }
+  .line{ display:flex; align-items:baseline; gap:14px; }
+  .line .who{ font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--ink-3); width:120px; }
+  .money{ font-weight:700; font-size:17px; color:var(--ink); font-variant-numeric:tabular-nums; letter-spacing:0; }
+  .big{ font-weight:700; font-size:30px; color:var(--coral-hi); font-variant-numeric:tabular-nums; }
+  .biglabel{ font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--ink-4); margin-bottom:4px; }
+
+  /* per-card money font */
+  .f-space .money, .f-space .big { font-family:'Space Mono',monospace; }
+  .f-jb    .money, .f-jb .big    { font-family:'JetBrains Mono',monospace; }
+  .f-plex  .money, .f-plex .big  { font-family:'IBM Plex Mono',monospace; }
+  .f-fira  .money, .f-fira .big  { font-family:'Fira Code',monospace; }
+  .f-roboto .money, .f-roboto .big { font-family:'Roboto Mono',monospace; }
+  .f-geist .money, .f-geist .big { font-family:'Geist Mono',monospace; }
+  .f-inter .money, .f-inter .big { font-family:'Inter',sans-serif; }
+</style>
+</head>
+<body>
+  <div class="h">tokenboard · money font comparison</div>
+  <div class="sub">same $ values (2dp, tabular) · row size + big "Your Standing" size · current = Space Mono</div>
+  <div class="grid" id="grid"></div>
+
+  <script>
+    const fonts = [
+      ['f-space','Space Mono (CURRENT)','distinctive slab; wide; the one in use now'],
+      ['f-jb','JetBrains Mono','matches the @handles + title; clean, even'],
+      ['f-plex','IBM Plex Mono','crisp, slightly humanist; great tabular figures'],
+      ['f-fira','Fira Code','the landing-page font; neutral'],
+      ['f-roboto','Roboto Mono','very clean, neutral, bank-statement-y'],
+      ['f-geist','Geist Mono','modern, tight; Vercel’s mono'],
+      ['f-inter','Inter (sans, tabular)','drop mono for $; most "fintech" looking'],
+    ];
+    const vals = [
+      ['@torvalds','$1,180.00'],
+      ['@sindresorhus','$840.50'],
+      ['@tj','$710.25'],
+      ['@addyosmani','$275.40'],
+      ['@shadcn','$210.10'],
+    ];
+    const grid = document.getElementById('grid');
+    fonts.forEach(([cls,tag,note])=>{
+      const c = document.createElement('div');
+      c.className = 'card '+cls;
+      let lines = vals.map(([w,m])=>`<div class="line"><span class="who">${w}</span><span class="money">${m}</span></div>`).join('');
+      c.innerHTML = `<div class="tag">${tag}</div><div class="note">${note}</div>`+
+        `<div class="col">${lines}</div>`+
+        `<div class="biglabel">your standing</div><div class="big">$640.00</div>`;
+      grid.appendChild(c);
+    });
+  </script>
+</body>
+</html>
