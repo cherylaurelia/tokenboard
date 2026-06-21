@@ -760,9 +760,20 @@ NormalizedRecord {
 
 Records are **summed locally** by the unique key `(date, tool, model)` before upload, so the payload has at most one row per day/tool/model. The server treats each upload as the authoritative *latest* aggregate for that key (upsert overwrites, not increment — see §6.4).
 
+#### 6.1.1 The two collectors' real schemas (VERIFIED against `ccusage@20.0.14` + Claude Code logs)
+
+The cache-creation field differs between our two collectors — this is **load-bearing** for the `cacheCreate5m`/`cacheCreate1h` split:
+
+- **First-party Claude Code parser** — the raw JSONL `message.usage` block exposes the split directly: `input_tokens`, `output_tokens`, `cache_read_input_tokens`, and a nested `cache_creation: { ephemeral_5m_input_tokens, ephemeral_1h_input_tokens }`. Map these straight into `cacheCreate5m` / `cacheCreate1h` — accurate, because the two price differently (1.25× vs 2×).
+- **`ccusage` shell-out** — `ccusage <source> daily --json --offline` returns `{ daily: [...], totals: {...} }` (same shape for every source: `claude`, `codex`, `opencode`, …). Each `daily[]` row has `date`, `inputTokens`, `outputTokens`, `cacheReadTokens`, **`cacheCreationTokens` (a single combined field — NO 5m/1h split)**, `totalCost`, and a per-model `modelBreakdowns: [{ modelName, inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens, cost }]`. **Map at the `modelBreakdowns` grain** (one `NormalizedRecord` per `(date, source, modelName)`), not the row total.
+
+**Cache-bucket rule for ccusage tools:** since ccusage gives no split, put the combined `cacheCreationTokens` into `cacheCreate5m` and set `cacheCreate1h = 0`. This prices long-tail cache writes at the 5m rate (1.25×) — a small, documented approximation (most cache writes are 5m TTL anyway), and it only affects non-Claude-Code tools (Claude Code, the dominant source, keeps the exact split via the first-party parser). ccusage's own `cost`/`totalCost` fields are **ignored** — cost is always recomputed server-side (§6.4 step 7).
+
+Discovery & robustness: invoke via `npx -y ccusage@20 <source> daily --json --offline` (pinned `@20`, never `@latest`); run each known source independently; on a per-source non-zero exit / parse failure, skip that source and continue (Claude Code data still syncs). `--offline` uses cached pricing — fine, since we ignore ccusage's cost anyway.
+
 ### 6.2 Model-key normalization
 
-The CLI normalizes raw model strings to the canonical LiteLLM key space (e.g. `claude-opus-4-8`, `claude-3-5-sonnet-20241022`, `gpt-4o-2024-11-20`) using a small embedded alias map shipped in the CLI **and** re-validated server-side. Unknown models are passed through verbatim; the server prices unknowns at `$0` and flags them for price-table backfill (the record is still stored so cost can be recomputed later).
+The CLI normalizes raw model strings to the canonical LiteLLM key space using a small embedded alias map shipped in the CLI **and** re-validated server-side. In practice ccusage@20 already emits near-canonical ids (verified: `claude-opus-4-8`, `claude-sonnet-4-6`), so the **MVP alias map is small** — pass through verbatim for the common case, alias only known divergent spellings, and lowercase. Unknown models are passed through verbatim; the server prices unknowns at `$0` and flags them for price-table backfill (the record is still stored so cost can be recomputed later).
 
 ### 6.3 Batching and the POST
 

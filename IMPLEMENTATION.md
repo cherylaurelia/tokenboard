@@ -63,7 +63,7 @@ Compute/store/sum at **full precision** (`numeric(14,6)`; integer micro-dollars 
 > Commits, one logical change per commit.
 
 1. **Repo scaffold** — Next.js App Router + TS, Drizzle config (`postgres-js`, `prepare:false`), Supabase project, Upstash Redis + QStash, env wiring (§4). Drizzle schema from ARCH §2.1 + first migration. *Done: `migrate` applies clean; `auth.users` trigger creates a `public.users` row on signup.*
-2. **CLI local preview (no network)** — `npx @tokenboard/cli` parses Claude Code logs + shells out to `ccusage`, prints number + local board. *Done: prints correct aggregates offline; no identity created.* (See OPEN #3/#5 before finalizing the ccusage adapter + alias map.)
+2. **CLI local preview (no network)** — `npx @tokenboard/cli` parses Claude Code logs (first-party, real 5m/1h split) + shells out to `ccusage` per source (adapter contract: ARCH §6.1.1; alias map: §6.2). Prints number + local board. *Done: prints correct aggregates offline; no identity created.* (Resolve OPEN #4 — preview-cost source — before deciding whether the preview shows `$` or tokens-only.)
 3. **Web auth** — Supabase Auth GitHub login, `@supabase/ssr` cookie middleware, profile mirror. *Done: sign in with GitHub → `public.users` row + session cookie; `getUser()` resolves server-side.*
 4. **CLI claim (device flow)** — `device_grants` + `ingest_devices`, `/cli/login/start` + `/poll`, browser `/claim` reads Supabase session. *Done: `tokenboard claim` mints a device-bound ingest token, hash-only at rest.*
 5. **Sync ingest** — `POST /api/v1/sync` with the exact §6.4 pipeline (auth → idempotency → validate → clamp → normalize → price → upsert → rollup → flag → Redis → caches). *Done: idempotent (replayed key → stored response); cost computed server-side; multi-device sums.*
@@ -101,14 +101,14 @@ Everything else: integration-test against real (local/branch) Supabase + Redis; 
 
 ## 6. Open decisions that block specific code (resolve before the phase that needs them)
 
-| # | Blocks phase | Question | Lean |
+| # | Blocks phase | Question | Status / decision |
 |---|---|---|---|
-| 2 | 4 (claim) | CLI credential file path + format (`credentials` vs `auth.json`) | `~/.config/tokenboard/auth.json`, `0600`, JSON `{token,userId,handle,createdAt}` |
-| 3 | 2 (collect) | Real `ccusage <source> daily --json --offline` output → `NormalizedRecord` map; does it expose the 5m/1h cache split? | capture real payload, document field map |
-| 4 | 2 (preview) | Local-preview cost: ship a CLI price snapshot, or tokens-only pre-auth? | **tokens-only pre-auth** ($ after sync; keeps client dumb) |
-| 5 | 2 (collect) | Embedded model/tool alias map contents | seed from #3 capture (claude-code, codex, opencode) |
+| 2 | 4 (claim) | CLI credential file path + format (`credentials` vs `auth.json`) | **OPEN** — lean: `~/.config/tokenboard/auth.json`, `0600`, JSON `{token,userId,handle,createdAt}` |
+| 3 | 2 (collect) | Real `ccusage` output → `NormalizedRecord`; 5m/1h cache split? | **RESOLVED** (ARCH §6.1.1) — verified `ccusage@20.0.14`: `{daily:[],totals:{}}`, map at `modelBreakdowns` grain; ccusage gives only combined `cacheCreationTokens` (no split) → put in `cacheCreate5m`, `cacheCreate1h=0`; Claude Code first-party parser keeps the real split via `cache_creation.ephemeral_{5m,1h}_input_tokens`. |
+| 4 | 2 (preview) | Local-preview cost: ship a CLI price snapshot, or tokens-only pre-auth? | **OPEN** — lean: **tokens-only pre-auth** ($ after sync; keeps client dumb) |
+| 5 | 2 (collect) | Embedded model/tool alias map contents | **RESOLVED** (ARCH §6.2) — ccusage@20 emits near-canonical ids (`claude-opus-4-8`, `claude-sonnet-4-6`); MVP map = pass-through + lowercase, alias only known divergences. |
 
-RESOLVED already: stack (§1), `/board` + `/sync` contracts (§2), no ranking-eligibility gate (ARCH §4.6), cost precision (§2.4), npm name, LiteLLM sourcing (ARCH §6.6).
+RESOLVED already: stack (§1), `/board` + `/sync` contracts (§2), no ranking-eligibility gate (ARCH §4.6), cost precision (§2.4), npm name, LiteLLM sourcing (ARCH §6.6), ccusage adapter + alias map (ARCH §6.1.1/§6.2). **Remaining open: #2 (credential file) and #4 (preview cost) — both quick decisions.**
 
 ---
 
