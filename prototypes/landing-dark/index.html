@@ -7,7 +7,7 @@
 <meta name="description" content="A leaderboard for your agentic-coding token usage. Track spend across Claude Code, Codex, Opencode and more — then race your friends." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet" />
 <style>
   :root {
     /* deep slate-navy — matched to dashboard tokens */
@@ -31,6 +31,8 @@
     /* tabularag vibe: Fira Code (mono) for everything UI + terminal */
     --sans:  'Fira Code', ui-monospace, monospace;
     --mono:  'Fira Code', ui-monospace, monospace;
+    /* terminal command blocks: JetBrains Mono has a cleaner, compact @ glyph */
+    --term:  'JetBrains Mono', ui-monospace, monospace;
     --pixel: 'Press Start 2P', monospace;
 
     --maxw: 1120px;
@@ -196,7 +198,7 @@
   }
   .term-body {
     padding: 22px 22px 24px;
-    font-family: var(--mono); font-size: 14px; line-height: 2.0;
+    font-family: var(--term); font-size: 14px; line-height: 2.0;
     position: relative; z-index: 1;
     overflow-x: auto;
   }
@@ -317,7 +319,7 @@
   .cta-term .body {
     display: flex; align-items: center; justify-content: center; gap: 14px;
     padding: 32px 30px; position: relative; z-index: 1;
-    font-family: var(--mono);
+    font-family: var(--term);
     font-size: clamp(22px, 3vw, 30px); line-height: 1;
   }
   .cta-term .body .pr { color: var(--coral); font-weight: 500; }
