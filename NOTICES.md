@@ -5,11 +5,12 @@ open-source projects, with gratitude:
 
 ## ccusage
 
-tokenboard's CLI shells out to [`ccusage`](https://github.com/ccusage/ccusage)
+tokenboard's CLI shells out to [`ccusage`](https://github.com/ryoppippi/ccusage)
 to parse local usage logs for the long tail of agentic-coding tools (Codex,
-Gemini CLI, OpenCode, Goose, and others). ccusage is MIT-licensed.
+opencode, grok, droid, and others). ccusage is MIT-licensed.
 
-- Project: https://github.com/ccusage/ccusage
+- Project: https://github.com/ryoppippi/ccusage
+- Copyright (c) ryoppippi
 - License: MIT
 
 ## LiteLLM model pricing data

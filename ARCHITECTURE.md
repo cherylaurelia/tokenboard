@@ -638,7 +638,7 @@ The product is a public leaderboard, so the adversary's goal is **inflated rank*
 
 **Tier 1 — GitHub identity (sock puppets):**
 - **Threat:** a user spins up many GitHub accounts to flood a board or fake a community.
-- **Mitigations:** require **GitHub account age + minimum signal** (account older than N days, ≥1 public event / non-empty profile) before a user counts on *public* boards — brand-new throwaway accounts can preview locally but are quarantined from public ranking; key everything on immutable **`github_id`** so deleting+recreating a username doesn't dodge bans; **plausibility caps** on ingested aggregates (max tokens/day per human) plus per-`machine_hash` de-dup so one device can't back ten accounts undetected; ban = `users.banned_at`, with DB sessions + device tokens revoked immediately (this is *why* we chose DB sessions in §4.1).
+- **Mitigations:** key everything on immutable **`github_id`** so deleting+recreating a username doesn't dodge bans; **plausibility caps** on ingested aggregates (max tokens/day per human) plus per-`machine_hash` de-dup so one device can't back ten accounts undetected; ban = `users.banned_at`, with DB sessions + device tokens revoked immediately (this is *why* we chose DB sessions in §4.1). (We deliberately do **not** gate public ranking on GitHub account age/signal — every signed-in user ranks immediately; the social/communities framing, not an eligibility filter, is the anti-cheat posture. See §4.6.)
 
 **Tier 2 — community (slug squatting, invite abuse):**
 - **Threats:** squatting desirable slugs (`/c/openai`); brigading with puppets; leaked join codes.
@@ -646,7 +646,18 @@ The product is a public leaderboard, so the adversary's goal is **inflated rank*
 
 **Tier 3 — company (fake domains, free-provider abuse):**
 - **Threats:** verifying a domain you don't work at; creating a company board from a free/disposable provider; one person inflating a small company's board with puppets.
-- **Mitigations:** **mailbox control is the gate**; **disposable + free-provider denylist** plus **MX-record requirement** to create a new domain board; **plus-subaddress + local-part normalization** stops one mailbox minting many "distinct" members; **org-admin claim + privatize** gives a real owner a cleanup lever; **re-verification (180d)** prunes stale/departed members; for small domains, show **"n verified members"** and suppress public ranking until a **minimum member threshold** is met, so a single puppeteer can't put a 1-person "company" at the top of the global board.
+- **Mitigations:** **mailbox control is the gate**; **disposable + free-provider denylist** plus **MX-record requirement** to create a new domain board; **plus-subaddress + local-part normalization** stops one mailbox minting many "distinct" members; **org-admin claim + privatize** gives a real owner a cleanup lever; **re-verification (180d)** prunes stale/departed members. (We do **not** suppress small company boards below a member threshold — a freshly-verified domain board ranks immediately; mailbox control + normalization already bound the abuse, and the named-company social pressure is the point. See §4.6.)
+
+### 4.6 Ranking eligibility (DECIDED: rank everyone, no eligibility gate)
+
+**Decision: there is no "ranking-eligibility" gate. Every non-banned signed-in user, and every verified company board, appears on public boards immediately.** Earlier drafts proposed (a) quarantining low-signal/new GitHub accounts from public ranking until they passed an account-age + activity threshold, and (b) suppressing company boards below a minimum verified-member count. **Both are removed.**
+
+Rationale:
+- **The leaderboard is the product, and it must feel instant.** A new user who runs the CLI and claims a spot has to *see themselves ranked* in the same session — a quarantine that hides them "until N days old" guts the core loop and the share moment.
+- **The real anti-cheat gate is social, not algorithmic.** Communities and company boards are "you vs people you actually know"; a sock-puppet on a friends/company board is self-policing in a way a global stranger-board never is. We lean on that, plus the already-specified `github_id`-keyed bans, plausibility caps, `machine_hash` de-dup, and (for company tier) mailbox control + normalization.
+- **No schema to carry it.** Keeping this out means `users` needs no `ranking_eligible`/`eligible_at` column, `usage_day_total` needs no per-day `flagged` column governing ranking, and neither the §6.4 write path nor the §7 read path filters on eligibility — they `ZADD`/serve every non-banned user. The only ranking exclusion is `users.banned_at` (hard ban) and the §6.4-step-10 implausibility flag, which is **advisory/telemetry only** (it annotates a day; it does **not** remove that day's tokens from the score or hide the user).
+
+The single source of "should this user/score appear publicly" is therefore `users.banned_at IS NULL`. No additional eligibility state exists.
 
 ---
 
@@ -684,7 +695,7 @@ GitHub never proves you work somewhere — so company membership requires provin
    - **Block disposable domains** against a maintained denylist refreshed on a schedule. Reject with a clear message.
    - **Block plus-subaddressing**: strip/reject `+tag` (`devon+foo@acme-corp.com` → `devon@acme-corp.com`; if the normalized local-part is already pending/used, don't allow a second slot). The disposable/free-provider denylist also excludes `gmail.com`, `outlook.com`, etc. from forming company boards.
    - **Domain sanity**: must have an MX record (cheap DNS check) to be eligible to *create* a new company board.
-3. **Mint the 6-digit code** — server generates **one** 6-digit code and stores `email_verifications (user_id, email, domain, code_hash, expires_at ~15m, attempts)`. Sends an email that contains the code **both** as a paste-able OTP **and** embedded in a magic link (`/verify/email/confirm?domain=…&code=…`) — the link and the OTP are the *same* code. Only the `code_hash` is stored. Security rests on attempt-lockout + 15m TTL + send/confirm rate-limits, not on code entropy (it's a 6-digit code, not a high-entropy token).
+3. **Mint the 6-digit code** — server generates **one** 6-digit code and stores `email_verifications (user_id, email, domain, code_hash, expires_at ~15m, attempts)`. Sends an email **via Resend** (see §9; `RESEND_API_KEY`, React-Email template) that contains the code **both** as a paste-able OTP **and** embedded in a magic link (`/verify/email/confirm?domain=…&code=…`) — the link and the OTP are the *same* code. Only the `code_hash` is stored. Security rests on attempt-lockout + 15m TTL + send/confirm rate-limits, not on code entropy (it's a 6-digit code, not a high-entropy token).
 4. **Confirm** — user clicks the link (which prefills the code) or pastes the OTP. `POST /api/v1/verify/email/confirm { domain, code }`. Server checks `code_hash`, expiry, and attempt count (lock after ~5 tries).
 5. **Bind** — on success: find-or-create the company community for `domain` (rules above), insert `memberships (user_id, community_id, role='member', verified_via='email:<domain>')`, set `reverify_due = now() + 180 days`, and grant the **company badge**. The raw email is **not** stored long-term — we keep `domain` + a salted hash of the full address (for re-verification de-dup), not the plaintext.
 
@@ -900,7 +911,7 @@ Error envelope (validation, partial success):
      tokens=EXCLUDED.tokens, cost_usd=EXCLUDED.cost_usd, updated_at=now();
    ```
    The Redis update uses this **new cross-device day-total** as the score for that day-bucket (idempotent overwrite via `ZADD` — see §7.3), so retries and multi-device syncs are both safe.
-10. **Sanity-cap flag (flag, don't clip).** After the `usage_day_total` rollup, compare each affected `(user_id, date)` total against the **derived plausibility ceiling** (the daily-throughput ceiling from `DESIGN.md` §9 — max plausible tokens/day including cache reads × 24h × N parallel agents). If a day total exceeds it, **flag** the day (e.g. set a `flagged` marker and surface a `DAY_TOTAL_IMPLAUSIBLE` flag code in the response) but **do not clip or alter the stored counts** — lifetime totals stay intact and auditable; the flag governs *display/ranking eligibility*, not the underlying numbers. This protects the global board from obvious garbage without ever destroying real data.
+10. **Sanity-cap flag (flag, don't clip — advisory only).** After the `usage_day_total` rollup, compare each affected `(user_id, date)` total against the **derived plausibility ceiling** (the daily-throughput ceiling from `DESIGN.md` §9 — max plausible tokens/day including cache reads × 24h × N parallel agents). If a day total exceeds it, surface a `DAY_TOTAL_IMPLAUSIBLE` flag code in the response for **telemetry/abuse-detection only** — **do not clip or alter the stored counts, and do not exclude the day from ranking** (per §4.6 there is no eligibility gate; the only ranking exclusion is a hard `users.banned_at`). The flag is a signal for human review that can lead to a ban; it never silently changes a score. This keeps lifetime totals intact and auditable.
 11. **Update Redis ZSETs.** For each affected day, write the per-day bucket score and refresh the rolling-window members (full algorithm in §7.3). All `ZADD`s use the user's immutable `user_id` (uuid) as member and the day-total (or window-total) as score — overwrites are inherently idempotent. Handle/avatar/tier are never stored in the ZSET; they're joined at read time from the profile cache by `user_id` (§7.5).
 12. **Resolve the user's communities.** `SELECT community_id, slug FROM memberships WHERE user_id=$1` → update each community-scoped board key in addition to the global board. (A user is always a member of the global pseudo-community `g`.)
 13. **Finalize idempotency record.** Update the `sync_requests` row with the full response JSON and `status='done'`. Return `200`.
@@ -942,6 +953,17 @@ Both paths hit the same idempotent ingest (§6.4), so a manual run between ticks
 - **Keep the client dumb** so updates are rarely needed: cost computation, the pinned LiteLLM table, ranking, and all board logic live server-side and update for everyone on deploy with zero client action. The CLI needs a new version only when a **local log format** changes (a tool's schema, or a new pinned `ccusage` major).
 - The CLI carries **`update-notifier`**: when a newer version exists it prints a one-line nudge (`⚡ tokenboard X available — run npx tokenboard@latest`) without blocking the current run.
 - **`ccusage` is pinned internally to `@20`** (the JS→Rust v15→v20 rewrite was breaking — see `DESIGN.md` §5.2); we bump it deliberately, never float it.
+
+### 6.6 The LiteLLM price table — sourcing, vendoring & versioning
+
+Cost is computed server-side from a **vendored, pinned** copy of LiteLLM's per-token price map — never fetched live at request time.
+
+- **Source of truth (upstream):** the single JSON file `model_prices_and_context_window.json` at the root of **`BerriAI/litellm`** (MIT-licensed). It's a flat object keyed by model id; per-model fields we use are `input_cost_per_token`, `output_cost_per_token`, `cache_read_input_token_cost`, `cache_creation_input_token_cost` (plus tiered `*_above_200k_tokens` / `*_above_272k_tokens` variants and `litellm_provider`). The first key `sample_spec` is a documentation template — **skip it** when parsing.
+- **Pin to an immutable ref, do not hot-link `main`.** Upstream commits to this file **many times per day**, so fetching `…/main/…` at compute time is non-deterministic and unsafe. We pull from a specific commit SHA (or release tag): `https://raw.githubusercontent.com/BerriAI/litellm/<COMMIT_SHA>/model_prices_and_context_window.json`.
+- **Vendor + version it.** Each pinned table is stored as a row/artifact identified by our own `price_table_version` string (e.g. `litellm-2026-06-12`), recording the upstream commit SHA, fetch timestamp, and a content hash. Every `usage_day` row stamps the `price_table_version` that priced it, so historical re-pricing is deterministic (replay `usage_day` against any version). At runtime the table is loaded by version and cached in process memory (the §8.1 in-process LRU).
+- **Refresh via reviewed CI, never live.** A scheduled job (e.g. weekly) fetches the latest upstream SHA, diffs it against the current pinned copy, and opens a PR that bumps the SHA + vendored JSON + mints a new `price_table_version`. Merging the PR is the deliberate act that introduces new pricing; a merge triggers the §8.1 controlled background re-price (replay → recompute `cost_usd` → rebuild cost boards). Pricing never changes under us silently.
+- **Unknown / missing models:** a model absent from the table (or missing a cost field) is priced at `cost = 0`, `priced = false`, and flagged for backfill — the raw counts are still stored so the row re-prices correctly once the table covers it (per §6.2 / step 7).
+- **License:** MIT — retain the BerriAI copyright + MIT notice for the vendored file in `NOTICES.md`.
 
 ---
 
@@ -1222,6 +1244,7 @@ Token-bucket limits enforced in Upstash Redis, keyed per-user (`uid:<id>`) and p
 | Local log parsing | **First-party Claude Code parser + `ccusage` shell-out** | First-party parser for the primary tool; `ccusage` covers the long tail (Cursor, Codex, Aider, Copilot, Gemini) with graceful degradation. |
 | Share cards | **next/og** | Server-rendered OG images for X/social sharing; immutable content-hash URLs make them CDN-cacheable forever. |
 | Email verification | **One shared 6-digit code (in both the magic link and the OTP), `code_hash` only** | Proves mailbox control at a work domain (the only credible signal of employment); security from attempt-lockout + 15m TTL + rate-limit (not code entropy), disposable/free-provider denylist. |
+| Transactional email | **Resend** (`RESEND_API_KEY`, React-Email templates) | Sends the work-email magic link / OTP. First-class Next.js DX, perpetual free tier (~3k/mo, 100/day — ample for auth volume), no sandbox-approval gate, SPF/DKIM/DMARC on a verified sending domain. Sent from a server route handler. |
 | Identity badge (X) | **X OAuth (connect-only)** | Verified badge + share affordance; deliberately *not* an auth provider — GitHub is the spine. |
 
 ---
