@@ -99,22 +99,7 @@ Everything else: integration-test against real (local/branch) Supabase + Redis; 
 
 ---
 
-## 6. Open decisions that block specific code (resolve before the phase that needs them)
-
-All four are now **RESOLVED** — no design blockers remain before implementation.
-
-| # | Blocks phase | Question | Decision |
-|---|---|---|---|
-| 2 | 4 (claim) | CLI credential file path + format | **`~/.config/tokenboard/auth.json`**, mode `0600`, XDG-aware (`%APPDATA%\tokenboard\auth.json` on Windows), JSON `{token,userId,handle,createdAt}`. Sync watermark in `state.json` in the same dir. ARCH §4.3. |
-| 3 | 2 (collect) | Real `ccusage` output → `NormalizedRecord`; 5m/1h cache split? | **ARCH §6.1.1** — verified `ccusage@20.0.14`: `{daily:[],totals:{}}`, map at `modelBreakdowns` grain; ccusage gives only combined `cacheCreationTokens` → put in `cacheCreate5m`, `cacheCreate1h=0`; Claude Code first-party parser keeps the real split. |
-| 4 | 2 (preview) | Local-preview cost: ship a CLI price snapshot, or tokens-only? | **Always show `$`.** Preview computes a labeled estimate (`~$1,180`) from a **pinned LiteLLM snapshot bundled in the CLI**, used *only* for the cosmetic preview — the board's cost stays server-authoritative and self-corrects on sync. ARCH §4.3. |
-| 5 | 2 (collect) | Embedded model/tool alias map contents | **ARCH §6.2** — ccusage@20 emits near-canonical ids; MVP map = pass-through + lowercase, alias only known divergences. |
-
-RESOLVED: stack (§1), `/board` + `/sync` contracts (§2), no ranking-eligibility gate (ARCH §4.6), cost precision (§2.4), npm name, LiteLLM sourcing (ARCH §6.6), ccusage adapter + alias map (ARCH §6.1.1/§6.2), credential file (ARCH §4.3), preview cost (always `$`, ARCH §4.3). **No open design blockers — ready to build Phase 1.**
-
----
-
-## 7. Hard rules (from CLAUDE.md — enforced)
+## 6. Hard rules (from CLAUDE.md — enforced)
 
 - Commits: sole author per `CLAUDE.md`; **Conventional Commits**; no AI attribution/co-author.
 - **No real personal names/emails/employer** in code, comments, docs, or mockups — use fictional placeholders (`devon`, `acme-corp.com`).
