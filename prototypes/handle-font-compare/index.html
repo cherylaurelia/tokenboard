@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>tokenboard — @handle font comparison</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Space+Mono:wght@400;700&family=Fira+Code:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg:#14151f; --bg-2:#181a26; --panel:#1f212e; --panel-2:#262838;
+    --frame:#34374a; --frame-hi:#424559;
+    --ink:#e6e6ea; --ink-2:#a8a9b6; --ink-3:#76788a; --ink-4:#565869;
+    --coral:#cc785c; --coral-hi:#d68d72;
+    --bar-yellow:#b8b266; --bar-teal:#5f998a;
+    --pixel:'Press Start 2P',monospace; --term:'VT323',monospace; --money:'Space Mono',monospace;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--ink); font-family:var(--term);
+    padding:36px 28px 60px;
+    background-image:radial-gradient(820px 420px at 50% -12%, rgba(204,120,92,0.05), transparent 72%); }
+  .page-title { font-family:var(--pixel); font-size:14px; color:var(--ink); margin-bottom:6px; }
+  .page-sub { font-family:var(--money); font-size:12px; color:var(--ink-3); margin-bottom:30px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:22px; max-width:1180px; }
+  @media(max-width:980px){ .grid{grid-template-columns:1fr;} }
+
+  .card { background:var(--bg-2); border:1px solid var(--frame); border-radius:14px; padding:18px 22px 14px; }
+  .card .tag { font-family:var(--money); font-weight:700; font-size:12px; letter-spacing:1px;
+    text-transform:uppercase; color:var(--coral); margin-bottom:4px; }
+  .card .note { font-family:var(--money); font-size:11px; color:var(--ink-4); margin-bottom:14px; }
+
+  /* the real leaderboard row layout */
+  .board { display:flex; flex-direction:column; }
+  .pl { display:grid; grid-template-columns:26px 36px 1fr; column-gap:14px; align-items:center;
+    padding:10px 6px; border-bottom:1px solid var(--frame); }
+  .pl:last-child{ border-bottom:none; }
+  .rk { font-family:var(--term); font-size:21px; line-height:1; color:var(--ink-3); text-align:center; }
+  .pl.r1 .rk{ color:var(--bar-yellow); font-weight:700; }
+  .pl.r2 .rk{ color:#b9bcca; font-weight:700; }
+  .pl.r3 .rk{ color:var(--coral-hi); font-weight:700; }
+  .pfp { width:36px; height:36px; border-radius:7px; border:1px solid var(--frame); background:var(--panel-2); object-fit:cover; }
+  .pl.you .pfp{ border-color:var(--coral); }
+  .pl.you{ background:rgba(204,120,92,0.07); box-shadow:inset 3px 0 0 var(--coral); }
+  .pl-top { display:flex; align-items:center; gap:14px; min-width:0; }
+  .at { color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .pl.you .at{ color:var(--coral-hi); }
+  .tok { margin-left:auto; font-family:var(--money); font-weight:700; font-size:16px; color:var(--ink); font-variant-numeric:tabular-nums; }
+  .pl.you .tok{ color:var(--coral-hi); }
+  .elo { flex:none; margin-left:16px; min-width:54px; text-align:right; font-family:var(--term); font-size:18px;
+    display:inline-flex; align-items:center; justify-content:flex-end; gap:4px; }
+  .elo.up{ color:var(--bar-teal); } .elo.down{ color:var(--coral); }
+  .elo .ar{ font-size:11px; }
+
+  /* per-card handle font + size overrides */
+  .f-vt   .at { font-family:var(--term);          font-size:21px; letter-spacing:.5px; }
+  .f-space .at{ font-family:'Space Mono',monospace;font-size:15px; }
+  .f-fira  .at{ font-family:'Fira Code',monospace; font-size:15px; }
+  .f-jb    .at{ font-family:'JetBrains Mono',monospace; font-size:15px; }
+  .f-plex  .at{ font-family:'IBM Plex Mono',monospace;  font-size:15px; }
+  .f-inter .at{ font-family:'Inter',sans-serif;   font-size:15px; font-weight:500; }
+</style>
+</head>
+<body>
+  <div class="page-title">tokenboard · @handle font comparison</div>
+  <div class="page-sub">same leaderboard rows · 6 handle fonts · numbers/rank stay VT323 in all</div>
+
+  <div class="grid" id="grid"></div>
+
+  <script>
+    const fonts = [
+      ['f-vt',    'VT323 (current — the one you disliked)', 'pixel terminal; hard to read at @handle size'],
+      ['f-space', 'Space Mono',                              'what I just changed it to; slab/distinctive'],
+      ['f-fira',  'Fira Code',                               "the landing page's main font; clean, neutral"],
+      ['f-jb',    'JetBrains Mono',                          'landing terminal font; crisp, wider, nice @'],
+      ['f-plex',  'IBM Plex Mono',                           'clean, slightly warm/humanist'],
+      ['f-inter', 'Inter (sans, not mono)',                  'drop mono for handles; max readability'],
+    ];
+    const rows = [
+      ['r1', 1, 'torvalds',   '12.4M', 'up',   '85',  false],
+      ['r2', 2, 'gaearon',    '11.8M', 'up',   '60',  false],
+      ['r3', 3, 'sindresorhus','9.2M', 'down', '40',  false],
+      ['you',5, 'ryoppippi',  '6.9M',  'up',   '120', true ],
+      ['r6', 6, 'yyx990803',  '6.1M',  'down', '25',  false],
+    ];
+    const grid = document.getElementById('grid');
+    fonts.forEach(([cls, tag, note]) => {
+      const card = document.createElement('div');
+      card.className = 'card ' + cls;
+      let html = `<div class="tag">${tag}</div><div class="note">${note}</div><div class="board">`;
+      rows.forEach(([rk, n, handle, tok, dir, delta, isYou]) => {
+        const ar = dir === 'up' ? '▲' : '▼';
+        html += `<div class="pl ${rk} ${isYou?'you':''}">
+          <div class="rk">${n}</div>
+          <img class="pfp" src="https://github.com/${handle}.png?size=72" alt="" loading="lazy" />
+          <div class="pl-top">
+            <span class="at">@${handle}</span>
+            <span class="tok">${tok}</span>
+            <span class="elo ${dir}"><span class="ar">${ar}</span>${delta}</span>
+          </div>
+        </div>`;
+      });
+      html += `</div>`;
+      card.innerHTML = html;
+      grid.appendChild(card);
+    });
+  </script>
+</body>
+</html>
