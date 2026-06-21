@@ -46,7 +46,8 @@ npx @tokenboard/cli     # see your number locally (no login)
 implementation. Start here:
 
 - **[DESIGN.md](./DESIGN.md)** — product design: positioning, user flows, the design language
-- **[ARCHITECTURE.md](./ARCHITECTURE.md)** — engineering design: data model, API, sync protocol, leaderboards
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** — engineering design: data model, API, sync protocol, leaderboards (the canonical "why")
+- **[IMPLEMENTATION.md](./IMPLEMENTATION.md)** — the agent-facing build sheet: frozen contracts, build order, acceptance criteria (start here to implement)
 - **[prototypes/](./prototypes/)** — visual design prototypes (open the `.html` files)
 
 ## Stack

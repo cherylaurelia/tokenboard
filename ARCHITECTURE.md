@@ -435,7 +435,7 @@ Content-Type: application/json
   ]
 }
 ```
-Aggregates only — never prompts, code, or paths. The wire shape is camelCase with the cache-write bucket **split** into `cacheCreate5m`/`cacheCreate1h` (they price differently — 1.25× vs 2×), matching the canonical contract in §6.3. Server resolves the bearer → `(user_id, device_id)`, computes `cost_usd` per row from the pinned LiteLLM table, then `INSERT ... ON CONFLICT (user_id, device_id, date, tool, model) DO UPDATE` (last-write-wins, idempotent). Response:
+Aggregates only — never prompts, code, or paths. The wire shape is camelCase with the cache-write bucket **split** into `cacheCreate5m`/`cacheCreate1h` (they price differently — 1.25× vs 2×), matching the canonical contract in §6.3. Server resolves the bearer → `(user_id, device_id)`, computes `cost_usd` per row from the pinned LiteLLM table, then `INSERT ... ON CONFLICT (user_id, device_id, date, tool, model) DO UPDATE` (last-write-wins, idempotent). Response (compact view of the **canonical §6.3 envelope** — the server returns the full §6.3 shape; this is the subset the CLI surfaces):
 ```json
 {
   "accepted": true,
@@ -857,7 +857,7 @@ Response `200 OK`:
 }
 ```
 
-> Both `/api/v1/sync` response shapes appear in this document: §3.1 shows the compact `{ accepted, days_upserted, cost_usd_total, profile_url, board_url }` summary returned to the simple CLI path; the richer envelope above (`accepted`/`rejected` counts, `daysAffected`, `boardsTouched`) is the full diagnostic form. They describe the same endpoint at different levels of detail; an implementation may return the union of these fields.
+> **Canonical `/sync` response = the full envelope above (§6.3).** Implement this shape. The compact `{ accepted, days_upserted, cost_usd_total, profile_url, board_url }` block shown in §3.1 is just the subset the CLI surfaces to the user — it is **not** a second response variant; the server always returns the §6.3 envelope and the CLI reads the fields it needs.
 
 Error envelope (validation, partial success):
 ```json
