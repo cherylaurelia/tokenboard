@@ -62,14 +62,30 @@ Compute/store/sum at **full precision** (`numeric(14,6)`; integer micro-dollars 
 > Suggested sequence; each phase has a clear "done" gate. Commit per Conventional
 > Commits, one logical change per commit.
 
+### Reference UI — build the web pages to match these exact mockups
+
+The visual design is **locked** in three self-contained HTML prototypes. Build the
+React/Next pages to match them (layout, palette, fonts, spacing, components) —
+porting the static HTML/CSS into components, wired to real `§7.2` data:
+
+| Page | Mockup (open in a browser) | Becomes |
+|---|---|---|
+| **Landing** | `prototypes/landing-dark/index.html` | `/` (marketing home) |
+| **Leaderboard** | `prototypes/dashboard-pixel/index.html` | `/community/[slug]` + global board |
+| **My Communities** | `prototypes/communities/index.html` | the signed-in communities hub + join flow |
+
+Design tokens to lift from those files: palette (`--bg #14151f`, `--coral #cc785c`, the slate-navy scale), fonts (Press Start 2P wordmark, VT323/Space Mono on the board, Fira Code + JetBrains Mono on the landing terminals), the flat divider-table leaderboard (no boxed rows), and the 1px-border calm style.
+
+> **Ignore the other `prototypes/` dirs** — `dashboard/`, `landing-light/`, `font-compare/`, `works-compare/`, `dashboard-v2/`, `dashboard-refined/` are scratch/comparison/abandoned explorations, **not** the canonical design. Build only from the three above.
+
 1. **Repo scaffold** — Next.js App Router + TS, Drizzle config (`postgres-js`, `prepare:false`), Supabase project, Upstash Redis + QStash, env wiring (§4). Drizzle schema from ARCH §2.1 + first migration. *Done: `migrate` applies clean; `auth.users` trigger creates a `public.users` row on signup.*
 2. **CLI local preview (no network)** — `npx @tokenboard/cli` parses Claude Code logs (first-party, real 5m/1h split) + shells out to `ccusage` per source (adapter contract: ARCH §6.1.1; alias map: §6.2). Prints number + local board **with a labeled `$` estimate** from the CLI-bundled LiteLLM snapshot (ARCH §4.3). *Done: prints correct aggregates + `~$` offline; no identity created.*
 3. **Web auth** — Supabase Auth GitHub login, `@supabase/ssr` cookie middleware, profile mirror. *Done: sign in with GitHub → `public.users` row + session cookie; `getUser()` resolves server-side.*
 4. **CLI claim (device flow)** — `device_grants` + `ingest_devices`, `/cli/login/start` + `/poll`, browser `/claim` reads Supabase session. *Done: `tokenboard claim` mints a device-bound ingest token, hash-only at rest.*
 5. **Sync ingest** — `POST /api/v1/sync` with the exact §6.4 pipeline (auth → idempotency → validate → clamp → normalize → price → upsert → rollup → flag → Redis → caches). *Done: idempotent (replayed key → stored response); cost computed server-side; multi-device sums.*
 6. **Leaderboard read** — Redis ZSET writes (§7.3) + `GET /api/v1/board` assembling §7.2 JSON; nightly QStash sweep + snapshot. *Done: top-N + your-rank correct; decay correct after a day rolls over; rebuildable from Postgres.*
-7. **Web board + profile pages** — render §7.2; tokens/cost toggle; sparklines; share card via next/og. *Done: matches the prototypes in `prototypes/`.*
-8. **Communities + work-email verify** — create/join (code), company boards via Resend magic-link/OTP (§5.3). *Done: domain auto-join; 180d re-verify.*
+7. **Web board + profile + landing pages** — render §7.2; tokens/cost toggle; sparklines; share card via next/og. Build to the Reference-UI mockups above (`landing-dark`, `dashboard-pixel`). *Done: pages visually match the three canonical prototypes.*
+8. **Communities + work-email verify** — the communities hub + join flow built to `prototypes/communities/index.html`; create/join (code), company boards via Resend magic-link/OTP (§5.3). *Done: domain auto-join; 180d re-verify; UI matches the communities mockup.*
 9. **Rate limits + caching** — Upstash token buckets (§8.2), CDN/ISR tags (§8.1). *Done: limits enforced; board JSON CDN-cached + tag-purged on sync.*
 
 ---
