@@ -11,6 +11,9 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { verifyEmailConfirmRequestSchema, verifyEmailConfirmResponseSchema } from "@tokenboard/contracts";
 import { hashOtp, constantTimeEqualBytea } from "@/lib/verify/code";
 import { bindCompanyBoard } from "@/lib/verify/bind-company-board";
+import { profKey } from "@/lib/leaderboard/keys";
+import { redis } from "@/lib/redis/client";
+import { enforce } from "@/lib/ratelimit/enforce";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,6 +39,11 @@ export async function POST(request: NextRequest) {
     sql`select 1 from users where id = ${user.id} and banned_at is not null limit 1`,
   )) as unknown as Array<unknown>;
   if (banned.length > 0) return NextResponse.json({ error: "banned" }, { status: 403 });
+
+  // §8.2 — 10/15min per-user + 30/hr per-IP (request VOLUME). Orthogonal to the §5.3 per-code
+  // attempt-lockout below (MAX_ATTEMPTS) which guards a SINGLE code against guessing. Both apply.
+  const gate = await enforce(request, "verifyConfirm", { uid: user.id });
+  if (!gate.ok) return gate.response;
 
   const { domain, code } = parsed.data;
 
@@ -99,9 +107,11 @@ export async function POST(request: NextRequest) {
   }
 
   // The company badge is DERIVED from the verified membership in profile-cache.ts (tierPill,
-  // kind='company'). prof:{userId} cache eviction for instant appearance is OMITTED to avoid pulling
-  // the redis client into this route — the badge appears within <=6h (TTL) or on any cache miss.
-  return NextResponse.json(
+  // kind='company'). Bust prof:{userId} so the badge appears immediately rather than within the 6h
+  // TTL (non-fatal — a cache-bust failure must not fail an already-bound verification).
+  await redis.del(profKey(user.id)).catch(() => {});
+
+  const res = NextResponse.json(
     verifyEmailConfirmResponseSchema.parse({
       verified: true,
       community: { id: board.id, slug: board.slug },
@@ -110,4 +120,6 @@ export async function POST(request: NextRequest) {
     }),
     { status: 200 },
   );
+  for (const [k, v] of Object.entries(gate.headers)) res.headers.set(k, v);
+  return res;
 }

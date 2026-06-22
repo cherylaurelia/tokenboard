@@ -52,7 +52,7 @@ export async function joinCommunity(
   if (community.joinPolicy === "code") {
     // Codes are minted from an UPPERCASE ambiguity-safe alphabet; trimEnd() defends against any
     // char(6) trailing-space round-trip, then case-insensitive compare. Not a security secret (low-
-    // value invite); brute-force lockout is Phase 9 §8.2.
+    // value invite); brute-force lockout lives in join-lockout.ts (the route records each miss).
     const stored = community.joinCode?.trimEnd().toUpperCase() ?? null;
     const typed = suppliedCode?.trim().toUpperCase() ?? null;
     if (!stored || !typed || stored !== typed) return { kind: "invalid_join_code" };

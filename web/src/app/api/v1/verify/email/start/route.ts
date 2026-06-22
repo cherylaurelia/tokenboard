@@ -1,7 +1,8 @@
 // POST /api/v1/verify/email/start (auth: session). §5.3 START. nodejs runtime (node:dns + node:crypto
 // + Resend). Order: getUser -> banned -> normalize -> denylist -> MX(new domain only; transient->503)
-// -> throttle -> replace prior pending (DELETE-then-INSERT in a tx; the pending index is NOT unique)
-// -> mint+hash (domain in the hash; bytea via Drizzle) -> Resend send. NEVER log/return the code.
+// -> §8.2 rate limit (uid+ip+email) -> replace prior pending (DELETE-then-INSERT in a tx; the pending
+// index is NOT unique) -> mint+hash (domain in the hash; bytea via Drizzle) -> Resend send. NEVER
+// log/return the code.
 import { NextResponse, type NextRequest } from "next/server";
 import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
@@ -11,9 +12,9 @@ import { verifyEmailStartRequestSchema, verifyEmailStartResponseSchema } from "@
 import { normalizeWorkEmail } from "@/lib/verify/email-normalize";
 import { blockedProvider } from "@/lib/verify/provider-denylist";
 import { checkDomainMx } from "@/lib/verify/mx";
-import { checkSendThrottle } from "@/lib/verify/throttle";
 import { mintOtpCode, hashOtp } from "@/lib/verify/code";
 import { sendVerificationEmail } from "@/lib/verify/send-code-email";
+import { enforce } from "@/lib/ratelimit/enforce";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -76,13 +77,11 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const throttle = await checkSendThrottle(user.id, domain);
-  if (!throttle.ok) {
-    return NextResponse.json(
-      { error: "too_many_requests", message: "Wait before requesting another code." },
-      { status: 429, headers: { "Retry-After": String(throttle.retryAfter) } },
-    );
-  }
+  // §8.2 — 5/hr per-email + 10/hr per-user + 20/hr per-IP (supersedes the Phase-8 interim throttle).
+  // Placed AFTER the MX/denylist checks so a personal-provider / no-MX request gets the clearer 400
+  // first and never consumes a send token for a domain that can't form a board.
+  const gate = await enforce(request, "verifyStart", { uid: user.id, email: normalized });
+  if (!gate.ok) return gate.response;
 
   const code = mintOtpCode();
   const codeHash = hashOtp(user.id, domain, code); // per-(user,domain) salt -> no global collision
@@ -121,8 +120,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  return NextResponse.json(
+  const res = NextResponse.json(
     verifyEmailStartResponseSchema.parse({ sent: true, domain, expires_in: TTL_SEC }),
     { status: 200 },
   );
+  for (const [k, v] of Object.entries(gate.headers)) res.headers.set(k, v);
+  return res;
 }

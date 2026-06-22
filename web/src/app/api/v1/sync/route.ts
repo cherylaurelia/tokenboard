@@ -18,6 +18,8 @@ import { validateAndNormalize } from "@/lib/sync/validate-records";
 import { priceRecord, sumCostUsd } from "@/lib/sync/compute-cost";
 import { persistUsage } from "@/lib/sync/persist-usage";
 import { writeLeaderboardOnSync } from "@/lib/leaderboard/write-path";
+import { invalidateTouchedBoards } from "@/lib/sync/invalidate-boards";
+import { enforce } from "@/lib/ratelimit/enforce";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs"; // Drizzle/postgres-js + node:crypto — never the edge runtime.
@@ -36,6 +38,12 @@ export async function POST(request: NextRequest) {
   // STEP 1 — authenticate the DEVICE bearer (NOT the Supabase session). No write yet.
   const auth = await authenticateDevice(request.headers.get("authorization"));
   if (!auth) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  // §8.2 — 60/hr (burst 10) per RESOLVED user (never the device-token secret) + 120/hr per-IP. A
+  // limited-before-reserve check keys on the uid; an Idempotency-Key retry costs one token (the
+  // 60/hr budget makes this a non-issue). Fail-open on an Upstash error.
+  const gate = await enforce(request, "sync", { uid: auth.userId });
+  if (!gate.ok) return gate.response;
 
   // STEP 2a — require Idempotency-Key.
   const idempotencyKey = request.headers.get("idempotency-key")?.trim();
@@ -117,7 +125,7 @@ export async function POST(request: NextRequest) {
       },
       flags: [...validateFlags, ...dayFlags, ...machineFlags],
       errors,
-      boardsTouched, // §7.3 lb keys touched this sync (CDN purge of these is Phase 9)
+      boardsTouched, // §7.3 lb keys touched this sync (purged in step 14 below)
       nextSyncSuggestedAfterSec: NEXT_SYNC_SUGGESTED_AFTER_SEC,
     };
 
@@ -126,7 +134,24 @@ export async function POST(request: NextRequest) {
 
     // STEP 13 — finalize the ledger (separate statement, AFTER the usage tx commits).
     await finalizeIdempotencyKey(idempotencyKey, auth.userId, checked);
-    return NextResponse.json(checked, { status: 200 });
+
+    // STEP 14 — CDN/ISR tag purge + profile render-cache bust. NON-FATAL (same posture as the
+    // post-commit Redis write): a purge failure must NOT fail an already-committed sync. The board
+    // JSON also self-heals on its 30s s-maxage TTL, so a missed purge is bounded.
+    if (boardsTouched.length > 0) {
+      try {
+        await invalidateTouchedBoards({ boardsTouched, userId: auth.userId });
+      } catch (purgeErr) {
+        console.error(
+          "api/v1/sync: step-14 cache purge failed (non-fatal)",
+          purgeErr instanceof Error ? purgeErr.message : purgeErr,
+        );
+      }
+    }
+
+    const res = NextResponse.json(checked, { status: 200 });
+    for (const [k, v] of Object.entries(gate.headers)) res.headers.set(k, v);
+    return res;
   } catch (err) {
     // Crash-safety: drop the reserved 'processing' row so a retry re-reserves cleanly. The usage_day
     // upsert is idempotent, so a half-done retry just overwrites the same device rows.
