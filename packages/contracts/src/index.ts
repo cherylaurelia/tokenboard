@@ -42,3 +42,22 @@ export {
   type CliLoginStartResponse,
   type CliLoginPollResponse,
 } from "./cli-login";
+
+export {
+  boardResponseSchema,
+  boardEntrySchema,
+  boardDeltaSchema,
+  sparklinePointSchema,
+  tierSchema,
+  tierPillSchema,
+  communityMetaSchema,
+  boardMeSchema,
+  type BoardResponse,
+  type BoardEntry,
+  type BoardDelta,
+  type SparklinePoint,
+  type Tier,
+  type TierPill,
+  type CommunityMeta,
+  type BoardMe,
+} from "./board-response";
