@@ -33,6 +33,7 @@ const ALLOWED = new Set([...builtinModules, ...builtinModules.map((m) => `node:$
 // Collect every bare import/require specifier (skip relative/absolute paths).
 const specifiers = new Set();
 const patterns = [
+  /\bimport\s*["']([^"']+)["']/g, // bare side-effect import: import "x"
   /\bfrom\s*["']([^"']+)["']/g,
   /\brequire\(\s*["']([^"']+)["']\)/g,
   /\bimport\(\s*["']([^"']+)["']\)/g,

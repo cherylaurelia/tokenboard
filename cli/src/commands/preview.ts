@@ -47,7 +47,9 @@ export async function runPreview(args: PreviewArgs): Promise<void> {
 
   const style = resolveStyle({
     isTTY: Boolean(process.stdout.isTTY),
-    noColorEnv: Boolean(process.env["NO_COLOR"]),
+    // Per the NO_COLOR spec (no-color.org), color is disabled when the var is PRESENT
+    // regardless of value — so `NO_COLOR=` (empty) still counts. Test presence, not truthiness.
+    noColorEnv: process.env["NO_COLOR"] !== undefined,
     noColorFlag: args.noColor,
     asciiFlag: args.ascii,
     columns: process.stdout.columns,

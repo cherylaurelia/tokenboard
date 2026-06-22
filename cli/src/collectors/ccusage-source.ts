@@ -28,7 +28,13 @@ function hasNpx(): boolean {
 // change; never @latest). A node-side SIGKILL guards the no-`timeout`-on-macOS case.
 function runSource(source: string): Promise<CcusageDailyRow[]> {
   return new Promise((resolve, reject) => {
-    const child = spawn("npx", ["-y", "ccusage@20", source, "daily", "--json", "--offline"]);
+    // stdio: inherit stdin from /dev/null, pipe stdout (we parse it), IGNORE stderr.
+    // If stderr were piped but never drained, a chatty child could fill the pipe buffer,
+    // block on write, and get SIGKILL'd at the timeout — wrongly marking a healthy source
+    // as skipped. We don't read stderr, so discard it.
+    const child = spawn("npx", ["-y", "ccusage@20", source, "daily", "--json", "--offline"], {
+      stdio: ["ignore", "pipe", "ignore"],
+    });
     let stdout = "";
     const killer = setTimeout(() => child.kill("SIGKILL"), SPAWN_TIMEOUT_MS);
 

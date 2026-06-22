@@ -29,7 +29,10 @@ export async function runShowData(): Promise<void> {
         JSON.stringify(failures, null, 2) +
         "\n",
     );
-    process.exit(1);
+    // Set exitCode + return rather than process.exit(1): an immediate exit can truncate
+    // the async stdout/stderr writes above before they flush.
+    process.exitCode = 1;
+    return;
   }
 
   process.stdout.write(JSON.stringify(records, null, 2) + "\n");
