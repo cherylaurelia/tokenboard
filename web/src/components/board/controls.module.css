@@ -1,28 +1,34 @@
 /* Window tabs + metric toggle, lifted from dashboard-pixel .tabs/.tab + .metric-toggle/.mt.
    44px min hit areas (transparent vertical padding holds the dense arcade look). */
 
-.tabs {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.tab {
+/* Shared base for the tab pills + the toggle segments — same VT323 label treatment, color, 44px hit
+   area, and transition. Each control composes this and adds only what differs (border/padding/radius). */
+.control {
   font-family: var(--term);
   font-size: var(--fs-16);
   letter-spacing: 1px;
   text-transform: uppercase;
   color: var(--ink-3-text);
   background: var(--panel);
-  border: 1px solid var(--frame);
-  border-radius: 7px;
-  padding: 0 13px;
   min-height: 44px;
   display: inline-flex;
   align-items: center;
   cursor: pointer;
-  transition: all 0.12s steps(2);
-  user-select: none;
   line-height: 1;
+  transition: all 0.12s steps(2);
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.tab {
+  composes: control;
+  border: 1px solid var(--frame);
+  border-radius: 7px;
+  padding: 0 13px;
+  user-select: none;
 }
 .tab:hover {
   color: var(--ink);
@@ -47,18 +53,9 @@
   overflow: hidden;
 }
 .mt {
-  font-family: var(--term);
-  font-size: var(--fs-16);
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--ink-3-text);
-  background: var(--panel);
+  composes: control;
   border: none;
-  cursor: pointer;
   padding: 0 18px;
-  min-height: 44px;
-  line-height: 1;
-  transition: all 0.12s steps(2);
 }
 .mt + .mt {
   border-left: 1px solid var(--frame);
