@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test \"test/**/*.test.ts\"",
     "db:migrate": "dotenv -e ../.env -- drizzle-kit migrate",
     "db:generate": "drizzle-kit generate --custom"
   },
