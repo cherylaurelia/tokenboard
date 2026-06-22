@@ -22,7 +22,9 @@ export const boardQuerySchema = z.object({
   window: boardWindowSchema.default("7d"),
   metric: boardMetricSchema.default("tokens"),
   me: z.string().optional(),
-  limit: z.number().int().positive().max(200).default(50),
+  // coerce: HTTP query params arrive as strings (?limit=50), so parse "50" -> 50.
+  // The .max(200)/.positive() guards still reject "999"/"abc"/"-5" after coercion.
+  limit: z.coerce.number().int().positive().max(200).default(50),
   format: boardFormatSchema.default("json"),
 });
 
