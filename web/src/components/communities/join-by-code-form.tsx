@@ -23,18 +23,12 @@ export function JoinByCodeForm() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ code: code.trim() }),
       });
-      if (res.status === 403) {
-        setError("That code didn't match any board. Check it and try again.");
-        setBusy(false);
-        return;
-      }
-      if (res.status === 401) {
-        setError("Sign in to join a board.");
-        setBusy(false);
-        return;
-      }
       if (!res.ok) {
-        setError("Something went wrong. Try again.");
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        if (res.status === 401) setError("Sign in to join a board.");
+        else if (data.error === "banned") setError("Your account can't join boards.");
+        else if (res.status === 403) setError("That code didn't match any board. Check it and try again.");
+        else setError("Something went wrong. Try again.");
         setBusy(false);
         return;
       }

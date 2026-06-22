@@ -48,7 +48,9 @@ async function findOrCreateCompanyBoard(userId: string, domain: string): Promise
 
   const base = slugFromDomain(domain);
   for (let attempt = 0; attempt < SLUG_RETRIES; attempt++) {
-    const slug = attempt === 0 ? base : `${base}-${attempt + 1}`.slice(0, 40);
+    // Clamp the base so a "-N" suffix always fits in the 40-char column (a naive .slice(0,40) after
+    // appending would truncate the suffix away, making every retry collide identically).
+    const slug = attempt === 0 ? base : `${base.slice(0, 38)}-${attempt + 1}`;
     try {
       return await db.transaction(async (tx) => {
         const [c] = await tx

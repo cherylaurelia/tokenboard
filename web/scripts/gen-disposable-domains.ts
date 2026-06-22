@@ -29,6 +29,15 @@ async function main() {
     ),
   ].sort();
 
+  // Sanity floor: this is a LOAD-BEARING security control. A truncated/empty upstream response must
+  // NOT silently overwrite the committed ~7.5k-entry list with a near-empty Set. Bail loudly instead.
+  const MIN_EXPECTED = 5000;
+  if (domains.length < MIN_EXPECTED) {
+    throw new Error(
+      `gen-disposable-domains: only ${domains.length} domains parsed (< ${MIN_EXPECTED}); upstream likely truncated — refusing to overwrite the committed list.`,
+    );
+  }
+
   const body = domains.map((d) => `  ${JSON.stringify(d)},`).join("\n");
   const out = `${HEADER}\n${body}\n]);\n`;
 

@@ -24,23 +24,36 @@ export async function POST(_request: NextRequest, ctx: { params: Promise<{ id: s
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  // Last-owner guard: block leaving if the caller is the sole 'owner' of this community.
-  const lastOwner = (await db.execute(sql`
-    select 1 from memberships me
-    where me.user_id = ${user.id} and me.community_id = ${id}::uuid and me.role = 'owner'
-      and not exists (
-        select 1 from memberships other
-        where other.community_id = ${id}::uuid and other.role = 'owner' and other.user_id <> ${user.id}
-      ) limit 1
-  `)) as unknown as Array<unknown>;
-  if (lastOwner.length > 0) {
-    return NextResponse.json(
-      { error: "last_owner", message: "You're the only owner; transfer ownership before leaving." },
-      { status: 409 },
-    );
-  }
+  // ATOMIC last-owner guard + delete (fixes the SELECT-then-DELETE TOCTOU): the DELETE only fires
+  // when the caller is NOT the sole owner (the NOT-EXISTS subquery is evaluated under the row lock
+  // the DELETE takes), so two concurrent owners can't both pass the guard and orphan the board.
+  // RETURNING tells us whether a row was deleted. We then disambiguate the no-delete case.
+  const deleted = (await db.execute(sql`
+    delete from memberships me
+    where me.user_id = ${user.id} and me.community_id = ${id}::uuid
+      and (
+        me.role <> 'owner'
+        or exists (
+          select 1 from memberships other
+          where other.community_id = ${id}::uuid and other.role = 'owner' and other.user_id <> ${user.id}
+        )
+      )
+    returning me.id
+  `)) as unknown as Array<{ id: string }>;
 
-  // Idempotent delete — no membership is still {ok:true}.
-  await db.execute(sql`delete from memberships where user_id = ${user.id} and community_id = ${id}::uuid`);
+  if (deleted.length === 0) {
+    // Either the caller is the sole owner (blocked) or they had no membership (idempotent ok).
+    const soleOwner = (await db.execute(sql`
+      select 1 from memberships
+      where user_id = ${user.id} and community_id = ${id}::uuid and role = 'owner' limit 1
+    `)) as unknown as Array<unknown>;
+    if (soleOwner.length > 0) {
+      return NextResponse.json(
+        { error: "last_owner", message: "You're the only owner; transfer ownership before leaving." },
+        { status: 409 },
+      );
+    }
+  }
+  // Deleted a row, or there was nothing to delete — both are {ok:true} (idempotent leave).
   return NextResponse.json(leaveResponseSchema.parse({ ok: true }), { status: 200 });
 }

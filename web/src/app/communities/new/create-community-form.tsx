@@ -58,8 +58,11 @@ export function CreateCommunityForm() {
             type="button"
             className={`${styles.btn} ${styles.btnGhost}`}
             onClick={() => {
-              void navigator.clipboard?.writeText(created.join_code ?? "");
-              setCopied(true);
+              // Only show "Copied" if the write actually succeeds; swallow a denied-clipboard rejection.
+              navigator.clipboard
+                ?.writeText(created.join_code ?? "")
+                .then(() => setCopied(true))
+                .catch(() => {});
             }}
           >
             {copied ? "Copied" : "Copy"}

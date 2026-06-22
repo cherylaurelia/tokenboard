@@ -39,30 +39,38 @@ export async function POST(request: NextRequest) {
 
   const { domain, code } = parsed.data;
 
-  // Latest UNCONSUMED, UNEXPIRED pending row for (user,domain).
-  const rows = (await db.execute(sql`
-    select id::text as id, code_hash as "codeHash", attempts
-    from email_verifications
-    where user_id = ${user.id} and domain = ${domain} and consumed_at is null and expires_at > now()
-    order by created_at desc limit 1
-  `)) as unknown as Array<{ id: string; codeHash: Buffer; attempts: number }>;
-  const row = rows[0];
+  // ATOMIC check-and-increment (fixes the SELECT-then-UPDATE TOCTOU): bump attempts on the latest
+  // pending row ONLY while attempts < MAX, in one statement, so concurrent confirms serialize on the
+  // row lock and the 5-try cap can't be exceeded by racing requests. RETURNING gives us the row to
+  // compare. 0 rows -> either no pending row OR already locked out; we disambiguate below.
+  const bumped = (await db.execute(sql`
+    update email_verifications set attempts = attempts + 1
+    where id = (
+      select id from email_verifications
+      where user_id = ${user.id} and domain = ${domain} and consumed_at is null and expires_at > now()
+      order by created_at desc limit 1
+    ) and attempts < ${MAX_ATTEMPTS}
+    returning id::text as id, code_hash as "codeHash"
+  `)) as unknown as Array<{ id: string; codeHash: Buffer }>;
+  const row = bumped[0];
   if (!row) {
+    // Distinguish locked-out (a pending row exists at/over the cap) from genuinely no pending row.
+    const pending = (await db.execute(sql`
+      select attempts from email_verifications
+      where user_id = ${user.id} and domain = ${domain} and consumed_at is null and expires_at > now()
+      order by created_at desc limit 1
+    `)) as unknown as Array<{ attempts: number }>;
+    if (pending[0] && pending[0].attempts >= MAX_ATTEMPTS) {
+      return NextResponse.json(
+        { error: "too_many_attempts", message: "Too many tries; start over to get a fresh code." },
+        { status: 429 },
+      );
+    }
     return NextResponse.json(
       { error: "no_pending_verification", message: "That code expired or was already used. Start verification again." },
       { status: 400 },
     );
   }
-
-  if (row.attempts >= MAX_ATTEMPTS) {
-    return NextResponse.json(
-      { error: "too_many_attempts", message: "Too many tries; start over to get a fresh code." },
-      { status: 429 },
-    );
-  }
-
-  // Increment attempts BEFORE the compare so every try counts even if a later step throws.
-  await db.execute(sql`update email_verifications set attempts = attempts + 1 where id = ${row.id}::uuid`);
 
   // postgres-js decodes code_hash (bytea) to a Buffer; constant-time compare with the SAME hash input
   // (pepper:userId:domain:code) used at mint.

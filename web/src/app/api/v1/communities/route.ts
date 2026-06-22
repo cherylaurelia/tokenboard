@@ -52,9 +52,11 @@ export async function POST(request: NextRequest) {
   const origin = request.nextUrl.origin;
 
   // Retry on slug/join_code unique collisions (mirror cli/login/start's 23505 loop). DB is the
-  // uniqueness truth — never pre-check-then-insert (TOCTOU).
+  // uniqueness truth — never pre-check-then-insert (TOCTOU). Clamp the base so a "-N" suffix always
+  // fits within the 40-char column (otherwise .slice(0,40) would truncate the suffix away and every
+  // retry would collide identically).
   for (let attempt = 0; attempt < SLUG_RETRIES; attempt++) {
-    const slug = attempt === 0 ? baseSlug : `${baseSlug}-${attempt + 1}`.slice(0, 40);
+    const slug = attempt === 0 ? baseSlug : `${baseSlug.slice(0, 38)}-${attempt + 1}`;
     const joinCode = input.join_policy === "code" ? mintJoinCode() : null;
     try {
       const created = await db.transaction(async (tx) => {
