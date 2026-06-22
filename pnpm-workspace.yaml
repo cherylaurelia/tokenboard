@@ -2,3 +2,7 @@ packages:
   - "web"
   - "cli"
   - "packages/*"
+# Native build scripts we trust and need: esbuild (tsup/tsx), sharp (Next image opt).
+allowBuilds:
+  esbuild: true
+  sharp: true

@@ -4,7 +4,7 @@
 // a subset). Cost is NEVER client-supplied — the server computes it from a pinned
 // LiteLLM price table (§6.4 step 7). client_version / priceTableVersionSeen are advisory.
 import { z } from "zod";
-import { normalizedRecordSchema, isoDateSchema } from "./normalized-record";
+import { normalizedRecordSchema, isoDateSchema } from "./normalized-record.js";
 
 // ---- request (§6.3) ----
 export const syncRequestSchema = z.object({
