@@ -1,0 +1,135 @@
+/* Board page layout, lifted from dashboard-pixel. The .surfaceBoardBase / .surfaceBoardArcade base
+   (app-shell column, coral wash, pixel render) lives in globals; this owns the shell + card + the
+   header / controls row / standings label / board list. Leaf component styles live with each leaf. */
+
+.surfaceBoardBase {
+  composes: surfaceBoardBase from global;
+}
+.surfaceBoardArcade {
+  composes: surfaceBoardArcade from global;
+}
+
+.shell {
+  width: 100%;
+  max-width: var(--maxw-board);
+  margin: 0 auto;
+  flex: 1 1 auto;
+  padding: 26px 28px 8px;
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 22px;
+  align-items: start;
+}
+
+.card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-2);
+  border: 1px solid var(--frame);
+  border-radius: 14px;
+  padding: 24px 30px 20px;
+  position: relative;
+}
+
+.head {
+  text-align: left;
+  padding: 0 0 12px;
+}
+.title {
+  font-family: var(--money);
+  font-weight: 700;
+  font-size: var(--fs-30);
+  line-height: 1.12;
+  letter-spacing: 0;
+  color: var(--ink);
+}
+.dash {
+  color: var(--coral);
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 2px 0 14px;
+  flex-wrap: wrap;
+}
+
+.boardLabel {
+  font-family: var(--term);
+  font-size: var(--fs-16);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--ink-4-text);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.rule {
+  flex: 1;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, var(--frame) 0 4px, transparent 4px 8px);
+}
+.leg {
+  flex: none;
+  font-size: var(--fs-14);
+  letter-spacing: 1px;
+  color: var(--ink-4-text);
+}
+.ar {
+  font-size: var(--fs-10);
+}
+
+.board {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.empty {
+  font-family: var(--term);
+  font-size: var(--fs-18);
+  letter-spacing: 0.5px;
+  color: var(--ink-3-text);
+  padding: 24px 8px;
+}
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rail {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .rail > * {
+    flex: 1 1 280px;
+  }
+}
+@media (max-width: 620px) {
+  .shell {
+    padding: 18px 16px 8px;
+  }
+  .card {
+    padding: 18px 18px 16px;
+  }
+  .rail {
+    flex-direction: column;
+  }
+}
+@media (max-width: 480px) {
+  .title {
+    font-size: var(--fs-21);
+  }
+}

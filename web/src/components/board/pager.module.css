@@ -1,0 +1,50 @@
+/* Pager row, lifted from dashboard-pixel .pager-row / .pager. The nav arrows are disabled (no cursor
+   in the contract yet); kept for visual parity. */
+.pagerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+.range {
+  font-family: var(--term);
+  font-size: var(--fs-16);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ink-3-text);
+}
+.pager {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pg {
+  font-family: var(--term);
+  font-size: var(--fs-17);
+  line-height: 1;
+  color: var(--ink-3-text);
+  background: var(--panel);
+  border: 1px solid var(--frame);
+  border-radius: 6px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 8px;
+  display: grid;
+  place-items: center;
+  user-select: none;
+}
+.active {
+  color: var(--on-coral);
+  background: var(--coral);
+  border-color: var(--coral-hi);
+}
+.nav {
+  font-size: var(--fs-12);
+  cursor: pointer;
+}
+.nav:disabled {
+  opacity: 0.35;
+  cursor: default;
+}

@@ -1,0 +1,78 @@
+/* Window tabs + metric toggle, lifted from dashboard-pixel .tabs/.tab + .metric-toggle/.mt.
+   44px min hit areas (transparent vertical padding holds the dense arcade look). */
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.tab {
+  font-family: var(--term);
+  font-size: var(--fs-16);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ink-3-text);
+  background: var(--panel);
+  border: 1px solid var(--frame);
+  border-radius: 7px;
+  padding: 0 13px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.12s steps(2);
+  user-select: none;
+  line-height: 1;
+}
+.tab:hover {
+  color: var(--ink);
+  border-color: var(--frame-hi);
+  transform: translateY(-1px);
+}
+.tabActive {
+  color: var(--on-coral);
+  background: var(--coral);
+  border-color: var(--coral-hi);
+}
+.tabActive:hover {
+  color: var(--on-coral);
+}
+
+.metricToggle {
+  display: flex;
+  width: fit-content;
+  flex: none;
+  border: 1px solid var(--frame);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.mt {
+  font-family: var(--term);
+  font-size: var(--fs-16);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ink-3-text);
+  background: var(--panel);
+  border: none;
+  cursor: pointer;
+  padding: 0 18px;
+  min-height: 44px;
+  line-height: 1;
+  transition: all 0.12s steps(2);
+}
+.mt + .mt {
+  border-left: 1px solid var(--frame);
+}
+.mt:hover {
+  color: var(--ink);
+}
+.mtActive {
+  color: var(--on-coral);
+  background: var(--coral);
+}
+.mtActive:hover {
+  color: var(--on-coral);
+}
+.mt:disabled {
+  cursor: default;
+}

@@ -1,0 +1,107 @@
+/* App-bar styles lifted from dashboard-pixel .appbar/.wordmark/.coin/.nav/.active/.spacer/.claim,
+   referencing tokens. Uppercase labels + the coral active underline are preserved; links/buttons get
+   44px hit areas (density held by line-height:1 + transparent vertical padding). */
+
+.appbar {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  width: 100%;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--frame);
+  padding: 12px 28px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.wordmark {
+  font-family: var(--pixel);
+  font-size: var(--fs-12);
+  letter-spacing: 1px;
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  min-height: 44px;
+}
+.coin {
+  color: var(--coral);
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+}
+.navList {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+.nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-family: var(--term);
+  font-size: var(--fs-18);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ink-3-text);
+  line-height: 1;
+  border-bottom: 2px solid transparent;
+  transition: color 0.12s steps(2);
+}
+.nav a:hover {
+  color: var(--ink);
+}
+.active {
+  color: var(--coral);
+  border-bottom-color: var(--coral);
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.claim,
+.handleChip {
+  font-family: var(--term);
+  font-size: var(--fs-16);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--on-coral);
+  background: var(--coral);
+  border: 2px solid var(--coral-hi);
+  border-radius: 7px;
+  padding: 0 18px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  transition: background 0.1s steps(2);
+}
+.claim:hover,
+.handleChip:hover {
+  background: var(--coral-hi);
+}
+
+@media (max-width: 620px) {
+  .appbar {
+    flex-wrap: wrap;
+    gap: 14px 20px;
+    padding: 12px 18px;
+  }
+  .nav {
+    order: 3;
+    width: 100%;
+  }
+  .navList {
+    flex-wrap: wrap;
+    gap: 12px 16px;
+  }
+  .spacer {
+    display: none;
+  }
+}

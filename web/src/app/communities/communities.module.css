@@ -1,0 +1,98 @@
+/* Communities hub, ported from the communities prototype. Uses .surfaceBoardBase (calm — NOT the
+   arcade pixel surface, matching that prototype's html which omits image-rendering:pixelated). */
+
+.surfaceBoardBase {
+  composes: surfaceBoardBase from global;
+}
+
+.shell {
+  width: 100%;
+  max-width: var(--maxw-board);
+  margin: 0 auto;
+  flex: 1 1 auto;
+  padding: 30px 28px 8px;
+}
+
+.pageHead {
+  margin-bottom: 22px;
+}
+.title {
+  font-family: var(--pixel);
+  font-size: var(--fs-23);
+  line-height: 1.15;
+  letter-spacing: 1px;
+  color: var(--ink);
+  text-shadow: 2px 2px 0 var(--title-shadow);
+}
+.dim {
+  color: var(--coral);
+}
+.lede {
+  font-family: var(--money);
+  font-size: var(--fs-14);
+  letter-spacing: 0;
+  line-height: 1.5;
+  color: var(--ink-3-text);
+  margin-top: 12px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 22px;
+  align-items: start;
+}
+
+.secLabel {
+  font-family: var(--term);
+  font-size: var(--fs-16);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--ink-4-text);
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.secLabel::after {
+  content: "";
+  flex: 1;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, var(--frame) 0 4px, transparent 4px 8px);
+}
+
+.boards {
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.empty {
+  font-family: var(--term);
+  font-size: var(--fs-18);
+  letter-spacing: 0.5px;
+  color: var(--ink-3-text);
+  padding: 8px 0;
+}
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 620px) {
+  .shell {
+    padding: 22px 16px 8px;
+  }
+  .boards {
+    grid-template-columns: 1fr;
+  }
+}

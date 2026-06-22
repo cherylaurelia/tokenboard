@@ -1,0 +1,90 @@
+/* Two footer variants ported to tokens. Landing = brand + spacer + links (landing-dark footer).
+   Board = centered VT323 brand/copyright/links row (dashboard-pixel + communities .foot). */
+
+/* ── landing variant ── */
+.footLanding {
+  margin-top: 110px;
+  border-top: 1px solid var(--frame);
+}
+.landingInner {
+  width: 100%;
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 28px 32px 40px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  font-family: var(--sans);
+  font-size: var(--fs-14);
+  color: var(--ink-3-text);
+}
+.brandPixel {
+  font-family: var(--pixel);
+  font-size: var(--fs-11);
+  color: var(--ink-2);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.links {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.links a {
+  color: var(--ink-3-text);
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  transition: color 0.15s ease;
+}
+.links a:hover {
+  color: var(--coral-hi);
+}
+
+/* ── board / communities variant ── */
+.footBoard {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+  padding: 16px 28px 18px;
+  font-family: var(--term);
+  font-size: var(--fs-17);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  border-top: 1px solid var(--frame);
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+.footBoard .brand {
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.footBoard a {
+  color: var(--ink-2);
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  transition: color 0.12s steps(2);
+}
+.footBoard a:hover {
+  color: var(--coral-hi);
+}
+
+/* ── shared ── */
+.coin {
+  color: var(--coral);
+}
+.sep {
+  color: var(--ink-4-text);
+}
+.spacer {
+  flex: 1 1 auto;
+}

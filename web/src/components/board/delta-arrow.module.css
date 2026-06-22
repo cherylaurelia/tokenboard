@@ -1,0 +1,26 @@
+/* .elo lifted from dashboard-pixel. Up = teal, down = coral, flat/new = dim. */
+.elo {
+  flex: none;
+  margin-left: 16px;
+  min-width: 52px;
+  text-align: right;
+  font-family: var(--term);
+  font-size: var(--fs-18);
+  letter-spacing: 0.5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+.up {
+  color: var(--bar-teal);
+}
+.down {
+  color: var(--coral);
+}
+.flat {
+  color: var(--ink-4-text);
+}
+.ar {
+  font-size: var(--fs-13);
+}

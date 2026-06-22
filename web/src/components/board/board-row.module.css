@@ -1,0 +1,118 @@
+/* Flat-divider row, lifted from dashboard-pixel .pl. Thin 1px divider between rows, no boxed cards.
+   Medals for the top 3; the caller's row gets a coral tint + an inset left marker. */
+.pl {
+  display: grid;
+  grid-template-columns: 26px 36px 1fr;
+  column-gap: 14px;
+  align-items: center;
+  padding: 10px 8px;
+  position: relative;
+  border-bottom: 1px solid var(--frame);
+  transition: background 0.12s;
+}
+.pl:last-child {
+  border-bottom: none;
+}
+.pl:hover {
+  background: var(--row-hover);
+}
+
+/* avatar */
+.pfp {
+  width: 36px;
+  height: 36px;
+  border-radius: 7px;
+  border: 1px solid var(--frame);
+  background: var(--panel-2);
+  object-fit: cover;
+}
+.pfpGeneric {
+  display: block;
+}
+.you .pfp {
+  border-color: var(--coral);
+}
+
+/* rank — plain number; medals only for the top 3 */
+.rk {
+  font-family: var(--term);
+  font-size: var(--fs-21);
+  line-height: 1;
+  color: var(--ink-3-text);
+  text-align: center;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+}
+.r1 .rk {
+  color: var(--bar-yellow);
+  font-weight: 700;
+}
+.r2 .rk {
+  color: var(--rank2);
+  font-weight: 700;
+}
+.r3 .rk {
+  color: var(--coral-hi);
+  font-weight: 700;
+}
+
+/* identity … metric … delta */
+.plTop {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.whoLink {
+  display: flex;
+  min-width: 0;
+  cursor: pointer;
+}
+.at {
+  font-family: var(--handle);
+  font-size: var(--fs-15);
+  line-height: 1;
+  letter-spacing: 0;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.whoLink:hover .at {
+  color: var(--coral-hi);
+  text-decoration: underline;
+}
+
+.tagYou {
+  font-family: var(--term);
+  font-size: var(--fs-12);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  line-height: 1;
+  padding: 3px 6px 2px;
+  border-radius: 4px;
+  flex: none;
+  border: 1px solid currentColor;
+  color: var(--coral);
+  background: var(--coral-tint-12);
+}
+
+/* YOU row — gentle coral tint + a thin left marker, still flat */
+.you {
+  background: var(--coral-tint-07);
+  box-shadow: inset 3px 0 0 var(--coral);
+}
+.you .rk {
+  color: var(--coral);
+}
+.you .at {
+  color: var(--coral-hi);
+}
+
+@media (max-width: 480px) {
+  .at {
+    font-size: var(--fs-16);
+  }
+}
