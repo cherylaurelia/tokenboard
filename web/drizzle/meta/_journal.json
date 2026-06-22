@@ -15,6 +15,13 @@
       "when": 1782109114554,
       "tag": "0001_device_grant_token_handoff",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782200000000,
+      "tag": "0002_user_is_admin",
+      "breakpoints": true
     }
   ]
 }
