@@ -1,0 +1,93 @@
+/* YOUR STANDING panel, lifted from dashboard-pixel .panel.you-panel / .standing / .standing-stats. */
+.panel {
+  background: var(--bg-2);
+  border: 1px solid var(--frame);
+  border-radius: 12px;
+  padding: 16px 18px 18px;
+  position: relative;
+}
+.phead {
+  font-family: var(--term);
+  font-size: var(--fs-15);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--ink-4-text);
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.phead::after {
+  content: "";
+  flex: 1;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, var(--frame) 0 4px, transparent 4px 8px);
+}
+
+.standing {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.pfpLg {
+  width: 64px;
+  height: 64px;
+  border-radius: 9px;
+  border: 2px solid var(--coral);
+  background: var(--panel-2);
+  object-fit: cover;
+  flex: none;
+}
+.pfpGeneric {
+  display: block;
+}
+.who {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.handle {
+  font-family: var(--handle);
+  font-size: var(--fs-15);
+  line-height: 1.1;
+  letter-spacing: 0;
+  color: var(--coral-hi);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+a.handle:hover {
+  text-decoration: underline;
+}
+.rank {
+  font-family: var(--term);
+  font-size: var(--fs-16);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ink-3-text);
+}
+
+.stats {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--frame);
+}
+.big {
+  font-family: var(--num);
+  font-weight: 700;
+  font-size: var(--fs-30);
+  line-height: 1;
+  color: var(--coral-hi);
+  font-variant-numeric: tabular-nums;
+}
+.bigElo {
+  margin: 0;
+  min-width: auto;
+  font-size: var(--fs-20);
+}

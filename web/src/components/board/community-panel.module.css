@@ -1,0 +1,74 @@
+/* Community panel, lifted from dashboard-pixel .panel / .meta-row / .invite-btn. */
+.panel {
+  background: var(--bg-2);
+  border: 1px solid var(--frame);
+  border-radius: 12px;
+  padding: 16px 18px 18px;
+  position: relative;
+}
+.phead {
+  font-family: var(--term);
+  font-size: var(--fs-15);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--ink-4-text);
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.phead::after {
+  content: "";
+  flex: 1;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, var(--frame) 0 4px, transparent 4px 8px);
+}
+
+.meta {
+  display: flex;
+  flex-direction: column;
+}
+.metaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--term);
+  font-size: var(--fs-18);
+  letter-spacing: 0.5px;
+  color: var(--ink-2);
+  padding: 6px 0;
+}
+.k {
+  color: var(--ink-4-text);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: var(--fs-15);
+}
+.v {
+  color: var(--ink);
+}
+
+.inviteBtn {
+  width: 100%;
+  text-align: center;
+  font-family: var(--term);
+  font-size: var(--fs-16);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--on-coral);
+  background: var(--coral);
+  border: 2px solid var(--coral-hi);
+  border-radius: 8px;
+  padding: 0 16px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.1s steps(2);
+  line-height: 1;
+}
+.inviteBtn:hover {
+  background: var(--coral-hi);
+}

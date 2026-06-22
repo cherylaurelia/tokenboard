@@ -1,0 +1,29 @@
+/* .copy-btn lifted from landing-dark, tokenized. 44px hit area; the .done state goes teal. */
+.copyBtn {
+  margin-left: auto;
+  flex: none;
+  font-family: var(--sans);
+  font-size: var(--fs-11);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3-text);
+  background: var(--panel);
+  border: 1px solid var(--frame);
+  border-radius: 6px;
+  padding: 0 11px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  line-height: 1;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.copyBtn:hover {
+  color: var(--ink);
+  border-color: var(--frame-hi);
+}
+.done {
+  color: var(--teal);
+  border-color: var(--teal);
+}

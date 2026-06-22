@@ -1,0 +1,148 @@
+/* JOIN A COMMUNITY rail, lifted from communities .panel / .field / .btn / .or-div. */
+.panel {
+  background: var(--bg-2);
+  border: 1px solid var(--frame);
+  border-radius: 12px;
+  padding: 16px 18px 18px;
+}
+.phead {
+  font-family: var(--term);
+  font-size: var(--fs-15);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--ink-4-text);
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.phead::after {
+  content: "";
+  flex: 1;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, var(--frame) 0 4px, transparent 4px 8px);
+}
+.pdesc {
+  font-family: var(--money);
+  font-size: var(--fs-13);
+  line-height: 1.55;
+  color: var(--ink-3-text);
+  margin: 12px 0 16px;
+}
+.hl {
+  color: var(--ink-2);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.field label {
+  font-family: var(--term);
+  font-size: var(--fs-14);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink-4-text);
+}
+.inputRow {
+  display: flex;
+  gap: 8px;
+}
+.field input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--money);
+  font-size: var(--fs-15);
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--frame);
+  border-radius: 8px;
+  padding: 0 13px;
+  min-height: 44px;
+  line-height: 1;
+  transition: border-color 0.12s;
+}
+.field input::placeholder {
+  color: var(--ink-4-text);
+}
+.field input:focus {
+  outline: none;
+  border-color: var(--coral);
+}
+
+.btn {
+  font-family: var(--term);
+  font-size: var(--fs-16);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 0 16px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  transition: all 0.1s steps(2);
+}
+.btnCoral {
+  color: var(--on-coral);
+  background: var(--coral);
+  border: 1px solid var(--coral-hi);
+}
+.btnCoral:hover {
+  background: var(--coral-hi);
+}
+.btnGhost {
+  color: var(--ink-2);
+  background: var(--panel);
+  border: 1px solid var(--frame);
+}
+.btnGhost:hover {
+  color: var(--ink);
+  border-color: var(--frame-hi);
+}
+
+.note {
+  font-family: var(--money);
+  font-size: var(--fs-12);
+  letter-spacing: 0;
+  color: var(--ink-4-text);
+  line-height: 1.5;
+}
+
+.orDiv {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0;
+  font-family: var(--term);
+  font-size: var(--fs-14);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink-4-text);
+}
+.orDiv::before,
+.orDiv::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--frame);
+}
+
+.createLine {
+  font-family: var(--money);
+  font-size: var(--fs-13);
+  letter-spacing: 0;
+  color: var(--ink-3-text);
+  text-align: center;
+  margin-top: 4px;
+}
+.createLine a {
+  color: var(--coral-hi);
+}
+.createLine a:hover {
+  text-decoration: underline;
+}

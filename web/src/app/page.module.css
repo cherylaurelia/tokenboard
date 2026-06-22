@@ -1,0 +1,475 @@
+/* Landing-dark, ported to tokens. Font-sizes -> var(--fs-*), colors -> var(--*); off-4px paddings
+   rounded to the grid where it doesn't break the layout. The .surfaceLanding base (body font,
+   dotted-grid, coral wash) lives in globals.css; this owns the landing components. */
+
+.surfaceLanding {
+  composes: surfaceLanding from global;
+}
+
+.wrap {
+  width: 100%;
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+/* ── top nav ── */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--nav-bg);
+  backdrop-filter: saturate(140%) blur(12px);
+  -webkit-backdrop-filter: saturate(140%) blur(12px);
+  border-bottom: 1px solid var(--frame-60);
+}
+.navInner {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  min-height: 64px;
+}
+.wordmark {
+  font-family: var(--pixel);
+  font-size: var(--fs-12);
+  letter-spacing: 0.5px;
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  flex: none;
+  line-height: 1;
+  min-height: 44px;
+}
+.caret {
+  color: var(--coral);
+}
+.navLinks {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  margin-left: 8px;
+}
+.navLinks a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: var(--fs-14);
+  color: var(--ink-3-text);
+  transition: color 0.15s ease;
+}
+.navLinks a:hover {
+  color: var(--ink);
+}
+.spacer {
+  flex: 1 1 auto;
+}
+.navCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--sans);
+  font-size: var(--fs-13);
+  font-weight: 500;
+  color: var(--on-coral);
+  background: var(--coral);
+  border: 1px solid var(--coral-hi);
+  border-radius: 9px;
+  padding: 0 16px;
+  min-height: 44px;
+  line-height: 1;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+.navCta:hover {
+  background: var(--coral-hi);
+  transform: translateY(-1px);
+}
+
+/* ── hero ── */
+.hero {
+  padding: 104px 0 0;
+  text-align: center;
+}
+.headline {
+  font-size: var(--fs-hero);
+  font-weight: 600;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  color: var(--ink);
+  max-width: 17ch;
+  margin: 0 auto;
+}
+.accent {
+  color: var(--coral);
+}
+.subline {
+  font-size: var(--fs-sub);
+  color: var(--ink-2);
+  font-weight: 400;
+  line-height: 1.6;
+  max-width: 52ch;
+  margin: 26px auto 0;
+}
+.ctaRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 38px;
+  flex-wrap: wrap;
+}
+.btnPrimary {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--sans);
+  font-size: var(--fs-15);
+  font-weight: 550;
+  color: var(--on-coral);
+  background: var(--coral);
+  border: 1px solid var(--coral-hi);
+  border-radius: 11px;
+  padding: 0 22px;
+  min-height: 48px;
+  line-height: 1;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.btnPrimary:hover {
+  background: var(--coral-hi);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 30px -12px var(--shadow-coral-soft);
+}
+.btnSecondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: var(--fs-15);
+  font-weight: 500;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--frame);
+  border-radius: 11px;
+  padding: 0 20px;
+  min-height: 48px;
+  line-height: 1;
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease,
+    background 0.15s ease;
+}
+.btnSecondary:hover {
+  border-color: var(--frame-hi);
+  background: var(--panel-2);
+  transform: translateY(-1px);
+}
+.btnSecondary svg {
+  width: 16px;
+  height: 16px;
+  fill: var(--ink-2);
+}
+
+/* ── terminal ── */
+.termWrap {
+  margin: 56px auto 0;
+  max-width: 720px;
+  text-align: left;
+}
+.terminal {
+  background: linear-gradient(180deg, var(--term-top) 0%, var(--term-bot) 100%);
+  border: 1px solid var(--frame);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 24px 70px -28px var(--shadow-term);
+  position: relative;
+}
+.terminal::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, var(--scanline) 0 1px, transparent 1px 4px);
+}
+.termBar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--frame-70);
+  background: var(--term-bar-bg);
+}
+.dots {
+  display: flex;
+  gap: 7px;
+}
+.dots span {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  display: block;
+}
+.r {
+  background: var(--dot-r);
+}
+.y {
+  background: var(--dot-y);
+}
+.g {
+  background: var(--dot-g);
+}
+.termTitle {
+  font-family: var(--sans);
+  font-size: var(--fs-12);
+  color: var(--ink-4-text);
+  letter-spacing: 0.02em;
+}
+.termBody {
+  padding: 22px 22px 24px;
+  font-family: var(--handle);
+  font-size: var(--fs-14);
+  line-height: 2;
+  position: relative;
+  z-index: 1;
+  overflow-x: auto;
+}
+.ln {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  white-space: pre;
+}
+.pr {
+  color: var(--coral);
+  font-weight: 500;
+}
+.cmd {
+  color: var(--ink);
+}
+.cmd b {
+  font-weight: 500;
+  color: var(--selection-fg);
+}
+.cmt {
+  color: var(--ink-4-text);
+}
+.termOut {
+  margin-top: 8px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--frame-70);
+  color: var(--ink-2);
+  white-space: pre-wrap;
+}
+.ok {
+  color: var(--teal);
+}
+.hl {
+  color: var(--coral-hi);
+}
+.you {
+  color: var(--coral);
+  font-weight: 500;
+}
+
+/* ── screenshot ── */
+.shotSection {
+  padding: 92px 0 0;
+}
+.shotFrame {
+  position: relative;
+  border: 1px solid var(--frame);
+  border-radius: 16px;
+  padding: 10px;
+  background: linear-gradient(180deg, var(--shot-top), var(--shot-bot));
+  box-shadow:
+    0 1px 0 var(--inset-hi) inset,
+    0 40px 110px -40px var(--shadow-shot);
+}
+.shotFrame img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 9px;
+  border: 1px solid var(--frame-80);
+}
+.shotCap {
+  text-align: center;
+  margin-top: 22px;
+  font-family: var(--sans);
+  font-size: var(--fs-13);
+  color: var(--ink-4-text);
+  letter-spacing: 0.01em;
+}
+.shotCap a {
+  color: var(--ink-3-text);
+  border-bottom: 1px solid var(--frame);
+  padding-bottom: 1px;
+  transition: color 0.15s;
+}
+.shotCap a:hover {
+  color: var(--coral-hi);
+  border-color: var(--coral-hi);
+}
+
+/* ── works-with ── */
+.works {
+  padding: 72px 0 0;
+  text-align: center;
+}
+.lbl {
+  display: block;
+  margin: 0 0 18px;
+  font-family: var(--sans);
+  font-size: var(--fs-12);
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--coral);
+}
+.tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0;
+  max-width: 760px;
+  margin: 0 auto;
+}
+.t {
+  font-family: var(--sans);
+  font-size: var(--fs-16);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+  white-space: nowrap;
+  padding: 4px 16px;
+}
+.pipe {
+  font-family: var(--sans);
+  font-size: var(--fs-15);
+  color: var(--frame-hi);
+  user-select: none;
+  flex: 0 0 auto;
+}
+.more {
+  color: var(--ink-3-text);
+  font-weight: 400;
+}
+
+/* ── bottom cta ── */
+.bottomCta {
+  padding: 104px 0 24px;
+}
+.ctaTerm {
+  max-width: 760px;
+  margin: 0 auto;
+  background: linear-gradient(180deg, var(--cta-top) 0%, var(--cta-bot) 100%);
+  border: 1px solid var(--frame-hi);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px var(--shadow-coral-ring),
+    0 32px 90px -32px var(--shadow-shot),
+    0 0 70px -30px var(--shadow-coral-glow);
+  position: relative;
+  text-align: left;
+}
+.ctaTerm::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, var(--scanline) 0 1px, transparent 1px 4px);
+}
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--frame-70);
+  background: var(--cta-bar-bg);
+  position: relative;
+  z-index: 1;
+}
+.ttl {
+  font-family: var(--sans);
+  font-size: var(--fs-12);
+  color: var(--ink-4-text);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.ctaBody {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 32px 30px;
+  position: relative;
+  z-index: 1;
+  font-family: var(--handle);
+  font-size: var(--fs-cta);
+  line-height: 1;
+}
+.ctaBody .cmd b {
+  color: var(--selection-fg);
+  font-weight: 600;
+}
+.blink {
+  width: 0.56em;
+  height: 1.05em;
+  background: var(--coral);
+  display: inline-block;
+  border-radius: 2px;
+  margin-left: 2px;
+  animation: blink 1.1s steps(1) infinite;
+}
+@keyframes blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  50.01%,
+  100% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .blink {
+    animation: none;
+  }
+}
+
+/* ── responsive ── */
+@media (max-width: 860px) {
+  .navLinks {
+    display: none;
+  }
+}
+@media (max-width: 560px) {
+  .wrap {
+    padding: 0 20px;
+  }
+  .hero {
+    padding: 72px 0 0;
+  }
+  .termBody {
+    font-size: var(--fs-13);
+  }
+  .ctaRow {
+    gap: 10px;
+  }
+  .t {
+    padding: 0 10px;
+  }
+  .tools {
+    gap: 8px 4px;
+  }
+  .shotFrame {
+    padding: 6px;
+    border-radius: 12px;
+  }
+}

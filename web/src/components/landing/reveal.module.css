@@ -1,0 +1,34 @@
+/* .reveal lifted from landing-dark. Discrete stagger delay classes replace the prototype's inline
+   transition-delay. Reduced-motion is handled in the component (renders visible, no observer) and
+   here as a belt-and-braces no-transition fallback. */
+.reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 0.7s ease,
+    transform 0.7s ease;
+}
+.in {
+  opacity: 1;
+  transform: none;
+}
+.d1 {
+  transition-delay: 0.05s;
+}
+.d2 {
+  transition-delay: 0.1s;
+}
+.d3 {
+  transition-delay: 0.15s;
+}
+.d4 {
+  transition-delay: 0.2s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

@@ -1,0 +1,174 @@
+/* The ONE design-token source of truth (frontend.md: tokens-only). Colors + the bar palette are
+   lifted VERBATIM from the three prototype :root blocks; the type scale folds every prototype px
+   font-size into named steps so NO component carries a raw px size. Dim inks that the prototypes
+   used for TEXT are AA-corrected here (--ink-3-text/--ink-4-text >= 4.5:1 on the dark surfaces);
+   the original --ink-3/--ink-4 are kept for dashed rules / borders / large decorative glyphs only.
+   next/font owns the font-FAMILY vars (--pixel/--term/--money/--num/--handle/--sans) — this file
+   must NOT redeclare them or it would shadow the hashed next/font families. */
+
+:root {
+  /* ── slate-navy surfaces (verbatim) ── */
+  --bg: #14151f;
+  --bg-2: #181a26;
+  --panel: #1f212e;
+  --panel-2: #262838;
+  --frame: #34374a;
+  --frame-hi: #424559;
+
+  /* ── ink scale (verbatim — decorative/border roles) ── */
+  --ink: #e6e6ea;
+  --ink-2: #a8a9b6;
+  --ink-3: #76788a;
+  --ink-4: #565869;
+  /* AA-corrected inks for TEXT roles (>= 4.5:1 on --bg/--bg-2) */
+  --ink-3-text: #9698a8;
+  --ink-4-text: #83859a;
+
+  /* ── coral accent + teal (verbatim) ── */
+  --coral: #cc785c;
+  --coral-hi: #d68d72;
+  --teal: #5f998a;
+  /* derived dark text on a coral fill (== --bg; 5.54:1 AA pass) so no component hardcodes #14151f */
+  --on-coral: #14151f;
+
+  /* ── bar palette / medals (verbatim) + a silver medal token ── */
+  --bar-yellow: #b8b266;
+  --bar-teal: #5f998a;
+  --bar-blue: #6f78b0;
+  --bar-lilac: #8c83ac;
+  --bar-rose: #b07f93;
+  --rank2: #b9bcca;
+
+  /* ── raw rgba/hex literals lifted from the prototypes, tokenized here once ── */
+  --coral-tint-07: rgba(204, 120, 92, 0.07); /* .pl.you row tint */
+  --coral-tint-12: rgba(204, 120, 92, 0.12); /* .tag.you bg */
+  --coral-wash-045: rgba(204, 120, 92, 0.045); /* landing top wash */
+  --coral-wash-05: rgba(204, 120, 92, 0.05); /* board/communities top wash */
+  --coral-sel: rgba(204, 120, 92, 0.3); /* ::selection bg */
+  --row-hover: rgba(255, 255, 255, 0.022); /* .pl:hover */
+  --scanline: rgba(255, 255, 255, 0.012); /* terminal scanline */
+  --dot-grid: rgba(120, 124, 160, 0.05); /* landing dotted grid */
+  --selection-fg: #ffffff;
+  --title-shadow: #0b0c14; /* communities .title text-shadow */
+  --badge-border-teal: #4f8676;
+  --badge-border-yellow: #a39d57;
+  --nav-bg: rgba(20, 21, 31, 0.72); /* landing sticky nav */
+  --term-bar-bg: rgba(20, 21, 31, 0.5);
+  --cta-bar-bg: rgba(20, 21, 31, 0.6);
+  --term-top: #1a1c28;
+  --term-bot: #16171f; /* hero terminal gradient */
+  --cta-top: #1c1e2b;
+  --cta-bot: #15161f; /* bottom-cta terminal gradient */
+  --shot-top: rgba(38, 40, 56, 0.55);
+  --shot-bot: rgba(24, 26, 38, 0.55);
+  --dot-r: #5a4a48;
+  --dot-y: #5a553f;
+  --dot-g: #45524b; /* traffic-light dots */
+  --frame-60: rgba(52, 55, 74, 0.6);
+  --frame-70: rgba(52, 55, 74, 0.7);
+  --frame-80: rgba(52, 55, 74, 0.8);
+  --eyebrow-bg: rgba(31, 33, 46, 0.5);
+  --teal-ring: rgba(95, 153, 138, 0.15);
+  --shadow-term: rgba(0, 0, 0, 0.75);
+  --shadow-shot: rgba(0, 0, 0, 0.85);
+  --shadow-coral-soft: rgba(204, 120, 92, 0.5);
+  --shadow-coral-ring: rgba(204, 120, 92, 0.1);
+  --shadow-coral-glow: rgba(204, 120, 92, 0.35);
+  --inset-hi: rgba(255, 255, 255, 0.03);
+
+  /* ── TYPE SCALE (union of every prototype px value; .5s folded to the nearest step) ── */
+  --fs-10: 10px;
+  --fs-11: 11px;
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-15: 15px;
+  --fs-16: 16px;
+  --fs-17: 17px;
+  --fs-18: 18px;
+  --fs-20: 20px;
+  --fs-21: 21px;
+  --fs-22: 22px;
+  --fs-23: 23px;
+  --fs-24: 24px;
+  --fs-30: 30px;
+  --fs-sub: clamp(16px, 1.6vw, 19px); /* landing subline */
+  --fs-cta: clamp(22px, 3vw, 30px); /* bottom-cta command */
+  --fs-hero: clamp(40px, 6.4vw, 78px); /* landing headline */
+
+  /* ── layout ── */
+  --maxw: 1120px; /* landing */
+  --maxw-board: 1240px; /* board + communities shells */
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+::selection {
+  background: var(--coral-sel);
+  color: var(--selection-fg);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+/* every focusable leaf gets a visible ring (frontend.md) */
+:where(a, button, input, [tabindex]):focus-visible {
+  outline: 2px solid var(--coral-hi);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── LANDING surface — Fira body, antialiased, dotted-grid + coral wash ── */
+.surfaceLanding {
+  font-family: var(--sans);
+  font-weight: 400;
+  line-height: 1.55;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  scroll-behavior: smooth;
+  background-image:
+    radial-gradient(900px 520px at 50% -8%, var(--coral-wash-045), transparent 72%),
+    radial-gradient(var(--dot-grid) 1px, transparent 1px);
+  background-size: auto, 22px 22px;
+  background-attachment: fixed;
+  overflow-x: hidden;
+}
+
+/* ── shared board/communities shell (column app-shell + single coral wash) ── */
+.surfaceBoardBase {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  font-family: var(--term);
+  -webkit-font-smoothing: none;
+  background-image: radial-gradient(820px 420px at 50% -12%, var(--coral-wash-05), transparent 72%);
+  background-attachment: fixed;
+}
+/* BOARD only: arcade pixel render (matches dashboard-pixel html{image-rendering:pixelated}) */
+.surfaceBoardArcade {
+  image-rendering: pixelated;
+}
+.surfaceBoardArcade img.noPixelate,
+.surfaceBoardArcade svg {
+  image-rendering: auto;
+}
+/* COMMUNITIES: NO image-rendering:pixelated (its prototype html omits it) */
+
+@media (prefers-reduced-motion: reduce) {
+  .surfaceLanding {
+    scroll-behavior: auto;
+  }
+}
