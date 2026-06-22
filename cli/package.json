@@ -1,13 +1,10 @@
 {
   "name": "@tokenboard/cli",
   "version": "0.0.1",
-  "description": "A leaderboard for your agentic-coding token usage — race your friends, not strangers. CLI in active development.",
-  "bin": {
-    "tokenboard": "bin/tokenboard.js"
-  },
-  "files": [
-    "bin"
-  ],
+  "description": "A leaderboard for your agentic-coding token usage — race your friends, not strangers.",
+  "type": "module",
+  "bin": { "tokenboard": "dist/cli.js" },
+  "files": ["dist"],
   "keywords": [
     "tokenboard",
     "leaderboard",
@@ -19,7 +16,20 @@
   ],
   "license": "MIT",
   "homepage": "https://tokenboard.sh",
-  "engines": {
-    "node": ">=18"
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "assert-self-contained": "node scripts/assert-self-contained.mjs",
+    "prepublishOnly": "pnpm run build && pnpm run assert-self-contained"
+  },
+  "dependencies": {
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@tokenboard/contracts": "workspace:*",
+    "@types/node": "22.10.5",
+    "tsup": "8.5.1",
+    "typescript": "6.0.3"
   }
 }
