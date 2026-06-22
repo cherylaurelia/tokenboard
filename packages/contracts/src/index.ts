@@ -1,13 +1,15 @@
 // @tokenboard/contracts — public API entry. This is the deliberate package entry point
 // named in package.json `exports` (NOT an internal barrel — code.md exempts the public
 // API surface). web + cli both import the shared wire contracts from here.
-// Explicit .js extensions on relative imports: resolves under bundler (web), NodeNext
-// (cli typecheck), esbuild/tsup (cli bundle), and Next — the universally-compatible form.
+// Extensionless relative imports: the monorepo is on `moduleResolution: bundler`, which
+// every consumer uses — Turbopack (web build), esbuild/tsup (cli bundle), and tsc (all
+// packages, incl. the cli typecheck). Turbopack cannot resolve `.js` specifiers that point
+// at `.ts` sources, so extensionless is the universally-compatible form here.
 export {
   normalizedRecordSchema,
   isoDateSchema,
   type NormalizedRecord,
-} from "./normalized-record.js";
+} from "./normalized-record";
 
 export {
   syncRequestSchema,
@@ -16,7 +18,7 @@ export {
   syncErrorSchema,
   type SyncRequest,
   type SyncResponseEnvelope,
-} from "./sync.js";
+} from "./sync";
 
 export {
   boardQuerySchema,
@@ -27,7 +29,7 @@ export {
   type BoardWindow,
   type BoardMetric,
   type BoardFormat,
-} from "./board.js";
+} from "./board";
 
 export {
   cliLoginStartRequestSchema,
@@ -37,4 +39,4 @@ export {
   cliLoginApproveRequestSchema,
   type CliLoginStartResponse,
   type CliLoginPollResponse,
-} from "./cli-login.js";
+} from "./cli-login";

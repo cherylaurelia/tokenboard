@@ -1,0 +1,45 @@
+// /claim — browser approve page (auth: session). Server component. Resolves the user via
+// getUser() (NEVER getSession()). Reads ?code=<user_code>. If signed out, redirect THROUGH
+// login preserving the code. No design tokens yet (Phase 7 restyles); semantic HTML.
+import { redirect } from "next/navigation";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { USER_CODE_RE } from "@/lib/cli-login/user-code";
+import { ApproveForm } from "./approve-form";
+
+export default async function ClaimPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ code?: string }>;
+}) {
+  const { code } = await searchParams; // Next 16: searchParams is a Promise
+  const userCode = (code ?? "").toUpperCase();
+  // Validate against the actual generator alphabet (shared regex) — a code with an ambiguous
+  // char the server can never have minted is rejected at the boundary.
+  if (!USER_CODE_RE.test(userCode)) {
+    return (
+      <main>
+        <h1>Invalid code</h1>
+        <p>
+          Run <code>tokenboard claim</code> again to get a fresh code.
+        </p>
+      </main>
+    );
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    // Thread the code back through GitHub OAuth -> callback -> /claim?code=...
+    redirect(`/api/auth/login?next=${encodeURIComponent(`/claim?code=${userCode}`)}`);
+  }
+
+  return (
+    <main>
+      <h1>Approve device {userCode}?</h1>
+      <p>This links a CLI on your machine to upload your agentic-coding usage as you.</p>
+      <ApproveForm userCode={userCode} />
+    </main>
+  );
+}
