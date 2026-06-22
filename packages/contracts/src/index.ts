@@ -28,3 +28,13 @@ export {
   type BoardMetric,
   type BoardFormat,
 } from "./board.js";
+
+export {
+  cliLoginStartRequestSchema,
+  cliLoginStartResponseSchema,
+  cliLoginPollRequestSchema,
+  cliLoginPollResponseSchema,
+  cliLoginApproveRequestSchema,
+  type CliLoginStartResponse,
+  type CliLoginPollResponse,
+} from "./cli-login.js";

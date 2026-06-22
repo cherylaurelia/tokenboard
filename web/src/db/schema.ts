@@ -183,6 +183,13 @@ export const deviceGrants = pgTable(
     intervalSec: integer("interval_sec").notNull().default(5),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    // Phase 4 (0001): transient raw "tbd_" ingest token, held ONLY between approve and the
+    // CLI's first poll, then NULLed in the same atomic consume that flips to 'complete'.
+    // The durable record (ingest_devices.token_hash) is hash-only. device_grants is
+    // service_role-only + RLS fail-closed, so this is never client-selectable.
+    ingestTokenOnce: text("ingest_token_once"),
+    // Phase 4 (0001): per-grant poll timing for deterministic slow_down (no client clock).
+    lastPolledAt: timestamp("last_polled_at", { withTimezone: true }),
   },
   (t) => [
     unique("device_grants_device_code_key").on(t.deviceCode),
