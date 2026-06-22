@@ -71,10 +71,6 @@ export async function runLeaderboardSweep(now: Date = new Date()): Promise<{ sco
   return { scopes: scopes.length, boards };
 }
 
-// Pure decay math extracted for unit test (§5): SUM over PRESENT buckets only. A member with no
-// present-bucket score is absent (fell out of the window).
-export function unionWindowFromBuckets(buckets: Array<Map<string, number>>): Map<string, number> {
-  const out = new Map<string, number>();
-  for (const b of buckets) for (const [member, score] of b) out.set(member, (out.get(member) ?? 0) + score);
-  return out;
-}
+// Pure decay math lives in sweep-math.ts (no server-only fence -> unit-testable). Re-exported here
+// for callers that import from the sweep module.
+export { unionWindowFromBuckets } from "./sweep-math";
