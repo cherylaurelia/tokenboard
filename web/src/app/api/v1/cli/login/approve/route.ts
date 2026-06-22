@@ -40,6 +40,11 @@ export async function POST(request: NextRequest) {
     .where(eq(deviceGrants.userCode, parsed.data.user_code))
     .limit(1);
   if (!grant || grant.expiresAt.getTime() < Date.now()) {
+    // Observability (code.md fail-loud): distinguish an unknown code from an expired one so a
+    // failed approve in the field is diagnosable. No secrets logged (user_code is short-lived).
+    console.warn(
+      `cli/login/approve: invalid_or_expired_code (${!grant ? "not_found" : "expired"}) for ${parsed.data.user_code}`,
+    );
     return NextResponse.json({ error: "invalid_or_expired_code" }, { status: 400 });
   }
 
