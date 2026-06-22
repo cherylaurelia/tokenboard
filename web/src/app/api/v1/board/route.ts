@@ -21,17 +21,24 @@ export async function GET(request: NextRequest) {
   }
   const query = parsed.data;
 
-  // Resolve caller (optional). getUser() — never getSession() (§2.5). Do NOT swallow a transport/
-  // server error as anon (that would 403 a real private-board member during an Auth blip): a
-  // genuinely-absent session (no cookie) yields {user:null} with no error -> anon; a real server
-  // error -> 503 so a private-board member never sees a spurious 403 during an Auth outage.
+  // Resolve caller (optional). getUser() — never getSession() (§2.5). The common anonymous read has
+  // NO session, which auth-js reports as an AuthSessionMissingError (a 400/401/403 "no session"
+  // class) — that is NOT an outage, it's anon. Only a genuine transport/5xx error (the Auth server
+  // is unreachable) should 503, so a private-board member never sees a spurious 403 during an
+  // outage. Discriminate on the error name/class, not just the numeric status (session-missing is
+  // status 400 in auth-js 2.108.2 — checking !=401/403 wrongly 503'd every anon read).
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.getUser();
   if (error) {
+    const name = (error as { name?: string }).name ?? "";
     const status = (error as { status?: number }).status;
-    // Missing/invalid session is the normal anonymous case (no session to read). Anything else
-    // (network/5xx from the Auth server) is a real outage -> 503, never a silent anon downgrade.
-    if (status !== undefined && status !== 401 && status !== 403) {
+    const isNoSession =
+      name === "AuthSessionMissingError" ||
+      name === "AuthApiError" ||
+      status === 400 ||
+      status === 401 ||
+      status === 403;
+    if (!isNoSession) {
       return NextResponse.json({ error: "auth_unavailable" }, { status: 503 });
     }
   }

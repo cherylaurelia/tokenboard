@@ -5,6 +5,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { microsToUsd2dp, costUsdStringToMicros } from "@/lib/redis/micro-dollars";
+import { inList } from "./window-sums";
 
 export interface WindowTotals {
   tokens: number;
@@ -24,7 +25,7 @@ export async function windowTotalsForUsers(
            coalesce(sum(tokens),0)::text as tokens,
            coalesce(sum(cost_usd),0)::text as cost_usd
     from usage_day_total
-    where user_id = any(${ids}) and date <= ${windowEnd} ${lower}
+    where user_id in ${inList(ids)} and date <= ${windowEnd} ${lower}
     group by user_id
   `)) as unknown as Array<{ user_id: string; tokens: string; cost_usd: string }>;
   for (const r of rows) {

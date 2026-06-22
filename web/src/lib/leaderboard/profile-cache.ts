@@ -21,12 +21,15 @@ export interface CachedProfile {
   windowCost2dp?: number;
 }
 
+// @upstash/redis auto-deserializes JSON-looking hash values on read, so tierPill (written as a
+// JSON string) comes back as either the parsed object OR a string depending on the client version
+// — type it as unknown and normalize in decodeProfile.
 interface ProfHash {
   handle: string;
   displayName: string;
   avatar: string;
   tier: Tier;
-  tierPill: string;
+  tierPill: unknown;
 }
 
 export async function loadProfiles(
@@ -70,7 +73,8 @@ export async function loadProfiles(
 }
 
 function decodeProfile(h: ProfHash): CachedProfile {
-  const tierPill = JSON.parse(h.tierPill) as TierPill;
+  // @upstash/redis may return tierPill already-parsed (object) or as a JSON string. Normalize both.
+  const tierPill = (typeof h.tierPill === "string" ? JSON.parse(h.tierPill) : h.tierPill) as TierPill;
   return {
     handle: h.handle,
     displayName: h.displayName === "" ? null : h.displayName,

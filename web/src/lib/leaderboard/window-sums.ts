@@ -15,6 +15,13 @@ export interface UserDayScore {
   micros: bigint;
 }
 
+// Expand a string[] into a parameterized `(a, b, c)` list for `user_id in (...)`. postgres-js does
+// NOT bind a JS array to `= any(${ids})` as a Postgres array (it stringifies -> 22P02 malformed
+// array), so we use an IN-list of individual bound params via sql.join instead.
+export function inList(ids: string[]): ReturnType<typeof sql> {
+  return sql`(${sql.join(ids.map((id) => sql`${id}`), sql`, `)})`;
+}
+
 // ── write-path ──────────────────────────────────────────────────────────────
 
 // One affected day's authoritative (cross-device) total for this user — the lbday score.
@@ -156,7 +163,7 @@ export async function sparklinesForUsers(
   const rows = (await db.execute(sql`
     select user_id::text as user_id, date::text as date, sum(tokens)::text as tokens
     from usage_day_total
-    where user_id = any(${ids}) and date between ${windowStart} and ${windowEnd}
+    where user_id in ${inList(ids)} and date between ${windowStart} and ${windowEnd}
     group by user_id, date
   `)) as unknown as Array<{ user_id: string; date: string; tokens: string }>;
   const byUser = new Map<string, Map<string, number>>();
@@ -184,7 +191,7 @@ export async function topToolForUsers(
   const rows = (await db.execute(sql`
     select distinct on (user_id) user_id::text as user_id, tool
     from usage_day
-    where user_id = any(${ids}) and date <= ${windowEnd} ${lower}
+    where user_id in ${inList(ids)} and date <= ${windowEnd} ${lower}
     group by user_id, tool
     order by user_id, sum(tokens) desc, tool asc
   `)) as unknown as Array<{ user_id: string; tool: string }>;
@@ -196,7 +203,7 @@ export async function topToolForUsers(
 export async function earliestDateForUsers(ids: string[]): Promise<string | null> {
   if (ids.length === 0) return null;
   const rows = (await db.execute(sql`
-    select min(date)::text as min_date from usage_day_total where user_id = any(${ids})
+    select min(date)::text as min_date from usage_day_total where user_id in ${inList(ids)}
   `)) as unknown as Array<{ min_date: string | null }>;
   return rows[0]?.min_date ?? null;
 }
