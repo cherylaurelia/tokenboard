@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { estimateCost } from "../src/cost/estimate-cost.js";
-import type { PriceTable } from "../src/cost/price-table.js";
+import { estimateCost } from "../src/estimate-cost";
+import type { PriceTable } from "../src/price-table";
 
 // MUST-TEST #2 — the offline cost engine. Fixture table mirrors real LiteLLM shapes:
 // - opus-4-8: all fields incl. distinct 5m and 1h cache-write costs (verified live).

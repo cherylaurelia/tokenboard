@@ -1,0 +1,13 @@
+{
+  "name": "@tokenboard/cost",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test \"test/**/*.test.ts\"",
+    "build": "echo \"cost ships raw TS via exports; nothing to build\" && exit 0"
+  },
+  "devDependencies": { "@types/node": "22.10.5", "tsx": "4.20.6", "typescript": "6.0.3" }
+}

@@ -12,5 +12,5 @@ export default defineConfig({
   // INTO the bundle so the published artifact has zero workspace/runtime deps except zod.
   // (zod stays external — it's a real published dependency the inlined contracts import.)
   // The litellm-snapshot.json import is inlined automatically (resolveJsonModule).
-  noExternal: [/^@tokenboard\/contracts/, "citty", "picocolors", "string-width", "cli-truncate"],
+  noExternal: [/^@tokenboard\/contracts/, /^@tokenboard\/cost/, "citty", "picocolors", "string-width", "cli-truncate"],
 });

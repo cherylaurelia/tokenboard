@@ -1,6 +1,5 @@
 import type { NormalizedRecord } from "@tokenboard/contracts";
-import { estimateCost } from "../cost/estimate-cost.js";
-import type { PriceTable } from "../cost/price-table.js";
+import { estimateCost, type PriceTable } from "@tokenboard/cost";
 
 // LocalSummary is render input, NOT a wire contract — it never leaves the machine and
 // has no contracts dependency. Cost fields are FULL-PRECISION floats; round only at

@@ -12,7 +12,8 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const costDir = join(here, "..", "src", "cost");
+// The vendored snapshot now lives in the shared @tokenboard/cost package (consumed by web + cli).
+const costDir = join(here, "..", "..", "packages", "cost", "src");
 const provenance = JSON.parse(readFileSync(join(costDir, "provenance.json"), "utf8"));
 
 const url = `https://raw.githubusercontent.com/BerriAI/litellm/${provenance.commitSha}/model_prices_and_context_window.json`;
