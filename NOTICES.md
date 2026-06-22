@@ -15,11 +15,15 @@ opencode, grok, droid, and others). ccusage is MIT-licensed.
 
 ## LiteLLM model pricing data
 
-tokenboard computes cost server-side from a pinned snapshot of LiteLLM's model
-pricing data (`model_prices_and_context_window.json`).
+tokenboard vendors a pinned snapshot of LiteLLM's model pricing data
+(`model_prices_and_context_window.json`) — used server-side for authoritative
+cost and bundled into the CLI for the offline local-preview estimate.
 
 - Project: https://github.com/BerriAI/litellm
 - License: MIT
+- Pinned commit: `9f97111edd736cf81e532f345663885457b916a9`
+  (sha256 `e860025a4ddf7eb576b46a43126a0a523e0a60bdc296516d3533ddc17be31d6e`)
+- Provenance recorded in `cli/src/cost/provenance.json`
 
 ---
 
