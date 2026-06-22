@@ -1,0 +1,6 @@
+.errorNote {
+  font-family: var(--money);
+  font-size: var(--fs-12);
+  color: var(--coral-hi);
+  line-height: 1.5;
+}

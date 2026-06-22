@@ -1,0 +1,162 @@
+/* Create-community form — tokens-only, mirrors verify.module.css. */
+
+.surfaceBoardBase {
+  composes: surfaceBoardBase from global;
+}
+
+.shell {
+  width: 100%;
+  max-width: var(--maxw-board);
+  margin: 0 auto;
+  flex: 1 1 auto;
+  padding: 30px 28px 8px;
+}
+.title {
+  font-family: var(--pixel);
+  font-size: var(--fs-23);
+  line-height: 1.15;
+  letter-spacing: 1px;
+  color: var(--ink);
+  text-shadow: 2px 2px 0 var(--title-shadow);
+}
+.dim {
+  color: var(--coral);
+}
+.lede {
+  font-family: var(--money);
+  font-size: var(--fs-14);
+  line-height: 1.5;
+  color: var(--ink-3-text);
+  margin-top: 12px;
+  margin-bottom: 22px;
+}
+
+.card {
+  background: var(--bg-2);
+  border: 1px solid var(--frame);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.card label {
+  font-family: var(--term);
+  font-size: var(--fs-14);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink-4-text);
+}
+
+.input {
+  width: 100%;
+  font-family: var(--money);
+  font-size: var(--fs-15);
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--frame);
+  border-radius: 8px;
+  padding: 0 13px;
+  min-height: 44px;
+  line-height: 1;
+  transition: border-color 0.12s;
+}
+.input::placeholder {
+  color: var(--ink-4-text);
+}
+.input:focus {
+  outline: none;
+  border-color: var(--coral);
+}
+
+.fieldset {
+  border: 1px solid var(--frame);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.fieldset legend {
+  font-family: var(--term);
+  font-size: var(--fs-14);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink-4-text);
+  padding: 0 6px;
+}
+.radio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--money);
+  font-size: var(--fs-14);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-2);
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.btn {
+  font-family: var(--term);
+  font-size: var(--fs-16);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 0 16px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.1s steps(2);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.btnCoral {
+  color: var(--on-coral);
+  background: var(--coral);
+  border: 1px solid var(--coral-hi);
+}
+.btnCoral:hover:not(:disabled) {
+  background: var(--coral-hi);
+}
+.btnGhost {
+  color: var(--ink-2);
+  background: var(--panel);
+  border: 1px solid var(--frame);
+}
+.btnGhost:hover:not(:disabled) {
+  color: var(--ink);
+  border-color: var(--frame-hi);
+}
+
+.codeRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.codeValue {
+  font-family: var(--money);
+  font-size: var(--fs-30);
+  letter-spacing: 4px;
+  color: var(--coral);
+}
+
+.error {
+  font-family: var(--money);
+  font-size: var(--fs-13);
+  color: var(--coral-hi);
+  line-height: 1.5;
+}
+.success {
+  font-family: var(--money);
+  font-size: var(--fs-15);
+  color: var(--ink);
+  line-height: 1.5;
+}
