@@ -61,3 +61,29 @@ export {
   type CommunityMeta,
   type BoardMe,
 } from "./board-response";
+
+export {
+  createCommunityRequestSchema,
+  createCommunityResponseSchema,
+  joinByIdRequestSchema,
+  joinByCodeRequestSchema,
+  joinResponseSchema,
+  leaveResponseSchema,
+  type CreateCommunityRequest,
+  type CreateCommunityResponse,
+  type JoinByIdRequest,
+  type JoinByCodeRequest,
+  type JoinResponse,
+  type LeaveResponse,
+} from "./community";
+
+export {
+  verifyEmailStartRequestSchema,
+  verifyEmailStartResponseSchema,
+  verifyEmailConfirmRequestSchema,
+  verifyEmailConfirmResponseSchema,
+  type VerifyEmailStartRequest,
+  type VerifyEmailStartResponse,
+  type VerifyEmailConfirmRequest,
+  type VerifyEmailConfirmResponse,
+} from "./verify-email";
