@@ -41,7 +41,8 @@ export function BoardRow({
       )}
       <div className={styles.plTop}>
         {aliasCompany ? (
-          <span className={styles.at}>member #{entry.rank}</span>
+          // aliased rows have a single label (no @handle line) -> keep the prominent .name styling
+          <span className={styles.name}>member #{entry.rank}</span>
         ) : (
           <a className={styles.whoLink} href={`/user/${entry.handle}`}>
             {displayName && <span className={styles.name}>{displayName}</span>}
