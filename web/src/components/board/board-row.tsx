@@ -24,8 +24,10 @@ export function BoardRow({
   const medal = entry.rank <= 3 ? MEDAL[entry.rank] : "";
   const rowClass = `${styles.pl} ${medal} ${mine ? styles.you : ""}`;
 
-  const label = aliasCompany ? `member #${entry.rank}` : `@${entry.handle}`;
-  const avatarAlt = aliasCompany ? "" : `@${entry.handle}`;
+  const avatarAlt = aliasCompany ? "" : entry.displayName ?? `@${entry.handle}`;
+  // Company-board rows are aliased by rank (no real identity). Otherwise show the display name on
+  // top + the @handle below; degrade to just the @handle when there's no display name.
+  const displayName = !aliasCompany ? entry.displayName ?? null : null;
 
   return (
     <li className={rowClass}>
@@ -39,10 +41,12 @@ export function BoardRow({
       )}
       <div className={styles.plTop}>
         {aliasCompany ? (
-          <span className={styles.at}>{label}</span>
+          // aliased rows have a single label (no @handle line) -> keep the prominent .name styling
+          <span className={styles.name}>member #{entry.rank}</span>
         ) : (
           <a className={styles.whoLink} href={`/user/${entry.handle}`}>
-            <span className={styles.at}>{label}</span>
+            {displayName && <span className={styles.name}>{displayName}</span>}
+            <span className={styles.at}>@{entry.handle}</span>
           </a>
         )}
         {mine && <span className={styles.tagYou}>★ You</span>}

@@ -48,7 +48,13 @@
   gap: 4px;
   min-width: 0;
 }
-.handle {
+.identity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.name {
   font-family: var(--handle);
   font-size: var(--fs-15);
   line-height: 1.1;
@@ -58,7 +64,17 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-a.handle:hover {
+.at {
+  font-family: var(--handle);
+  font-size: var(--fs-13);
+  line-height: 1;
+  letter-spacing: 0;
+  color: var(--ink-3-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+a.identity:hover .name {
   text-decoration: underline;
 }
 .rank {
