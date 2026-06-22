@@ -1,0 +1,33 @@
+{
+  "name": "web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "dotenv -e ../.env -- drizzle-kit migrate",
+    "db:generate": "drizzle-kit generate --custom"
+  },
+  "dependencies": {
+    "@tokenboard/contracts": "workspace:*",
+    "@supabase/ssr": "0.12.0",
+    "@supabase/supabase-js": "2.108.2",
+    "drizzle-orm": "0.45.2",
+    "postgres": "3.4.9",
+    "next": "16.2.9",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.5",
+    "@types/react": "19.2.0",
+    "@types/react-dom": "19.2.0",
+    "drizzle-kit": "0.31.10",
+    "dotenv": "17.4.2",
+    "tsx": "4.19.2",
+    "typescript": "6.0.3"
+  }
+}
