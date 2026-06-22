@@ -55,3 +55,4 @@ Thumbs.db
 # Prototype screenshots are tracked on purpose (they're design artifacts);
 # scratch shots are not
 prototypes/shots/*.tmp.png
+.vercel
