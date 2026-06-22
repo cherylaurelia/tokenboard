@@ -50,6 +50,8 @@ export const policies = {
   // OAuth — 60/min per-IP (anon). Applied to BOTH the start (/api/auth/login) and the §8.2-named
   // callback (/auth/callback).
   oauthStart: { uid: [], ip: [make(sw(60, "1 m"), "rl:oauth:ip")] },
+  // Owner-only admin actions (/api/v1/admin/*) — low traffic but consistent: 60/min uid, 120/min ip.
+  admin: { uid: [make(sw(60, "1 m"), "rl:admin:uid")], ip: [make(sw(120, "1 m"), "rl:admin:ip")] },
 } satisfies Record<string, Policy>;
 
 export type PolicyName = keyof typeof policies;
