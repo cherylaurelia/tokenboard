@@ -20,16 +20,23 @@
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test \"test/**/*.test.ts\"",
+    "vendor-prices": "node scripts/vendor-litellm-prices.mjs",
     "assert-self-contained": "node scripts/assert-self-contained.mjs",
-    "prepublishOnly": "pnpm run build && pnpm run assert-self-contained"
+    "prepublishOnly": "pnpm run vendor-prices && pnpm run build && pnpm run assert-self-contained"
   },
   "dependencies": {
+    "citty": "0.2.2",
+    "cli-truncate": "4.0.0",
+    "picocolors": "1.1.1",
+    "string-width": "7.2.0",
     "zod": "4.4.3"
   },
   "devDependencies": {
     "@tokenboard/contracts": "workspace:*",
     "@types/node": "22.10.5",
     "tsup": "8.5.1",
+    "tsx": "4.20.6",
     "typescript": "6.0.3"
   }
 }

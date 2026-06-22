@@ -1,0 +1,16 @@
+{
+  "priceTableVersion": "litellm-2026-06-21",
+  "upstreamRepo": "BerriAI/litellm",
+  "commitSha": "9f97111edd736cf81e532f345663885457b916a9",
+  "upstreamSha256": "e860025a4ddf7eb576b46a43126a0a523e0a60bdc296516d3533ddc17be31d6e",
+  "fetchedAt": "2026-06-21",
+  "fields": [
+    "input_cost_per_token",
+    "output_cost_per_token",
+    "cache_read_input_token_cost",
+    "cache_creation_input_token_cost",
+    "cache_creation_input_token_cost_above_1hr",
+    "litellm_provider"
+  ],
+  "note": "Cosmetic local-preview estimate only; never feeds the leaderboard (ARCH 4.3, 6.6). Keep-set = token-priced models with input_cost_per_token; char/second/pixel-priced models intentionally excluded and degrade to priced:false."
+}
