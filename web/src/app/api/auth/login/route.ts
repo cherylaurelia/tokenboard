@@ -4,8 +4,13 @@
 // the Supabase dashboard, not requested here).
 import { NextResponse, type NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { enforce } from "@/lib/ratelimit/enforce";
 
 export async function GET(request: NextRequest) {
+  // §8.2 — 60/min per-IP on the OAuth handoff (DoS surface). Fail-open on an Upstash error.
+  const gate = await enforce(request, "oauthStart");
+  if (!gate.ok) return gate.response;
+
   const { origin, searchParams } = new URL(request.url);
 
   // Open-redirect guard (trust boundary) — identical to /auth/callback. Lets /claim send an

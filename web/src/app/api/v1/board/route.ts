@@ -9,9 +9,16 @@ import { users } from "@/db/schema";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { resolveBoardScope } from "@/lib/leaderboard/resolve-scope";
 import { assembleBoard } from "@/lib/leaderboard/assemble-board";
+import { metricToken } from "@/lib/leaderboard/keys";
+import { boardCacheable } from "@/lib/leaderboard/cache-decision";
+import { publicBoardHeaders, noStoreHeaders } from "@/lib/leaderboard/cache-headers";
+import { enforce } from "@/lib/ratelimit/enforce";
 
+// No `dynamic = "force-dynamic"`: the route reads cookies (getUser) + the DB per request, so it is
+// dynamic regardless — and dropping the explicit directive removes any ambiguity about whether a
+// force-dynamic handler's manually-set Cache-Control reaches the Vercel edge (§8.1). Public-anon
+// reads carry s-maxage + a Cache-Tag; every authed / non-public / error path is no-store.
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   const raw = Object.fromEntries(request.nextUrl.searchParams.entries());
@@ -43,6 +50,10 @@ export async function GET(request: NextRequest) {
   }
   const callerUserId: string | null = data.user?.id ?? null;
 
+  // §8.2 — 120/min per-user + 240/min per-IP (anon = IP only). Fail-open on an Upstash error.
+  const gate = await enforce(request, "board", { uid: callerUserId });
+  if (!gate.ok) return gate.response;
+
   const resolved = await resolveBoardScope(query.community, callerUserId);
   if (!resolved.ok) {
     return NextResponse.json(
@@ -73,5 +84,25 @@ export async function GET(request: NextRequest) {
 
   // Fail-loud at the trust boundary: validate our own response against the §7.2 schema.
   const checked = boardResponseSchema.parse(board);
-  return NextResponse.json(checked, { status: 200 });
+  const res = NextResponse.json(checked, { status: 200 });
+
+  // §8.1 — CDN-cache ONLY a response that provably can't vary by viewer (anon + !me + public/global).
+  // Any session / ?me= / unlisted / private -> no-store. Defense-in-depth: a public, s-maxage entry
+  // must never carry Set-Cookie (cache-poison) — if one rode along, fall back to no-store.
+  const cacheable =
+    boardCacheable({ callerUserId, me: query.me, community: resolved.community }) &&
+    !res.headers.has("set-cookie");
+  if (cacheable) {
+    // Public CDN branch: DON'T attach per-request X-RateLimit-* — those are per-client and must not
+    // be baked into a shared CDN entry (it would serve one client's quota snapshot to everyone).
+    for (const [k, v] of Object.entries(
+      publicBoardHeaders(resolved.scope, metricToken(query.metric), query.window),
+    )) {
+      res.headers.set(k, v);
+    }
+  } else {
+    // Private/no-store branch: this response is per-client, so the rate-limit feedback belongs here.
+    for (const [k, v] of Object.entries({ ...noStoreHeaders(), ...gate.headers })) res.headers.set(k, v);
+  }
+  return res;
 }

@@ -44,3 +44,23 @@ export const PROFILE_TTL_SEC = 6 * 60 * 60; // 21_600
 export const METRIC_TOKENS: MetricToken[] = ["t", "usd"];
 export const SWEPT_WINDOWS: Array<"7d" | "30d"> = ["7d", "30d"]; // 'all' is incremental-only
 export const ALL_WINDOWS: BoardWindow[] = ["7d", "30d", "all"];
+
+// ── §8.1 cache tags / render keys (the ONLY place these strings form) ────────
+
+// board:{scope}:{metric}:{window} — the CDN/ISR cache tag for the materialized board.
+export function boardTag(scope: Scope, metric: MetricToken, window: BoardWindow): string {
+  return `board:${scope}:${metric}:${window}`;
+}
+
+// Map a touched lb key back to its board tag. lb keys are `lb:{scope}:{metric}:{window}` where scope
+// may itself contain a colon (`c:{uuid}`), so strip ONLY the leading `lb:` (never split(':')).
+export function lbKeyToBoardTag(lbKey: string): string {
+  if (!lbKey.startsWith("lb:")) throw new Error(`lbKeyToBoardTag: not an lb key: ${lbKey}`);
+  return `board:${lbKey.slice("lb:".length)}`;
+}
+
+// lbrender:{scope}:{metric}:{window}:{limit} — RESERVED for an optional anon-only render cache
+// (deferred this phase). Tested now so the shape is locked.
+export function lbRenderKey(scope: Scope, metric: MetricToken, window: BoardWindow, limit: number): string {
+  return `lbrender:${scope}:${metric}:${window}:${limit}`;
+}

@@ -13,12 +13,17 @@ import { db } from "@/db/client";
 import { deviceGrants, users } from "@/db/schema";
 import { cliLoginPollRequestSchema } from "@tokenboard/contracts";
 import { sha256Hex } from "@/lib/cli-login/token";
+import { enforce } from "@/lib/ratelimit/enforce";
 
 export const dynamic = "force-dynamic";
 
 const SLOW_DOWN_FLOOR_MS = 4000; // < interval(5s) - jitter -> the CLI polled too fast
 
 export async function POST(request: NextRequest) {
+  // §8.2 — 60/min per-IP (unauthenticated poll; the per-grant 5s slow_down stays below). Fail-open.
+  const gate = await enforce(request, "cliPoll");
+  if (!gate.ok) return gate.response;
+
   let body: unknown;
   try {
     body = await request.json();

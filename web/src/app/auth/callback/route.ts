@@ -5,8 +5,13 @@
 // code-verifier cookie is found.
 import { NextResponse, type NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { enforce } from "@/lib/ratelimit/enforce";
 
 export async function GET(request: NextRequest) {
+  // §8.2 — 60/min per-IP on the OAuth callback (the unauthenticated ?code-exchange surface). Fail-open.
+  const gate = await enforce(request, "oauthStart");
+  if (!gate.ok) return gate.response;
+
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
 

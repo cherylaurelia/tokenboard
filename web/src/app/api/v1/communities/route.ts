@@ -10,6 +10,9 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createCommunityRequestSchema, createCommunityResponseSchema } from "@tokenboard/contracts";
 import { slugify, isReservedSlug } from "@/lib/communities/slug";
 import { mintJoinCode } from "@/lib/communities/join-code";
+import { profKey } from "@/lib/leaderboard/keys";
+import { redis } from "@/lib/redis/client";
+import { enforce } from "@/lib/ratelimit/enforce";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,6 +47,10 @@ export async function POST(request: NextRequest) {
     sql`select 1 from users where id = ${user.id} and banned_at is not null limit 1`,
   )) as unknown as Array<unknown>;
   if (banned.length > 0) return NextResponse.json({ error: "banned" }, { status: 403 });
+
+  // §8.2 — 10/day per-user + 20/day per-IP (anti-spam on community creation).
+  const gate = await enforce(request, "communitiesCreate", { uid: user.id });
+  if (!gate.ok) return gate.response;
 
   const baseSlug = input.slug ?? slugify(input.name);
   if (!baseSlug || baseSlug.length < 2) return NextResponse.json({ error: "invalid_slug" }, { status: 400 });
@@ -81,7 +88,9 @@ export async function POST(request: NextRequest) {
         });
         return c!;
       });
-      return NextResponse.json(
+      // The creator's membership set changed — bust their profile render cache (non-fatal).
+      await redis.del(profKey(user.id)).catch(() => {});
+      const res = NextResponse.json(
         createCommunityResponseSchema.parse({
           id: created.id,
           slug: created.slug,
@@ -90,6 +99,8 @@ export async function POST(request: NextRequest) {
         }),
         { status: 201 },
       );
+      for (const [k, v] of Object.entries(gate.headers)) res.headers.set(k, v);
+      return res;
     } catch (err) {
       const code = (err as { code?: string }).code;
       if (code !== UNIQUE_VIOLATION || attempt === SLUG_RETRIES - 1) {
