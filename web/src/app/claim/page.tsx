@@ -9,10 +9,13 @@ import { ApproveForm } from "./approve-form";
 export default async function ClaimPage({
   searchParams,
 }: {
-  searchParams: Promise<{ code?: string }>;
+  searchParams: Promise<{ code?: string | string[] }>;
 }) {
   const { code } = await searchParams; // Next 16: searchParams is a Promise
-  const userCode = (code ?? "").toUpperCase();
+  // A repeated ?code=a&code=b yields string[]; take the first. Anything else -> "" (rejected
+  // by USER_CODE_RE below).
+  const raw = Array.isArray(code) ? code[0] : code;
+  const userCode = (raw ?? "").toUpperCase();
   // Validate against the actual generator alphabet (shared regex) — a code with an ambiguous
   // char the server can never have minted is rejected at the boundary.
   if (!USER_CODE_RE.test(userCode)) {

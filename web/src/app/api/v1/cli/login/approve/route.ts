@@ -71,37 +71,44 @@ export async function POST(request: NextRequest) {
   const rawToken = mintIngestToken(); // "tbd_" + base64url(32 bytes)
   const tokenHash = sha256Bytes(rawToken); // Buffer -> bytea (raw bytes, never hex/utf8)
   const ingestExpires = new Date(Date.now() + INGEST_TTL_DAYS * 86_400_000);
-  try {
-    await db.insert(ingestDevices).values({
-      userId: user.id,
-      tokenHash,
-      machineHash: grant.machineHash,
-      status: "active",
-      expiresAt: ingestExpires,
-    });
-  } catch {
-    console.error("cli/login/approve: ingest_devices insert failed");
-    return NextResponse.json({ error: "server_error" }, { status: 500 });
-  }
 
-  // Bind grant -> approved + stash the raw token transiently for the next poll. CAS guards
-  // both double-approve (status='pending') AND the read->bind expiry TOCTOU (expires_at>now()).
-  const bound = await db
-    .update(deviceGrants)
-    .set({ userId: user.id, status: "approved", ingestTokenOnce: rawToken })
-    .where(
-      and(
-        eq(deviceGrants.id, grant.id),
-        eq(deviceGrants.status, "pending"),
-        gt(deviceGrants.expiresAt, sql`now()`),
-      ),
-    )
-    .returning({ id: deviceGrants.id });
-  if (bound.length === 0) {
-    // Lost the CAS (concurrent approve / just-expired). The ingest_devices row just inserted
-    // is an orphan: hash-only, status='active', expires in 90d, raw token NOWHERE — NOT a leak.
-    // A Phase-5+ cleanup of ingest_devices rows with no completed grant is tracked (no cron now).
-    return NextResponse.json({ error: "already_processed" }, { status: 409 });
+  // Insert the device row AND bind the grant in ONE transaction. If the CAS matches 0 rows
+  // (concurrent approve / just-expired), we throw to roll the whole tx back — so a lost race
+  // leaves NO orphan ingest_devices row (it would otherwise be a permanent hash-only device
+  // with status='active' for 90d whose token reached nobody). The CAS guards double-approve
+  // (status='pending') AND the read->bind expiry TOCTOU (expires_at>now()).
+  try {
+    await db.transaction(async (tx) => {
+      await tx.insert(ingestDevices).values({
+        userId: user.id,
+        tokenHash,
+        machineHash: grant.machineHash,
+        status: "active",
+        expiresAt: ingestExpires,
+      });
+      const bound = await tx
+        .update(deviceGrants)
+        .set({ userId: user.id, status: "approved", ingestTokenOnce: rawToken })
+        .where(
+          and(
+            eq(deviceGrants.id, grant.id),
+            eq(deviceGrants.status, "pending"),
+            gt(deviceGrants.expiresAt, sql`now()`),
+          ),
+        )
+        .returning({ id: deviceGrants.id });
+      if (bound.length === 0) throw new LostCasError(); // rolls back the device insert
+    });
+  } catch (err) {
+    if (err instanceof LostCasError) {
+      return NextResponse.json({ error: "already_processed" }, { status: 409 });
+    }
+    console.error("cli/login/approve: bind/mint transaction failed");
+    return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
   return NextResponse.json({ ok: true, action: "approved" });
 }
+
+// Sentinel to roll back the approve transaction on a lost compare-and-set without
+// conflating it with a real DB error (which returns 500).
+class LostCasError extends Error {}

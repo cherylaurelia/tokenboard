@@ -55,9 +55,8 @@ export async function runClaim(): Promise<void> {
       throw new Error("This claim request expired. Run `tokenboard claim` again.");
     }
     if (result.status === "slow_down") {
-      intervalMs += 5000;
-      await sleep(intervalMs); // back off before the next poll
-      continue;
+      intervalMs += 5000; // RFC 8628: widen the interval; the top-of-loop sleep applies it.
+      continue; // do NOT sleep here too — that would double-sleep this iteration.
     }
     // "pending" / any unknown -> keep polling (bounded by deadline).
   }

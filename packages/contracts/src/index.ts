@@ -37,6 +37,8 @@ export {
   cliLoginPollRequestSchema,
   cliLoginPollResponseSchema,
   cliLoginApproveRequestSchema,
+  cliLoginPollStatusEnvelopeSchema,
+  KNOWN_POLL_STATUSES,
   type CliLoginStartResponse,
   type CliLoginPollResponse,
 } from "./cli-login";

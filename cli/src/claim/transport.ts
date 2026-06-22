@@ -3,6 +3,8 @@
 import {
   cliLoginStartResponseSchema,
   cliLoginPollResponseSchema,
+  cliLoginPollStatusEnvelopeSchema,
+  KNOWN_POLL_STATUSES,
   type CliLoginStartResponse,
   type CliLoginPollResponse,
 } from "@tokenboard/contracts";
@@ -34,5 +36,15 @@ export async function startDeviceGrant(
 
 export async function pollDeviceGrant(base: string, deviceCode: string): Promise<CliLoginPollResponse> {
   const raw = await postJson(`${base}/api/v1/cli/login/poll`, { device_code: deviceCode });
-  return cliLoginPollResponseSchema.parse(raw);
+  const known = cliLoginPollResponseSchema.safeParse(raw);
+  if (known.success) return known.data;
+
+  // Forward-compat: a KNOWN status that's malformed (e.g. `complete` missing its token) MUST
+  // fail loud. Only an UNKNOWN future status degrades to keep-polling (mapped to "pending"),
+  // so an older CLIENT against a newer server doesn't crash on parse.
+  const envelope = cliLoginPollStatusEnvelopeSchema.safeParse(raw);
+  if (envelope.success && !KNOWN_POLL_STATUSES.includes(envelope.data.status as (typeof KNOWN_POLL_STATUSES)[number])) {
+    return { status: "pending" };
+  }
+  throw new Error(`poll: malformed response${envelope.success ? ` for status "${envelope.data.status}"` : ""}`);
 }

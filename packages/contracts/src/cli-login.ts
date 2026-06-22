@@ -20,8 +20,8 @@ export const cliLoginPollRequestSchema = z.object({ device_code: z.string().min(
 
 // WIRE statuses = the ARCH §3 routes-table set (pending|slow_down|complete) + the §4.3-prose
 // terminals denied|expired. The 'complete' arm adds top-level userId (documented superset:
-// §4.3 step 5 requires the CLI to persist {"userId":"<uuid>"} in auth.json). This union is
-// the server's emitted contract; the CLI treats any unknown status as keep-polling.
+// §4.3 step 5 requires the CLI to persist {"userId":"<uuid>"} in auth.json). KNOWN shapes are
+// STRICT — a malformed `complete` (missing token) MUST fail loud, not be papered over.
 export const cliLoginPollResponseSchema = z.discriminatedUnion("status", [
   z.object({ status: z.literal("pending") }),
   z.object({ status: z.literal("slow_down") }),
@@ -35,6 +35,13 @@ export const cliLoginPollResponseSchema = z.discriminatedUnion("status", [
   }),
 ]);
 export type CliLoginPollResponse = z.infer<typeof cliLoginPollResponseSchema>;
+
+// FORWARD-COMPAT: the CLI is published independently of the server, so an older CLI may meet a
+// newer server that adds a status. The transport parses against the strict union; on failure
+// it must distinguish "unknown future status" (keep polling) from "malformed known response"
+// (fail loud). This minimal envelope extracts just the status string to make that call.
+export const cliLoginPollStatusEnvelopeSchema = z.object({ status: z.string() });
+export const KNOWN_POLL_STATUSES = ["pending", "slow_down", "denied", "expired", "complete"] as const;
 
 // user_code is char(9) "WXYZ-1234" — exactly 9 chars (matches the DB CHAR column).
 export const cliLoginApproveRequestSchema = z.object({
