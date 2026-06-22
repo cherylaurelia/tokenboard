@@ -3,6 +3,7 @@ import { defineCommand, runMain } from "citty";
 import { runPreview } from "./commands/preview.js";
 import { runShowData } from "./commands/show-data.js";
 import { notAvailableYet } from "./commands/stub.js";
+import { runClaim } from "./commands/claim.js";
 
 // Window flags are bare per DESIGN §14.1 (--7d, not --window=7d). In Phase 2 they're
 // cosmetic — the local preview shows all available local history — but registered so the
@@ -27,6 +28,15 @@ const showData = defineCommand({
 const stub = (name: string, phase: string, description: string) =>
   defineCommand({ meta: { name, description }, run: () => notAvailableYet(name, phase) });
 
+// Phase 4: real device-authorization claim. runClaim throws on failure -> runMain exits
+// non-zero (fail-loud). sync/top/board/me/join stay stubs.
+const claim = defineCommand({
+  meta: { name: "claim", description: "sign in with GitHub and claim this machine" },
+  async run() {
+    await runClaim();
+  },
+});
+
 const main = defineCommand({
   meta: {
     name: "tokenboard",
@@ -35,7 +45,7 @@ const main = defineCommand({
   args: windowArgs,
   subCommands: {
     "show-data": showData,
-    claim: stub("claim", "Phase 4", "sign in with GitHub and claim this machine"),
+    claim,
     sync: stub("sync", "Phase 5", "upload local usage to the server"),
     top: stub("top", "Phase 6", "the global / default board"),
     board: stub("board", "Phase 6", "a specific community board"),

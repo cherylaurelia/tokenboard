@@ -6,12 +6,26 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
-  const origin = request.nextUrl.origin;
+  const { origin, searchParams } = new URL(request.url);
+
+  // Open-redirect guard (trust boundary) — identical to /auth/callback. Lets /claim send an
+  // unauthenticated visitor through login and back to /claim?code=... safely.
+  const requestedNext = searchParams.get("next") ?? "/me";
+  let next = "/me";
+  if (
+    requestedNext.startsWith("/") &&
+    !requestedNext.startsWith("//") &&
+    !requestedNext.includes("\\")
+  ) {
+    const candidate = new URL(requestedNext, origin);
+    if (candidate.origin === origin) next = candidate.pathname + candidate.search;
+  }
+
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "github",
-    options: { redirectTo: `${origin}/auth/callback` },
+    options: { redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}` },
   });
 
   if (error || !data.url) {
