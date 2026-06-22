@@ -38,9 +38,20 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
-  if (error) {
-    console.warn(`auth/callback: exchangeCodeForSession failed: ${error.message}`);
+  // exchangeCodeForSession returns {error} for auth failures (incl. a missing/expired
+  // PKCE verifier), but RE-THROWS non-AuthError exceptions (network failure on the /token
+  // request, a storage throw). Wrap so any of those still redirect gracefully instead of
+  // crashing the route with an unhandled 500.
+  try {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) {
+      console.warn(`auth/callback: exchangeCodeForSession failed: ${error.message}`);
+      return NextResponse.redirect(new URL("/auth/auth-code-error", origin));
+    }
+  } catch (err) {
+    console.warn(
+      `auth/callback: exchangeCodeForSession threw: ${err instanceof Error ? err.message : String(err)}`,
+    );
     return NextResponse.redirect(new URL("/auth/auth-code-error", origin));
   }
 
