@@ -1,0 +1,59 @@
+/* Verify flow UI — composes the shared form-shell (see components/communities/form-shell.module.css)
+   so the shell/title/card/input/btn/error patterns don't drift vs the create form. Only the verify-
+   specific .note + the label binding live here. */
+@value shell as sShell, title as sTitle, dim as sDim, lede as sLede, card as sCard,
+  input as sInput, btn as sBtn, btnCoral as sBtnCoral, btnGhost as sBtnGhost, error as sError,
+  success as sSuccess from "@/components/communities/form-shell.module.css";
+
+.surfaceBoardBase {
+  composes: surfaceBoardBase from global;
+}
+.shell {
+  composes: sShell;
+}
+.title {
+  composes: sTitle;
+}
+.dim {
+  composes: sDim;
+}
+.lede {
+  composes: sLede;
+}
+.card {
+  composes: sCard;
+}
+.input {
+  composes: sInput;
+}
+.btn {
+  composes: sBtn;
+}
+.btnCoral {
+  composes: sBtnCoral;
+}
+.btnGhost {
+  composes: sBtnGhost;
+}
+.error {
+  composes: sError;
+}
+.success {
+  composes: sSuccess;
+}
+
+/* the OTP <label> + the explanatory note are verify-specific (composes can't target a compound
+   selector, so the label treatment is inlined here — it mirrors the shared .label). */
+.card label {
+  font-family: var(--term);
+  font-size: var(--fs-14);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink-4-text);
+}
+.note {
+  font-family: var(--money);
+  font-size: var(--fs-13);
+  line-height: 1.5;
+  color: var(--ink-3-text);
+}

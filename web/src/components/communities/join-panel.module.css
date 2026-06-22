@@ -39,12 +39,16 @@
   flex-direction: column;
   gap: 8px;
 }
-.field label {
+.field label,
+.fieldHead {
   font-family: var(--term);
   font-size: var(--fs-14);
   letter-spacing: 2px;
   text-transform: uppercase;
   color: var(--ink-4-text);
+}
+.fieldHead {
+  display: block;
 }
 .inputRow {
   display: flex;

@@ -1,0 +1,92 @@
+/* Create-community form — composes the shared form-shell (see
+   components/communities/form-shell.module.css). Only the create-specific fieldset/radio/code-row
+   styles live here. */
+@value shell as sShell, title as sTitle, dim as sDim, lede as sLede, card as sCard,
+  input as sInput, btn as sBtn, btnCoral as sBtnCoral, btnGhost as sBtnGhost, error as sError,
+  success as sSuccess from "@/components/communities/form-shell.module.css";
+
+.surfaceBoardBase {
+  composes: surfaceBoardBase from global;
+}
+.shell {
+  composes: sShell;
+}
+.title {
+  composes: sTitle;
+}
+.dim {
+  composes: sDim;
+}
+.lede {
+  composes: sLede;
+}
+.card {
+  composes: sCard;
+}
+.input {
+  composes: sInput;
+}
+.btn {
+  composes: sBtn;
+}
+.btnCoral {
+  composes: sBtnCoral;
+}
+.btnGhost {
+  composes: sBtnGhost;
+}
+.error {
+  composes: sError;
+}
+.success {
+  composes: sSuccess;
+}
+/* label treatment inlined (composes can't target the compound `.card label` selector). */
+.card label {
+  font-family: var(--term);
+  font-size: var(--fs-14);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink-4-text);
+}
+
+/* create-specific controls */
+.fieldset {
+  border: 1px solid var(--frame);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.fieldset legend {
+  font-family: var(--term);
+  font-size: var(--fs-14);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink-4-text);
+  padding: 0 6px;
+}
+.radio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--money);
+  font-size: var(--fs-14);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-2);
+  min-height: 44px;
+  cursor: pointer;
+}
+.codeRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.codeValue {
+  font-family: var(--money);
+  font-size: var(--fs-30);
+  letter-spacing: 4px;
+  color: var(--coral);
+}
