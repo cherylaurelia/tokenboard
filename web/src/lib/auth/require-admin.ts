@@ -20,8 +20,15 @@ export async function requireAdmin(): Promise<Viewer | null> {
     }
     return decideAdmin(viewer, null);
   }
-  const rows = (await db.execute(sql`
-    select is_admin as "isAdmin" from users where id = ${viewer.userId} limit 1
-  `)) as unknown as Array<{ isAdmin: boolean }>;
-  return decideAdmin(viewer, rows[0]?.isAdmin ?? null);
+  // Fail-CLOSED on a DB error: a throw here must NOT propagate (a 500 both breaks the page for the
+  // owner AND reveals the route exists, defeating the 404-indistinguishability). Deny -> notFound().
+  try {
+    const rows = (await db.execute(sql`
+      select is_admin as "isAdmin" from users where id = ${viewer.userId} limit 1
+    `)) as unknown as Array<{ isAdmin: boolean }>;
+    return decideAdmin(viewer, rows[0]?.isAdmin ?? null);
+  } catch (err) {
+    console.error("requireAdmin: is_admin lookup failed -> denied (fail-closed 404)", err instanceof Error ? err.message : err);
+    return decideAdmin(viewer, null);
+  }
 }
