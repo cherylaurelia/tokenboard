@@ -42,10 +42,11 @@ export function YourStanding({
         )}
         <div className={styles.who}>
           {aliasCompany ? (
-            <span className={styles.handle}>{label}</span>
+            <span className={styles.name}>{label}</span>
           ) : (
-            <a className={styles.handle} href={`/user/${entry.handle}`}>
-              {label}
+            <a className={styles.identity} href={`/user/${entry.handle}`}>
+              {entry.displayName && <span className={styles.name}>{entry.displayName}</span>}
+              <span className={styles.at}>@{entry.handle}</span>
             </a>
           )}
           <span className={styles.rank}>Rank #{me.rank}</span>

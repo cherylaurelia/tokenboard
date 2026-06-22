@@ -67,20 +67,32 @@
 }
 .whoLink {
   display: flex;
+  flex-direction: column;
+  gap: 2px;
   min-width: 0;
   cursor: pointer;
 }
-.at {
+.name {
   font-family: var(--handle);
   font-size: var(--fs-15);
-  line-height: 1;
+  line-height: 1.1;
   letter-spacing: 0;
   color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.whoLink:hover .at {
+.at {
+  font-family: var(--handle);
+  font-size: var(--fs-13);
+  line-height: 1;
+  letter-spacing: 0;
+  color: var(--ink-3-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.whoLink:hover .name {
   color: var(--coral-hi);
   text-decoration: underline;
 }
@@ -107,12 +119,12 @@
 .you .rk {
   color: var(--coral);
 }
-.you .at {
+.you .name {
   color: var(--coral-hi);
 }
 
 @media (max-width: 480px) {
-  .at {
+  .name {
     font-size: var(--fs-16);
   }
 }
