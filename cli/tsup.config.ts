@@ -8,7 +8,9 @@ export default defineConfig({
   shims: true, // __dirname / import.meta.url interop
   dts: false, // a CLI doesn't ship types
   sourcemap: true,
-  // tsup excludes dependencies/peerDependencies by default; force the workspace pkg
-  // INTO the bundle so the published artifact has zero workspace deps:
-  noExternal: [/^@tokenboard\/contracts/],
+  // tsup excludes dependencies by default; force the workspace pkg AND the render libs
+  // INTO the bundle so the published artifact has zero workspace/runtime deps except zod.
+  // (zod stays external — it's a real published dependency the inlined contracts import.)
+  // The litellm-snapshot.json import is inlined automatically (resolveJsonModule).
+  noExternal: [/^@tokenboard\/contracts/, "citty", "picocolors", "string-width", "cli-truncate"],
 });
