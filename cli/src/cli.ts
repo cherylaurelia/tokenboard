@@ -4,6 +4,7 @@ import { runPreview } from "./commands/preview.js";
 import { runShowData } from "./commands/show-data.js";
 import { notAvailableYet } from "./commands/stub.js";
 import { runClaim } from "./commands/claim.js";
+import { runSync } from "./commands/sync.js";
 
 // Window flags are bare per DESIGN §14.1 (--7d, not --window=7d). In Phase 2 they're
 // cosmetic — the local preview shows all available local history — but registered so the
@@ -28,12 +29,19 @@ const showData = defineCommand({
 const stub = (name: string, phase: string, description: string) =>
   defineCommand({ meta: { name, description }, run: () => notAvailableYet(name, phase) });
 
-// Phase 4: real device-authorization claim. runClaim throws on failure -> runMain exits
-// non-zero (fail-loud). sync/top/board/me/join stay stubs.
+// Phase 4: real device-authorization claim. Phase 5: real sync. Both throw on failure ->
+// runMain exits non-zero (fail-loud). top/board/me/join stay stubs (Phase 6).
 const claim = defineCommand({
   meta: { name: "claim", description: "sign in with GitHub and claim this machine" },
   async run() {
     await runClaim();
+  },
+});
+
+const sync = defineCommand({
+  meta: { name: "sync", description: "upload local usage to the server" },
+  async run() {
+    await runSync();
   },
 });
 
@@ -46,7 +54,7 @@ const main = defineCommand({
   subCommands: {
     "show-data": showData,
     claim,
-    sync: stub("sync", "Phase 5", "upload local usage to the server"),
+    sync,
     top: stub("top", "Phase 6", "the global / default board"),
     board: stub("board", "Phase 6", "a specific community board"),
     me: stub("me", "Phase 6", "your rank across communities"),

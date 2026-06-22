@@ -7,11 +7,13 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test \"test/**/*.test.ts\"",
     "db:migrate": "dotenv -e ../.env -- drizzle-kit migrate",
     "db:generate": "drizzle-kit generate --custom"
   },
   "dependencies": {
     "@tokenboard/contracts": "workspace:*",
+    "@tokenboard/cost": "workspace:*",
     "@supabase/ssr": "0.12.0",
     "@supabase/supabase-js": "2.108.2",
     "drizzle-orm": "0.45.2",

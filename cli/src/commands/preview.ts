@@ -6,7 +6,7 @@ import { parsedLineToRecord } from "../collectors/claude-code-map.js";
 import { collectCcusage } from "../collectors/ccusage-source.js";
 import { aggregateByKey } from "../aggregate/aggregate.js";
 import { summarize, type LocalSummary } from "../aggregate/summary.js";
-import { loadPriceTable } from "../cost/price-table.js";
+import { loadPriceTable } from "@tokenboard/cost";
 import { resolveTimeZone } from "../normalize/local-day.js";
 import { resolveStyle, styler } from "../render/terminal-style.js";
 import { renderLocalPreview, CLAIM_CTA } from "../render/local-preview.js";

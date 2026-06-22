@@ -39,6 +39,9 @@ importers:
       '@tokenboard/contracts':
         specifier: workspace:*
         version: link:../packages/contracts
+      '@tokenboard/cost':
+        specifier: workspace:*
+        version: link:../packages/cost
       '@types/node':
         specifier: 22.10.5
         version: 22.10.5
@@ -62,6 +65,18 @@ importers:
         specifier: 6.0.3
         version: 6.0.3
 
+  packages/cost:
+    devDependencies:
+      '@types/node':
+        specifier: 22.10.5
+        version: 22.10.5
+      tsx:
+        specifier: 4.20.6
+        version: 4.20.6
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+
   web:
     dependencies:
       '@supabase/ssr':
@@ -73,6 +88,9 @@ importers:
       '@tokenboard/contracts':
         specifier: workspace:*
         version: link:../packages/contracts
+      '@tokenboard/cost':
+        specifier: workspace:*
+        version: link:../packages/cost
       drizzle-orm:
         specifier: 0.45.2
         version: 0.45.2(postgres@3.4.9)
