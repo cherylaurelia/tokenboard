@@ -30,7 +30,5 @@ export const boardQuerySchema = z.object({
 
 export type BoardQuery = z.infer<typeof boardQuerySchema>;
 
-// TODO(phase7): transcribe the §7.2 entries[]/me response schema verbatim
-// (rank, handle, displayName, avatar, tier, tierPill, tokens, cost,
-//  delta{rankChange,tokensChange,pct,direction}, sparkline[{date,tokens}],
-//  topTool, isMe) so the board response validates against the canonical shape.
+// The §7.2 RESPONSE shape lives in board-response.ts (it imports the window/metric enums from
+// here; one-directional, no cycle).

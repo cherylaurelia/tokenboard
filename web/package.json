@@ -14,6 +14,8 @@
   "dependencies": {
     "@tokenboard/contracts": "workspace:*",
     "@tokenboard/cost": "workspace:*",
+    "@upstash/qstash": "2.11.1",
+    "@upstash/redis": "1.38.0",
     "@supabase/ssr": "0.12.0",
     "@supabase/supabase-js": "2.108.2",
     "drizzle-orm": "0.45.2",
