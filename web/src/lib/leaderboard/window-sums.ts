@@ -90,7 +90,7 @@ export async function fallbackBoard(p: {
     where udt.date <= ${p.windowEnd} ${dateLower(p.windowStart)}
     group by udt.user_id
     having ${orderCol} > 0
-    order by ${orderCol} desc
+    order by ${orderCol} desc, udt.user_id asc
     limit ${p.limit}
   `)) as unknown as Array<{ user_id: string; tokens: string; cost_usd: string }>;
   return rows.map((r) => ({
@@ -115,7 +115,7 @@ export async function fallbackMeRank(p: {
       select udt.user_id::text as user_id,
              coalesce(sum(udt.tokens),0)::text as tokens,
              coalesce(sum(udt.cost_usd),0)::text as cost_usd,
-             rank() over (order by ${orderCol} desc) as rk
+             row_number() over (order by ${orderCol} desc, udt.user_id asc) as rk
       from usage_day_total udt
       join users u on u.id = udt.user_id and u.banned_at is null
       ${join}

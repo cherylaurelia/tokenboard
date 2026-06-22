@@ -41,33 +41,37 @@ export async function runLeaderboardSweep(now: Date = new Date()): Promise<{ sco
   const scopes = await activeScopes();
   let boards = 0;
 
-  // PHASE A — snapshots first (previous-period baseline), ALL scopes, before any rebuild.
+  // PHASE A — snapshots first (previous-period baseline), ALL scopes, before any rebuild. Batched
+  // into ONE pipeline (not serial round-trips) so a many-community sweep doesn't stack latency.
+  // ZUNIONSTORE over the PREVIOUS window's buckets: an empty source yields an empty/deleted lbsnap
+  // => deltas read 'new' (correct cold-board); EXPIRE on a now-missing key is a harmless no-op.
+  const snapPipe = redis.pipeline();
   for (const scope of scopes) {
     for (const metric of METRIC_TOKENS) {
       for (const w of SWEPT_WINDOWS) {
         const src = bucketKeys(scope, metric, previousWindowBucketDates(w, now));
         const dest = lbsnapKey(scope, metric, w);
-        // ZUNIONSTORE over the PREVIOUS window's buckets (array arg). Empty source legitimately
-        // yields an empty/deleted lbsnap => deltas read 'new' (correct cold-board). EXPIRE on a
-        // now-missing key is a harmless no-op.
-        await redis.zunionstore(dest, src.length, src, { aggregate: "sum" });
-        await redis.expire(dest, SNAPSHOT_TTL_SEC);
+        snapPipe.zunionstore(dest, src.length, src, { aggregate: "sum" });
+        snapPipe.expire(dest, SNAPSHOT_TTL_SEC);
       }
     }
   }
+  await snapPipe.exec(); // PHASE A fully commits before PHASE B starts (no half-rebuilt snapshots).
 
-  // PHASE B — rebuild current boards + re-EXPIRE.
+  // PHASE B — rebuild current boards + re-EXPIRE, also one pipeline.
+  const buildPipe = redis.pipeline();
   for (const scope of scopes) {
     for (const metric of METRIC_TOKENS) {
       for (const w of SWEPT_WINDOWS) {
         const src = bucketKeys(scope, metric, currentWindowBucketDates(w, now));
         const dest = lbKey(scope, metric, w);
-        await redis.zunionstore(dest, src.length, src, { aggregate: "sum" });
-        await redis.expire(dest, ROLLING_BOARD_TTL_SEC); // zunionstore sets no TTL
+        buildPipe.zunionstore(dest, src.length, src, { aggregate: "sum" });
+        buildPipe.expire(dest, ROLLING_BOARD_TTL_SEC); // zunionstore sets no TTL
         boards++;
       }
     }
   }
+  await buildPipe.exec();
   return { scopes: scopes.length, boards };
 }
 

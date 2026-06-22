@@ -72,9 +72,21 @@ export async function loadProfiles(
   return out;
 }
 
+const FALLBACK_PILL: TierPill = { label: "GitHub", kind: "individual", verified: true };
+
 function decodeProfile(h: ProfHash): CachedProfile {
-  // @upstash/redis may return tierPill already-parsed (object) or as a JSON string. Normalize both.
-  const tierPill = (typeof h.tierPill === "string" ? JSON.parse(h.tierPill) : h.tierPill) as TierPill;
+  // @upstash/redis may return tierPill already-parsed (object) or as a JSON string. Normalize both,
+  // and GUARD the parse: a single corrupt cached value must not crash the whole board decode — fall
+  // back to the individual pill (the cache is rebuildable; a bad entry is non-fatal).
+  let tierPill: TierPill = FALLBACK_PILL;
+  try {
+    const parsed = typeof h.tierPill === "string" ? JSON.parse(h.tierPill) : h.tierPill;
+    if (parsed && typeof parsed === "object" && typeof (parsed as TierPill).kind === "string") {
+      tierPill = parsed as TierPill;
+    }
+  } catch {
+    // corrupt cached tierPill -> keep the safe fallback
+  }
   return {
     handle: h.handle,
     displayName: h.displayName === "" ? null : h.displayName,

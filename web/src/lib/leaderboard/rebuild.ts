@@ -20,7 +20,6 @@ import {
 } from "./keys";
 import { todayUtcYmd } from "./windows";
 import { runLeaderboardSweep } from "./sweep";
-import { windowSumForUser } from "./window-sums";
 
 const REBUILD_DAYS = 40;
 
@@ -113,18 +112,56 @@ export async function rebuildBoardsFromPostgres(now: Date = new Date()): Promise
   // 3) Materialize 7d/30d (+ lbsnap) via the sweep.
   await runLeaderboardSweep(now);
 
-  // 4) Re-seed the `all` board (never swept) = each user's all-time window sum.
-  const allUsers = [...new Set(rows.map((r) => `${r.scope}::${r.userId}`))];
+  // 4) Re-seed the `all` board (never swept) = each user's ALL-TIME total. Computed with TWO
+  // GROUP-BY queries over the user's FULL history (no 40-day bound — the `all` board must include
+  // users with no recent activity) — NOT a per-user N+1 loop. banned-excluded.
+  const allRows = await allTimeRows();
+  const allScopes = new Set<Scope>(allRows.map((r) => r.scope));
   const allPipe = redis.pipeline();
-  for (const su of allUsers) {
-    const sep = su.indexOf("::");
-    const scope = su.slice(0, sep) as Scope;
-    const userId = su.slice(sep + 2);
-    const s = await windowSumForUser(userId, "all", null);
-    allPipe.zadd(lbKey(scope, "t", "all"), { score: s.tokens, member: userId });
-    allPipe.zadd(lbKey(scope, "usd", "all"), { score: Number(s.micros), member: userId });
+  for (const r of allRows) {
+    allPipe.zadd(lbKey(r.scope, "t", "all"), { score: r.tokens, member: r.userId });
+    allPipe.zadd(lbKey(r.scope, "usd", "all"), { score: Number(r.micros), member: r.userId });
   }
   await allPipe.exec();
 
-  return { scopes: scopes.size, buckets: rows.length };
+  return { scopes: new Set([...scopes, ...allScopes]).size, buckets: rows.length };
+}
+
+// All-time per-user totals for the `all` board — full history, banned-excluded, global + per
+// community. One global GROUP BY + one community GROUP BY (no per-user loop, no date bound).
+async function allTimeRows(): Promise<Array<{ scope: Scope; userId: string; tokens: number; micros: bigint }>> {
+  const out: Array<{ scope: Scope; userId: string; tokens: number; micros: bigint }> = [];
+
+  const g = (await db.execute(sql`
+    select udt.user_id::text as user_id,
+           coalesce(sum(udt.tokens),0)::text as tokens,
+           coalesce(sum(udt.cost_usd),0)::text as cost_usd
+    from usage_day_total udt
+    join users u on u.id = udt.user_id and u.banned_at is null
+    group by udt.user_id
+    having coalesce(sum(udt.tokens),0) > 0
+  `)) as unknown as Array<{ user_id: string; tokens: string; cost_usd: string }>;
+  for (const r of g) {
+    out.push({ scope: "g", userId: r.user_id, tokens: Number(r.tokens), micros: costUsdStringToMicros(r.cost_usd) });
+  }
+
+  const c = (await db.execute(sql`
+    select m.community_id::text as community_id, udt.user_id::text as user_id,
+           coalesce(sum(udt.tokens),0)::text as tokens,
+           coalesce(sum(udt.cost_usd),0)::text as cost_usd
+    from usage_day_total udt
+    join users u on u.id = udt.user_id and u.banned_at is null
+    join memberships m on m.user_id = udt.user_id
+    group by m.community_id, udt.user_id
+    having coalesce(sum(udt.tokens),0) > 0
+  `)) as unknown as Array<{ community_id: string; user_id: string; tokens: string; cost_usd: string }>;
+  for (const r of c) {
+    out.push({
+      scope: scopeForCommunity(r.community_id),
+      userId: r.user_id,
+      tokens: Number(r.tokens),
+      micros: costUsdStringToMicros(r.cost_usd),
+    });
+  }
+  return out;
 }

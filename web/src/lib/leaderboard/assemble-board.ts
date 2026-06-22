@@ -91,6 +91,12 @@ export async function assembleBoard(params: {
   let meScore: number | null = null;
   let totalEntries = 0;
   if (!usedFallback) {
+    // me.rank/totalEntries come from ZREVRANK/ZCARD. These count whoever is IN the ZSET — which is
+    // banned-clean because the write-path skips banned users and rebuild reseeds banned-free. The
+    // only residual is a user banned AFTER their last sync and BEFORE the next rebuild: they linger
+    // in Redis until the nightly rebuild purges them, so me.rank could be off by the (tiny) count of
+    // such stragglers. Accepted: the authoritative exclusion is banned_at and rebuild reconciles it;
+    // a per-request full-board banned recount would defeat the O(log N) ZSET read.
     if (meUserId) {
       const p = redis.pipeline();
       p.zrevrank(key, meUserId);

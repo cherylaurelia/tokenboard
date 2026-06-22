@@ -32,12 +32,11 @@ export async function GET(request: NextRequest) {
   if (error) {
     const name = (error as { name?: string }).name ?? "";
     const status = (error as { status?: number }).status;
-    const isNoSession =
-      name === "AuthSessionMissingError" ||
-      name === "AuthApiError" ||
-      status === 400 ||
-      status === 401 ||
-      status === 403;
+    // No-session is the normal anonymous read: AuthSessionMissingError (status 400 in auth-js) or a
+    // 401/403. Anything else — incl. the broad AuthApiError base for a 5xx/transport failure — is a
+    // real outage -> 503, so a private-board member never sees a spurious 403 (don't match the base
+    // class name, which would mask genuine Auth-server errors as anon).
+    const isNoSession = name === "AuthSessionMissingError" || status === 401 || status === 403;
     if (!isNoSession) {
       return NextResponse.json({ error: "auth_unavailable" }, { status: 503 });
     }

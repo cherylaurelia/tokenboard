@@ -34,6 +34,17 @@ async function scopesForUser(userId: string): Promise<Scope[]> {
   return ["g", ...rows.map((r) => scopeForCommunity(r.community_id))];
 }
 
+// A banned user can still sync (device auth checks the token, not users.banned_at), so we must NOT
+// let their scores enter Redis — otherwise ZCARD/ZREVRANK (me.rank, totalEntries) would count a
+// member the read-path filters out of entries[]. The read-path excludes banned too (belt+braces),
+// and rebuild seeds banned-free; this keeps the live board banned-clean between rebuilds.
+async function isBanned(userId: string): Promise<boolean> {
+  const rows = (await db.execute(sql`
+    select 1 from users where id = ${userId} and banned_at is not null limit 1
+  `)) as unknown as Array<unknown>;
+  return rows.length > 0;
+}
+
 export async function writeLeaderboardOnSync(params: {
   userId: string;
   daysAffected: string[];
@@ -42,6 +53,9 @@ export async function writeLeaderboardOnSync(params: {
   const { userId, daysAffected } = params;
   const now = params.now ?? new Date();
   if (daysAffected.length === 0) return [];
+
+  // Banned users never enter the leaderboard (§4.6 — the only ranking exclusion).
+  if (await isBanned(userId)) return [];
 
   const scopes = await scopesForUser(userId);
 
