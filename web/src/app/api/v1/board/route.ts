@@ -92,9 +92,17 @@ export async function GET(request: NextRequest) {
   const cacheable =
     boardCacheable({ callerUserId, me: query.me, community: resolved.community }) &&
     !res.headers.has("set-cookie");
-  const cacheHeaders = cacheable
-    ? publicBoardHeaders(resolved.scope, metricToken(query.metric), query.window)
-    : noStoreHeaders();
-  for (const [k, v] of Object.entries({ ...cacheHeaders, ...gate.headers })) res.headers.set(k, v);
+  if (cacheable) {
+    // Public CDN branch: DON'T attach per-request X-RateLimit-* — those are per-client and must not
+    // be baked into a shared CDN entry (it would serve one client's quota snapshot to everyone).
+    for (const [k, v] of Object.entries(
+      publicBoardHeaders(resolved.scope, metricToken(query.metric), query.window),
+    )) {
+      res.headers.set(k, v);
+    }
+  } else {
+    // Private/no-store branch: this response is per-client, so the rate-limit feedback belongs here.
+    for (const [k, v] of Object.entries({ ...noStoreHeaders(), ...gate.headers })) res.headers.set(k, v);
+  }
   return res;
 }

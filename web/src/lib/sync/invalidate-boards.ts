@@ -21,8 +21,14 @@ export async function invalidateTouchedBoards(params: {
 }): Promise<void> {
   const { boardsTouched, userId } = params;
 
-  // The effective freshness lever first (resilient to a later revalidateTag throw).
-  await redis.del(profKey(userId));
+  // The effective freshness lever first (resilient to a later revalidateTag throw). Catch locally so
+  // a Redis blip on the DEL does NOT abort the board tag revalidations below — each control is
+  // independent best-effort.
+  try {
+    await redis.del(profKey(userId));
+  } catch (err) {
+    console.error("invalidate-boards: prof del failed (non-fatal)", err instanceof Error ? err.message : err);
+  }
 
   // De-dupe tags (boardsTouched repeats a scope across windows) before revalidating.
   const tags = new Set<string>();
