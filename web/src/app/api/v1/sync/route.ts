@@ -1,6 +1,7 @@
-// POST /api/v1/sync, §6.4 steps 1-10 + 13 IN ORDER.
-// Phase 5 = the Postgres system-of-record path ONLY. Steps 11 (Redis ZADD), 12 (community board
-// keys), 14 (ISR/CDN bust) are PHASE 6 — NOT here. No Redis/Upstash/revalidateTag import.
+// POST /api/v1/sync, §6.4 steps 1-13 IN ORDER.
+// Steps 11 (Redis day-bucket ZADD) + 12 (rolling-window + community board keys) run POST-COMMIT
+// (after persistUsage's tx) — a Redis failure there is NON-FATAL (Postgres is truth, rebuildable
+// §7.6). Step 14 (ISR/CDN tag purge) stays DEFERRED to Phase 9 — no revalidateTag here.
 import "server-only";
 import { NextResponse, type NextRequest } from "next/server";
 import { syncRequestSchema, syncResponseEnvelopeSchema } from "@tokenboard/contracts";
@@ -16,6 +17,7 @@ import {
 import { validateAndNormalize } from "@/lib/sync/validate-records";
 import { priceRecord, sumCostUsd } from "@/lib/sync/compute-cost";
 import { persistUsage } from "@/lib/sync/persist-usage";
+import { writeLeaderboardOnSync } from "@/lib/leaderboard/write-path";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs"; // Drizzle/postgres-js + node:crypto — never the edge runtime.
@@ -83,12 +85,26 @@ export async function POST(request: NextRequest) {
       priceTableVersion: PRICE_TABLE_VERSION,
     });
 
+    // STEPS 11-12 — POST-COMMIT Redis leaderboard writes (§7.3). NON-FATAL: a Redis failure here
+    // must NOT fail the sync (Postgres is the source of truth; boards are rebuildable §7.6). On
+    // failure we log (no secrets) and return an empty boardsTouched; a retry-queue is Phase 9.
+    // Step 14 (CDN/ISR purge of these keys) stays deferred to Phase 9.
+    let boardsTouched: string[] = [];
+    try {
+      boardsTouched = await writeLeaderboardOnSync({ userId: auth.userId, daysAffected });
+    } catch (redisErr) {
+      console.error(
+        "api/v1/sync: post-commit Redis write failed (non-fatal)",
+        redisErr instanceof Error ? redisErr.message : redisErr,
+      );
+    }
+
     // Advisory machine_hash flag (step 1) — Phase 5 wire body has no machine_hash, so ~never set.
     const machineFlags = auth.machineHashMismatch
       ? [{ code: "MACHINE_HASH_MISMATCH", detail: "presented machine_hash differs from the bound device" }]
       : [];
 
-    // §6.3 ENVELOPE. boardsTouched EMPTY in Phase 5 (no Redis/board). totalCostUsdDelta is full precision.
+    // §6.3 ENVELOPE. totalCostUsdDelta is full precision.
     const totalTokens = priced.reduce((acc, p) => acc + p.tokens, 0n);
     const envelope = {
       accepted: priced.length,
@@ -101,7 +117,7 @@ export async function POST(request: NextRequest) {
       },
       flags: [...validateFlags, ...dayFlags, ...machineFlags],
       errors,
-      boardsTouched: [] as string[], // PHASE 6
+      boardsTouched, // §7.3 lb keys touched this sync (CDN purge of these is Phase 9)
       nextSyncSuggestedAfterSec: NEXT_SYNC_SUGGESTED_AFTER_SEC,
     };
 
