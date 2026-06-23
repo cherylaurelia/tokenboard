@@ -1,7 +1,10 @@
-// Profile "/user/[handle]" — minimal rollup, designed from the YOUR STANDING + card visual language
-// (no prototype exists, so this is the one place a sparkline lives). Server component. Looks up the
-// handle (banned-excluded) -> assembleBoard(global, me=handle) for global rank/spend/delta/sparkline.
-// notFound() for unknown/banned handles. The rich profile (X-connect, share rail) is Phase 8 §7.4.
+// Profile "/user/[handle]" — a clean, Monkeytype-style public profile. Server component, force-dynamic.
+// Looks up the handle (banned-excluded) -> bio + social_links + assembleBoard(global, me=handle) for
+// the global rank/spend/delta/sparkline + the user's community memberships (visibility-filtered for a
+// non-owner viewer). The owner (viewer.userId === u.id) gets an inline Edit form; everyone else is
+// read-only. Social links are RE-validated at render via buildSocialUrl (defense in depth) — a value
+// that somehow bypassed the write-time normalizer is dropped before it reaches an href. notFound()
+// for unknown/banned handles. This is the one place a sparkline lives.
 import { notFound } from "next/navigation";
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/db/client";
@@ -9,29 +12,44 @@ import { users } from "@/db/schema";
 import { boardQuerySchema } from "@tokenboard/contracts";
 import { getViewer } from "@/lib/auth/get-viewer";
 import { assembleBoard } from "@/lib/leaderboard/assemble-board";
+import { listMyCommunities } from "@/lib/leaderboard/list-my-communities";
 import { WEB_DEFAULT_METRIC, WEB_DEFAULT_WINDOW } from "@/lib/board/web-defaults";
 import { formatUsd2dp } from "@/lib/format/money";
+import { buildSocialUrl, SOCIAL_PLATFORMS, platformLabel, type Platform } from "@/lib/profile/social-links";
 import { SiteNav } from "@/components/site-nav";
 import { SiteFooter } from "@/components/site-footer";
 import { Sparkline } from "@/components/sparkline";
 import { DeltaArrow } from "@/components/board/delta-arrow";
+import { MembershipCard } from "@/components/profile/membership-card";
+import { EditProfileForm } from "./edit-profile-form";
 import styles from "./profile.module.css";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+type SafeLink = { platform: Platform; label: string; url: string };
+
 export default async function ProfilePage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
 
   const [u] = await db
-    .select({ id: users.id, handle: users.handle, displayName: users.displayName, avatar: users.avatarUrl })
+    .select({
+      id: users.id,
+      handle: users.handle,
+      displayName: users.displayName,
+      avatar: users.avatarUrl,
+      createdAt: users.createdAt,
+      bio: users.bio,
+      socialLinks: users.socialLinks,
+    })
     .from(users)
     .where(and(eq(users.handle, handle), isNull(users.bannedAt)))
     .limit(1);
   if (!u) notFound();
 
   const v = await getViewer();
-  const viewer = v === "outage" ? null : v;
+  const viewer = v === "outage" ? null : v; // public page: outage -> anon, no edit
+  const isOwner = viewer != null && viewer.userId === u.id;
 
   const query = boardQuerySchema.parse({
     community: "global",
@@ -50,46 +68,95 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
   const meEntry = board.me?.inTopN === false ? board.me.entry : board.entries.find((e) => e.isMe) ?? null;
   const rank = board.me?.rank ?? null;
 
+  const boards = await listMyCommunities(u.id, isOwner);
+
+  // Re-validate every stored link at render (the href is always server-built; a bad stored value is
+  // silently dropped, never rendered).
+  const socialLinks: SafeLink[] = SOCIAL_PLATFORMS.map((p): SafeLink | null => {
+    const stored = u.socialLinks?.[p];
+    if (typeof stored !== "string" || stored.length === 0) return null;
+    const url = buildSocialUrl(p, stored);
+    return url ? { platform: p, label: platformLabel(p), url } : null;
+  }).filter((x): x is SafeLink => x !== null);
+
+  const joined = u.createdAt.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+
   return (
     <div className={`${styles.surfaceBoardBase} ${styles.surfaceBoardArcade}`}>
       <SiteNav active="profile" viewer={viewer} currentPath={`/user/${u.handle}`} />
       <main className={styles.shell}>
         <section className={styles.card}>
-          <div className={styles.standing}>
+          <header className={styles.head}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               className={`${styles.pfpLg} noPixelate`}
               src={u.avatar ?? `https://github.com/${u.handle}.png`}
               alt={`@${u.handle}`}
-              width={64}
-              height={64}
+              width={88}
+              height={88}
               loading="lazy"
             />
             <div className={styles.who}>
-              <span className={styles.name}>{u.displayName ?? `@${u.handle}`}</span>
+              <h1 className={styles.name}>{u.displayName ?? `@${u.handle}`}</h1>
               <span className={styles.at}>@{u.handle}</span>
+              <div className={styles.meta}>
+                <span className={styles.joined}>Joined {joined}</span>
+                {meEntry?.tierPill && <span className={styles.pill}>{meEntry.tierPill.label}</span>}
+              </div>
+            </div>
+            {isOwner && (
+              <EditProfileForm
+                initialBio={u.bio ?? ""}
+                initialLinks={u.socialLinks ?? {}}
+                className={styles.editSlot}
+              />
+            )}
+          </header>
+
+          {u.bio && <p className={styles.bio}>{u.bio}</p>}
+
+          {socialLinks.length > 0 && (
+            <ul className={styles.links}>
+              {socialLinks.map((l) => (
+                <li key={l.platform}>
+                  <a className={styles.link} href={l.url} target="_blank" rel="noopener noreferrer">
+                    {l.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {meEntry ? (
+            <div className={styles.statsBlock}>
+              <div className={styles.stats}>
+                <span className={styles.big}>{formatUsd2dp(meEntry.cost)}</span>
+                <DeltaArrow delta={meEntry.delta} className={styles.bigElo} />
+              </div>
               {rank !== null && (
                 <span className={styles.rank}>
                   Global Rank #{rank} of {board.totalEntries}
                 </span>
               )}
-            </div>
-          </div>
-
-          {meEntry ? (
-            <>
-              <div className={styles.stats}>
-                <span className={styles.big}>{formatUsd2dp(meEntry.cost)}</span>
-                <DeltaArrow delta={meEntry.delta} className={styles.bigElo} />
-              </div>
               {meEntry.sparkline.length > 1 && (
                 <Sparkline points={meEntry.sparkline} className={styles.spark} />
               )}
-            </>
+            </div>
           ) : (
             <p className={styles.empty}>No synced usage yet for @{u.handle}.</p>
           )}
         </section>
+
+        {boards.length > 0 && (
+          <section className={styles.communities}>
+            <h2 className={styles.secLabel}>Communities</h2>
+            <ul className={styles.boards}>
+              {boards.map((b) => (
+                <MembershipCard key={b.slug} board={b} isOwner={isOwner} ownerHandle={u.handle} />
+              ))}
+            </ul>
+          </section>
+        )}
       </main>
       <SiteFooter variant="board" />
     </div>

@@ -51,6 +51,12 @@ export const users = pgTable(
     githubLogin: citext("github_login"),
     bannedAt: timestamp("banned_at", { withTimezone: true }),
     isAdmin: boolean("is_admin").notNull().default(false),
+    // Public profile fields (0003). bio = plain text (escaped on render, no markdown). socialLinks =
+    // a flat allowlisted platform->value map; the SQL is the authoritative default ('{}'::jsonb) and
+    // the route always sets it explicitly, so .default({}) only types the insert path. CHECK lives in
+    // SQL only (this file is the typed-query mirror).
+    bio: text("bio"),
+    socialLinks: jsonb("social_links").$type<Record<string, string>>().notNull().default({}),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

@@ -1,0 +1,76 @@
+/* Owner inline-edit form. Composes the shared communities/verify form-shell so the btn/input/label/
+   error patterns live in one place. The textarea is NOT covered by the global :focus-visible ring
+   (globals.css :where(a, button, input, [tabindex]) excludes textarea) and no textarea style exists
+   elsewhere, so it is authored explicitly here WITH a visible focus state. Tokens-only, 4px grid. */
+.btn {
+  composes: btn from "../../../components/communities/form-shell.module.css";
+}
+.btnCoral {
+  composes: btnCoral from "../../../components/communities/form-shell.module.css";
+}
+.btnGhost {
+  composes: btnGhost from "../../../components/communities/form-shell.module.css";
+}
+.input {
+  composes: input from "../../../components/communities/form-shell.module.css";
+}
+.label {
+  composes: label from "../../../components/communities/form-shell.module.css";
+}
+.error {
+  composes: error from "../../../components/communities/form-shell.module.css";
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+  width: 100%;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.textarea {
+  width: 100%;
+  min-height: 88px;
+  font-family: var(--money);
+  font-size: var(--fs-15);
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--frame);
+  border-radius: 8px;
+  padding: 10px 13px;
+  line-height: 1.5;
+  resize: vertical;
+  transition: border-color 0.12s;
+}
+.textarea::placeholder {
+  color: var(--ink-4-text);
+}
+.textarea:focus {
+  outline: none;
+  border-color: var(--coral);
+}
+.textarea:focus-visible {
+  outline: 2px solid var(--coral-hi);
+  outline-offset: 2px;
+}
+.counter {
+  font-family: var(--term);
+  font-size: var(--fs-12);
+  color: var(--ink-4-text);
+  align-self: flex-end;
+}
+.actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+.editSlot {
+  flex: none;
+  align-self: flex-start;
+}

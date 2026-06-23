@@ -52,6 +52,8 @@ export const policies = {
   oauthStart: { uid: [], ip: [make(sw(60, "1 m"), "rl:oauth:ip")] },
   // Owner-only admin actions (/api/v1/admin/*) — low traffic but consistent: 60/min uid, 120/min ip.
   admin: { uid: [make(sw(60, "1 m"), "rl:admin:uid")], ip: [make(sw(120, "1 m"), "rl:admin:ip")] },
+  // POST /api/v1/profile — the owner editing their own bio/social_links. 30/min uid, 60/min ip.
+  profileUpdate: { uid: [make(sw(30, "1 m"), "rl:prof:uid")], ip: [make(sw(60, "1 m"), "rl:prof:ip")] },
 } satisfies Record<string, Policy>;
 
 export type PolicyName = keyof typeof policies;

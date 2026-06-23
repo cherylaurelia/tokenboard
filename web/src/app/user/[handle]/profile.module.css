@@ -1,5 +1,5 @@
-/* Profile — reuses the YOUR STANDING panel language (dashboard-pixel). Minimal by design; the rich
-   profile (X-connect + share rail) is Phase 8. */
+/* Profile — clean, single-column, Monkeytype-like. Reuses the board surface + tokens. The card and
+   the Communities column share a 560px max-width so they read as one narrow column. Tokens-only. */
 
 .surfaceBoardBase {
   composes: surfaceBoardBase from global;
@@ -20,18 +20,18 @@
   border: 1px solid var(--frame);
   border-radius: 14px;
   padding: 24px;
-  max-width: 520px;
+  max-width: 560px;
 }
 
-.standing {
+.head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 16px;
 }
 .pfpLg {
-  width: 64px;
-  height: 64px;
-  border-radius: 9px;
+  width: 88px;
+  height: 88px;
+  border-radius: 11px;
   border: 2px solid var(--coral);
   background: var(--panel-2);
   object-fit: cover;
@@ -42,11 +42,13 @@
   flex-direction: column;
   gap: 4px;
   min-width: 0;
+  flex: 1 1 auto;
 }
 .name {
   font-family: var(--handle);
-  font-size: var(--fs-16);
+  font-size: var(--fs-24);
   color: var(--coral-hi);
+  line-height: 1.1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -56,22 +58,85 @@
   font-size: var(--fs-15);
   color: var(--ink-2);
 }
-.rank {
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+.joined {
   font-family: var(--term);
-  font-size: var(--fs-16);
+  font-size: var(--fs-13);
   letter-spacing: 1px;
   text-transform: uppercase;
   color: var(--ink-3-text);
 }
+.pill {
+  font-family: var(--term);
+  font-size: var(--fs-12);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--coral-hi);
+  background: var(--coral-tint-12);
+  border: 1px solid var(--frame);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+.editSlot {
+  flex: none;
+  align-self: flex-start;
+}
 
+.bio {
+  margin-top: 16px;
+  font-family: var(--money);
+  font-size: var(--fs-15);
+  line-height: 1.6;
+  color: var(--ink);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.links {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 0;
+}
+.link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  font-family: var(--term);
+  font-size: var(--fs-14);
+  letter-spacing: 0.5px;
+  color: var(--ink-2);
+  background: var(--panel);
+  border: 1px solid var(--frame);
+  border-radius: 8px;
+  transition:
+    color 0.12s,
+    border-color 0.12s;
+}
+.link:hover {
+  color: var(--ink);
+  border-color: var(--frame-hi);
+}
+
+.statsBlock {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--frame);
+}
 .stats {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--frame);
 }
 .big {
   font-family: var(--num);
@@ -86,6 +151,15 @@
   min-width: auto;
   font-size: var(--fs-20);
 }
+.rank {
+  display: block;
+  margin-top: 12px;
+  font-family: var(--term);
+  font-size: var(--fs-16);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ink-3-text);
+}
 .spark {
   margin-top: 16px;
 }
@@ -95,4 +169,32 @@
   font-size: var(--fs-18);
   letter-spacing: 0.5px;
   color: var(--ink-3-text);
+}
+
+.communities {
+  width: 100%;
+  max-width: 560px;
+  margin: 24px 0 0;
+}
+.secLabel {
+  font-family: var(--term);
+  font-size: var(--fs-14);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink-4-text);
+  margin-bottom: 12px;
+}
+.boards {
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  padding: 0;
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .name {
+    white-space: normal;
+  }
 }

@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 export default async function CommunitiesPage() {
   const v = await getViewer();
   const viewer = v === "outage" ? null : v; // graceful: a public page treats an outage as signed-out
-  const boards = viewer ? await listMyCommunities(viewer.userId) : [];
+  const boards = viewer ? await listMyCommunities(viewer.userId, true) : []; // own list -> all theirs
 
   return (
     <div className={styles.surfaceBoardBase}>

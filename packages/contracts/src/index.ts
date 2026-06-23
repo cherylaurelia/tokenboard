@@ -87,3 +87,10 @@ export {
   type VerifyEmailConfirmRequest,
   type VerifyEmailConfirmResponse,
 } from "./verify-email";
+
+export {
+  profileUpdateRequestSchema,
+  profileUpdateResponseSchema,
+  type ProfileUpdateRequest,
+  type ProfileUpdateResponse,
+} from "./profile";

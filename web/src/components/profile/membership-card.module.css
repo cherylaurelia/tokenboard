@@ -1,0 +1,42 @@
+/* Read-only profile-membership card. The card's visual language is the SAME as the /communities hub
+   card, so we COMPOSE board-card.module.css's rule blocks rather than duplicate them — a future
+   layout change edits one file, both cards follow (no drift). composes adds the source class token to
+   the element, so board-card's :hover + descendant rules (e.g. .ccard:hover .arrow) apply here too.
+   What differs is behavioral, not visual: MembershipCard's standing label is viewer-aware (no
+   hardcoded "You") and it omits the badge color variants + the company @-pin. Tokens-only. */
+.ccard {
+  composes: ccard from "../communities/board-card.module.css";
+}
+.top {
+  composes: top from "../communities/board-card.module.css";
+}
+.badge {
+  composes: badge from "../communities/board-card.module.css";
+}
+.titleWrap {
+  composes: titleWrap from "../communities/board-card.module.css";
+}
+.cname {
+  composes: cname from "../communities/board-card.module.css";
+}
+.ctag {
+  composes: ctag from "../communities/board-card.module.css";
+}
+.arrow {
+  composes: arrow from "../communities/board-card.module.css";
+}
+.stats {
+  composes: stats from "../communities/board-card.module.css";
+}
+.youRank {
+  composes: youRank from "../communities/board-card.module.css";
+}
+.youSpend {
+  composes: youSpend from "../communities/board-card.module.css";
+}
+.big {
+  composes: big from "../communities/board-card.module.css";
+}
+.cardElo {
+  composes: cardElo from "../communities/board-card.module.css";
+}
