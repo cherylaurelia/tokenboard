@@ -10,13 +10,27 @@ export interface LocalSummary {
   anyUnpriced: boolean;
   unpricedTokens: number;
   unpricedModels: string[];
-  perDay: { date: string; tokens: number; costUsd: number }[]; // daily breakdown (table + sparkline)
+  // daily breakdown rows. `model` = the dominant model that day (most tokens), shown as a table column.
+  perDay: { date: string; tokens: number; costUsd: number; model: string }[];
   perTool: { tool: string; tokens: number; costUsd: number }[]; // local board rows
   perModel: { model: string; tokens: number; costUsd: number; priced: boolean }[];
 }
 
 function recordTokens(r: NormalizedRecord): number {
   return r.input + r.output + r.cacheRead + r.cacheCreate5m + r.cacheCreate1h;
+}
+
+// The model with the most tokens in a day's per-model map (ties broken by name for determinism).
+function dominantModel(byModel: Map<string, number>): string {
+  let best = "";
+  let bestTokens = -1;
+  for (const [model, tokens] of byModel) {
+    if (tokens > bestTokens || (tokens === bestTokens && model < best)) {
+      best = model;
+      bestTokens = tokens;
+    }
+  }
+  return best;
 }
 
 // PURE: aggregate records + prices into everything the renderer and headline need.
@@ -27,7 +41,8 @@ export function summarize(records: NormalizedRecord[], prices: PriceTable): Loca
   let unpricedTokens = 0;
   const unpricedModels = new Set<string>();
 
-  const perDay = new Map<string, { tokens: number; costUsd: number }>();
+  // Per day we track the running total + per-model tokens, so we can name the dominant model.
+  const perDay = new Map<string, { tokens: number; costUsd: number; byModel: Map<string, number> }>();
   const perTool = new Map<string, { tokens: number; costUsd: number }>();
   const perModel = new Map<string, { tokens: number; costUsd: number; priced: boolean }>();
 
@@ -42,9 +57,10 @@ export function summarize(records: NormalizedRecord[], prices: PriceTable): Loca
       unpricedModels.add(r.model);
     }
 
-    const d = perDay.get(r.date) ?? { tokens: 0, costUsd: 0 };
+    const d = perDay.get(r.date) ?? { tokens: 0, costUsd: 0, byModel: new Map<string, number>() };
     d.tokens += tokens;
     d.costUsd += costUsd;
+    d.byModel.set(r.model, (d.byModel.get(r.model) ?? 0) + tokens);
     perDay.set(r.date, d);
 
     const t = perTool.get(r.tool) ?? { tokens: 0, costUsd: 0 };
@@ -65,7 +81,9 @@ export function summarize(records: NormalizedRecord[], prices: PriceTable): Loca
     anyUnpriced: unpricedModels.size > 0,
     unpricedTokens,
     unpricedModels: [...unpricedModels].sort(),
-    perDay: [...perDay.entries()].map(([date, v]) => ({ date, ...v })).sort((a, b) => (a.date < b.date ? -1 : 1)),
+    perDay: [...perDay.entries()]
+      .map(([date, v]) => ({ date, tokens: v.tokens, costUsd: v.costUsd, model: dominantModel(v.byModel) }))
+      .sort((a, b) => (a.date < b.date ? -1 : 1)),
     perTool: [...perTool.entries()].map(([tool, v]) => ({ tool, ...v })).sort((a, b) => b.tokens - a.tokens),
     perModel: [...perModel.entries()].map(([model, v]) => ({ model, ...v })).sort((a, b) => b.tokens - a.tokens),
   };

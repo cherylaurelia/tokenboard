@@ -11,9 +11,9 @@ const summary: LocalSummary = {
   unpricedTokens: 0,
   unpricedModels: [],
   perDay: [
-    { date: "2026-06-08", tokens: 804_600, costUsd: 2 },
-    { date: "2026-06-19", tokens: 493_600_000, costUsd: 473 },
-    { date: "2026-06-22", tokens: 1_100_000_000, costUsd: 902 },
+    { date: "2026-06-08", tokens: 804_600, costUsd: 2, model: "claude-opus-4-8" },
+    { date: "2026-06-19", tokens: 493_600_000, costUsd: 473, model: "claude-opus-4-8" },
+    { date: "2026-06-22", tokens: 1_100_000_000, costUsd: 902, model: "claude-opus-4-8" },
   ],
   perTool: [{ tool: "claude-code", tokens: 2_800_000_000, costUsd: 2700.5 }],
   perModel: [
@@ -43,9 +43,9 @@ test("truecolor (level 3) emits coral + the table still contains the plain data"
   assert.ok(out.includes("TOTAL") && out.includes("2.8B")); // data intact under the color
 });
 
-test("models strip shows the dominant model name (display-shortened)", () => {
+test("model column shows the dominant model name (display-shortened)", () => {
   const style: TerminalStyle = { color: false, level: 0, width: 80, ascii: false };
   const out = renderLocalPreview(summary, style);
-  assert.ok(out.includes("opus-4.8"), "dominant model shown, shortened");
-  assert.ok(out.includes("models"));
+  assert.ok(out.includes("opus-4.8"), "dominant model shown as a column, shortened");
+  assert.ok(out.includes("model"), "model column header present");
 });

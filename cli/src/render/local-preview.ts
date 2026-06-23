@@ -3,7 +3,6 @@ import type { TerminalStyle } from "./terminal-style.js";
 import { styler } from "./terminal-style.js";
 import { glyphs, padCell, rule, row } from "./box.js";
 import { humanizeTokens, formatApproxUsd } from "./humanize.js";
-import { sparkline } from "./sparkline.js";
 import { displayModel } from "./model-display.js";
 
 // PURE: render the local preview to a string (render-once-and-exit, screenshot-clean).
@@ -32,15 +31,18 @@ export function renderLocalPreview(summary: LocalSummary, style: TerminalStyle):
   lines.push("");
   lines.push(c.coral("🪙 tokenboard") + c.dim(" · your usage by day"));
 
-  // Daily breakdown table (newest last), with a TOTAL row — like ccusage's daily report.
-  const headers = ["date", "tokens", "~$ est"];
-  const aligns = ["left", "right", "right"] as const;
+  // Daily breakdown table (newest last), with a TOTAL row — like ccusage's daily report. The `model`
+  // column names that day's dominant model (most tokens); the TOTAL shows the overall dominant.
+  const headers = ["date", "model", "tokens", "~$ est"];
+  const aligns = ["left", "left", "right", "right"] as const;
   const bodyRows = summary.perDay.map((d) => [
     d.date,
+    displayModel(d.model),
     humanizeTokens(d.tokens),
     formatApproxUsd(d.costUsd),
   ]);
-  const totalRow = ["TOTAL", humanizeTokens(summary.totalTokens), formatApproxUsd(summary.totalCostUsd)];
+  const totalModel = summary.perModel[0] ? displayModel(summary.perModel[0].model) : "";
+  const totalRow = ["TOTAL", totalModel, humanizeTokens(summary.totalTokens), formatApproxUsd(summary.totalCostUsd)];
 
   // Width each column on RAW (uncolored) cells across headers + body + total.
   const allRows = [headers, ...bodyRows, totalRow];
@@ -64,8 +66,8 @@ export function renderLocalPreview(summary: LocalSummary, style: TerminalStyle):
       g,
     );
 
-  // Per-day token intensity, normalized over the series — drives the tokens-column accent + the
-  // sparkline so they rhyme. Accent-peaks-only: normal days plain, busy coral, peak bold hi-coral.
+  // Per-day token intensity, normalized over the series — drives the tokens-column accent.
+  // Accent-peaks-only: normal days plain, busy coral, peak bold hi-coral.
   const dayTokens = summary.perDay.map((d) => d.tokens);
   const min = dayTokens.length ? Math.min(...dayTokens) : 0;
   const max = dayTokens.length ? Math.max(...dayTokens) : 0;
@@ -75,14 +77,16 @@ export function renderLocalPreview(summary: LocalSummary, style: TerminalStyle):
   // Chrome recedes: dim the box rules so the DATA pops over the grid.
   const dimRule = (pos: "top" | "mid" | "bottom") => c.dim(rule(colWidths, pos, g));
 
+  // Columns: 0 date · 1 model · 2 tokens · 3 ~$ est.
   lines.push(dimRule("top"));
   lines.push(renderRow(headers, (p) => c.dim(p))); // header labels dim
   lines.push(dimRule("mid"));
   summary.perDay.forEach((d, idx) => {
     lines.push(
       renderRow(bodyRows[idx]!, (p, col) => {
-        if (col === 1) return c.accentByLevel(p, norm(d.tokens)); // tokens: accent the busy days
-        if (col === 2) return c.dim(p); // ~$ est recedes (it's an estimate)
+        if (col === 1) return c.dim(p); // model: dim secondary info
+        if (col === 2) return c.accentByLevel(p, norm(d.tokens)); // tokens: accent the busy days
+        if (col === 3) return c.dim(p); // ~$ est recedes (it's an estimate)
         return p; // date: plain default
       }),
     );
@@ -91,19 +95,12 @@ export function renderLocalPreview(summary: LocalSummary, style: TerminalStyle):
   lines.push(
     renderRow(totalRow, (p, col) => {
       if (col === 0) return c.dim(c.bold(p)); // dim-bold label
-      if (col === 1) return c.bold(c.coral(p)); // total tokens: the hero accent
+      if (col === 1) return c.coral(p); // overall dominant model: coral accent
+      if (col === 2) return c.bold(c.coral(p)); // total tokens: the hero accent
       return c.coral(p); // total $: coral, one notch down (estimate)
     }),
   );
   lines.push(dimRule("bottom"));
-
-  // Daily-burn sparkline, per-glyph accented to match the tokens column.
-  const spark = sparkline(dayTokens, style.ascii, (glyph, i) => c.accentByLevel(glyph, norm(dayTokens[i]!)));
-  if (spark) lines.push(c.dim("daily burn ") + spark);
-
-  // Models strip (one line, ccusage --breakdown style): dominant model coral, the rest plain.
-  const modelStrip = renderModelStrip(summary, c);
-  if (modelStrip) lines.push(modelStrip);
 
   // Honest labels (dim — never coral, never removed).
   lines.push(
@@ -114,24 +111,6 @@ export function renderLocalPreview(summary: LocalSummary, style: TerminalStyle):
   }
 
   return lines.join("\n");
-}
-
-// One-line top-models strip. perModel is pre-sorted desc by tokens. Dominant model (rank 0) coral;
-// the rest plain. Units + the ~$ prefix are dim so digits scan. Unpriced models get a dim "*". Caps
-// at 3 and folds the rest into a dim "· +N more". displayModel() is DISPLAY-ONLY name shortening.
-function renderModelStrip(summary: LocalSummary, c: ReturnType<typeof styler>): string {
-  if (summary.perModel.length === 0) return "";
-  const TOP = 3;
-  const shown = summary.perModel.slice(0, TOP);
-  const parts = shown.map((m, rank) => {
-    const name = displayModel(m.model) + (m.priced ? "" : c.dim("*"));
-    const nameStyled = rank === 0 ? c.coral(name) : name;
-    return `${nameStyled} ${humanizeTokens(m.tokens)} ${c.dim(formatApproxUsd(m.costUsd))}`;
-  });
-  let strip = c.dim("models  ") + parts.join(c.dim(" · "));
-  const extra = summary.perModel.length - shown.length;
-  if (extra > 0) strip += c.dim(` · +${extra} more`);
-  return strip;
 }
 
 // The claim CTA. On an interactive TTY the command turns CLAIM_PROMPT into a [y/N] prompt that
