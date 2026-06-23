@@ -29,6 +29,14 @@ Cargo.lock
 !.env.example
 *.local
 
+# Internal design docs — kept out of the repo (proprietary product/engineering
+# design). They live on disk only; if the repo goes public these must NOT ship.
+# NOTE: untracking does not purge git history — these were tracked through
+# commit 1dbc043, so a history rewrite is still needed to fully erase them.
+/DESIGN.md
+/ARCHITECTURE.md
+/IMPLEMENTATION.md
+
 # Logs
 *.log
 npm-debug.log*
@@ -56,3 +64,6 @@ Thumbs.db
 # scratch shots are not
 prototypes/shots/*.tmp.png
 .vercel
+
+# Playwright MCP scratch output (browser-probe snapshots/screenshots/logs)
+.playwright-mcp/

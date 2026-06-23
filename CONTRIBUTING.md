@@ -3,16 +3,14 @@
 Thanks for your interest in tokenboard! This is an early-stage, open-source
 project and contributions are welcome.
 
-> **Status: pre-build.** The product and engineering design are complete and
-> under active implementation. Right now the most useful contributions are
-> feedback on the design docs and the prototypes — code scaffolding is just
-> getting underway.
+> **Status: active build.** The product is live at
+> [tokenboard.sh](https://tokenboard.sh) and under active development. The
+> detailed product and engineering design docs are internal; the README and
+> prototypes are the public starting points.
 
 ## Start here
 
 - **[README.md](./README.md)** — what tokenboard is.
-- **[DESIGN.md](./DESIGN.md)** — product design: positioning, flows, the design language.
-- **[ARCHITECTURE.md](./ARCHITECTURE.md)** — engineering design: data model, API, sync protocol, leaderboards.
 - **[prototypes/](./prototypes/)** — open the `.html` files in a browser.
 
 ## Ways to contribute
@@ -21,8 +19,8 @@ project and contributions are welcome.
   For anything non-trivial, open an issue to discuss before sending a PR.
 - **Bugs** — include steps to reproduce and what you expected. For *security*
   issues, do **not** open a public issue — see [SECURITY.md](./SECURITY.md).
-- **Docs / prototypes** — fixes and improvements to the design docs and the
-  HTML prototypes are easy, valuable first contributions.
+- **Docs / prototypes** — fixes and improvements to the README and the HTML
+  prototypes are easy, valuable first contributions.
 
 ## Development
 

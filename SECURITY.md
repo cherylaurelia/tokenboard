@@ -30,5 +30,4 @@ findings that require physical access to a user's already-compromised machine.
 
 By design, the CLI uploads **aggregate token counts only** — never your
 prompts, code, file paths, or repo names. Reports that demonstrate any of that
-data leaving the client are treated as high severity. See
-[ARCHITECTURE.md](./ARCHITECTURE.md) for the full data and auth model.
+data leaving the client are treated as high severity.
