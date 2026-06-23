@@ -1,6 +1,6 @@
 {
   "name": "@tokenboard/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A leaderboard for your agentic-coding token usage — race your friends, not strangers.",
   "type": "module",
   "bin": { "tokenboard": "dist/cli.js" },
