@@ -1,120 +1,42 @@
-/* Read-only profile-membership card. Mirrors board-card.module.css's tokens-only visual language so
-   the profile's Communities grid reads the same as the /communities hub, but viewer-aware (no
-   hardcoded "You"). */
+/* Read-only profile-membership card. The card's visual language is the SAME as the /communities hub
+   card, so we COMPOSE board-card.module.css's rule blocks rather than duplicate them — a future
+   layout change edits one file, both cards follow (no drift). composes adds the source class token to
+   the element, so board-card's :hover + descendant rules (e.g. .ccard:hover .arrow) apply here too.
+   What differs is behavioral, not visual: MembershipCard's standing label is viewer-aware (no
+   hardcoded "You") and it omits the badge color variants + the company @-pin. Tokens-only. */
 .ccard {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  background: var(--bg-2);
-  border: 1px solid var(--frame);
-  border-radius: 12px;
-  padding: 16px 18px 14px;
-  transition:
-    border-color 0.12s,
-    transform 0.1s steps(2),
-    background 0.12s;
-  position: relative;
+  composes: ccard from "../communities/board-card.module.css";
 }
-.ccard:hover {
-  border-color: var(--frame-hi);
-  transform: translateY(-2px);
-  background: var(--panel);
-}
-
 .top {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  composes: top from "../communities/board-card.module.css";
 }
 .badge {
-  width: 40px;
-  height: 40px;
-  border-radius: 9px;
-  flex: none;
-  display: grid;
-  place-items: center;
-  font-family: var(--pixel);
-  font-size: var(--fs-13);
-  color: var(--on-coral);
-  background: var(--coral);
-  border: 1px solid var(--coral-hi);
+  composes: badge from "../communities/board-card.module.css";
 }
 .titleWrap {
-  min-width: 0;
+  composes: titleWrap from "../communities/board-card.module.css";
 }
 .cname {
-  display: block;
-  font-family: var(--term);
-  font-size: var(--fs-24);
-  line-height: 1;
-  letter-spacing: 0.5px;
-  color: var(--ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  composes: cname from "../communities/board-card.module.css";
 }
 .ctag {
-  display: block;
-  font-family: var(--term);
-  font-size: var(--fs-12);
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  line-height: 1;
-  margin-top: 5px;
-  color: var(--ink-4-text);
+  composes: ctag from "../communities/board-card.module.css";
 }
 .arrow {
-  margin-left: auto;
-  align-self: flex-start;
-  flex: none;
-  font-family: var(--term);
-  font-size: var(--fs-20);
-  color: var(--ink-4-text);
-  transition:
-    color 0.12s,
-    transform 0.12s steps(2);
+  composes: arrow from "../communities/board-card.module.css";
 }
-.ccard:hover .arrow {
-  color: var(--coral);
-  transform: translateX(3px);
-}
-
 .stats {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid var(--frame);
+  composes: stats from "../communities/board-card.module.css";
 }
 .youRank {
-  font-family: var(--term);
-  font-size: var(--fs-18);
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--ink-3-text);
-}
-.youRank b {
-  color: var(--ink);
-  font-weight: 400;
+  composes: youRank from "../communities/board-card.module.css";
 }
 .youSpend {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 10px;
+  composes: youSpend from "../communities/board-card.module.css";
 }
 .big {
-  font-family: var(--money);
-  font-weight: 700;
-  font-size: var(--fs-20);
-  line-height: 1;
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
+  composes: big from "../communities/board-card.module.css";
 }
 .cardElo {
-  font-family: var(--term);
-  font-size: var(--fs-16);
-  margin-left: 0;
-  min-width: auto;
+  composes: cardElo from "../communities/board-card.module.css";
 }

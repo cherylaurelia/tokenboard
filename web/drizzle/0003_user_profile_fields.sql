@@ -14,9 +14,14 @@
 alter table users add column if not exists bio text;
 
 -- A bare `add constraint` THROWS on re-run (unlike `add column if not exists`); guard it so the
--- migration is safely re-runnable.
+-- migration is safely re-runnable. conname is unique per-table (conrelid), NOT globally, so scope
+-- the existence check to the users relation — otherwise a same-named constraint on another table
+-- would wrongly skip creating this one.
 do $$ begin
-  if not exists (select 1 from pg_constraint where conname = 'users_bio_len_chk') then
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'users_bio_len_chk' and conrelid = 'users'::regclass
+  ) then
     alter table users add constraint users_bio_len_chk
       check (bio is null or length(bio) <= 280);
   end if;

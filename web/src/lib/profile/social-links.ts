@@ -17,7 +17,11 @@
 export const SOCIAL_PLATFORMS = ["x", "github", "website", "linkedin", "youtube", "bluesky"] as const;
 export type Platform = (typeof SOCIAL_PLATFORMS)[number];
 
-export const MAX_HANDLE_LEN = 64;
+// A blanket safety ceiling on handle input, applied BEFORE the per-platform regex runs. The regex is
+// the real per-platform length authority (x 15, github 39, linkedin 100, youtube 64, bluesky 253), so
+// this must sit ABOVE the largest of those (bluesky's 253) or it would wrongly reject valid long
+// handles (e.g. a full bsky.social DID-ish handle) as "too long" before the regex could accept them.
+export const MAX_HANDLE_LEN = 256;
 export const MAX_URL_LEN = 200;
 export const MAX_BIO_LEN = 280;
 

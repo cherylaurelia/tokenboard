@@ -56,28 +56,33 @@ export function EditProfileForm({
     const social_links = Object.fromEntries(
       SOCIAL_PLATFORMS.map((p) => [p, links[p].trim()] as const).filter(([, v]) => v.length > 0),
     );
-    const res = await fetch("/api/v1/profile", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ bio: bio.trim() || null, social_links }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      const map: Record<string, string> = {
-        invalid_social_links: "One of your links isn't valid. Use a handle or an https:// URL.",
-        invalid_bio: "Your bio is too long (max 280).",
-        invalid_request: "Check the form and try again.", // also the path an overlong website hits (zod cap)
-        rate_limited: "Too many saves. Slow down and retry.",
-        unauthorized: "Sign in to edit your profile.",
-        banned: "Your account can't edit its profile.",
-      };
-      setError(map[data.error] ?? "Couldn't save. Try again.");
+    try {
+      const res = await fetch("/api/v1/profile", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ bio: bio.trim() || null, social_links }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const map: Record<string, string> = {
+          invalid_social_links: "One of your links isn't valid. Use a handle or an https:// URL.",
+          invalid_bio: "Your bio is too long (max 280).",
+          invalid_request: "Check the form and try again.", // also the path an overlong website hits (zod cap)
+          rate_limited: "Too many saves. Slow down and retry.",
+          unauthorized: "Sign in to edit your profile.",
+          banned: "Your account can't edit its profile.",
+        };
+        setError(map[data.error] ?? "Couldn't save. Try again.");
+        return;
+      }
+      setOpen(false);
+      router.refresh(); // re-fetch the force-dynamic server component (fresh bio/links from Postgres)
+    } catch {
+      // A thrown fetch (offline / network error) must not leave the form stuck busy.
+      setError("Couldn't save. Check your connection and try again.");
+    } finally {
       setBusy(false);
-      return;
     }
-    setBusy(false);
-    setOpen(false);
-    router.refresh(); // re-fetch the force-dynamic server component (fresh bio/links from Postgres)
   }
 
   return (
