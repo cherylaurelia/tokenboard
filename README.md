@@ -9,10 +9,6 @@ you burn across Claude Code, Codex, Opencode, etc.
 
 <br />
 
-<a href="https://tokenboard.sh">
-  <img src="prototypes/shots/landing-dark.png" alt="tokenboard — See who's burning the most tokens. The landing page hero, terminal, and a community leaderboard in the dark coral theme." width="720" />
-</a>
-
 </div>
 
 ---
