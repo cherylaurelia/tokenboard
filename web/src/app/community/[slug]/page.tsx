@@ -7,7 +7,7 @@ import { boardQuerySchema } from "@tokenboard/contracts";
 import { getViewer } from "@/lib/auth/get-viewer";
 import { resolveBoardScope } from "@/lib/leaderboard/resolve-scope";
 import { assembleBoard } from "@/lib/leaderboard/assemble-board";
-import { WEB_DEFAULT_METRIC } from "@/lib/board/web-defaults";
+import { WEB_DEFAULT_METRIC, WEB_DEFAULT_WINDOW } from "@/lib/board/web-defaults";
 import { ogImageUrl } from "@/lib/og/og-hash";
 import { SiteNav } from "@/components/site-nav";
 import { SiteFooter } from "@/components/site-footer";
@@ -29,7 +29,7 @@ const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 async function loadBoard(slug: string, sp: Search) {
   const parsed = boardQuerySchema.safeParse({
     community: slug,
-    window: one(sp.window),
+    window: one(sp.window) ?? WEB_DEFAULT_WINDOW,
     metric: one(sp.metric) ?? WEB_DEFAULT_METRIC,
   });
   if (!parsed.success) return { kind: "notfound" as const };

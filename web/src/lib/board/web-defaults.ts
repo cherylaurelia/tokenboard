@@ -5,7 +5,9 @@
 import type { BoardWindow, BoardMetric } from "@tokenboard/contracts";
 
 export const WEB_DEFAULT_METRIC: BoardMetric = "cost";
-export const WEB_DEFAULT_WINDOW: BoardWindow = "7d";
+// All-time by default so the board shows the fullest picture (bigger headline numbers) and matches
+// the CLI's all-time total — no "why is my number small" confusion. 7d/30d remain as tabs.
+export const WEB_DEFAULT_WINDOW: BoardWindow = "all";
 
 // Uppercase tab/label text for a window (the prototype's "7 DAYS" / "30 DAYS" / "ALL-TIME").
 const WINDOW_LABELS: Record<BoardWindow, string> = {
