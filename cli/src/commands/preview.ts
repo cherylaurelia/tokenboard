@@ -68,7 +68,7 @@ export async function runPreview(args: PreviewArgs): Promise<void> {
 // Otherwise -> a [y/N] prompt that runs `claim` on yes (the device flow opens the browser),
 // else the passive hint so the next step is still discoverable.
 async function offerClaim(style: ReturnType<typeof resolveStyle>): Promise<void> {
-  if (!process.stdout.isTTY) return;
+  if (!process.stdin.isTTY || !process.stdout.isTTY) return; // both: non-interactive runs stay clean
   const c = styler(style);
 
   const auth = await readAuthFile();
