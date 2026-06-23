@@ -1,0 +1,41 @@
+<!doctype html>
+<!-- Render surface for the README caret mark: just ">_" in --coral on a TRANSPARENT background
+     (screenshot with --default-background-color=00000000). Pairs with a plain markdown # heading. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --coral: #cc785c;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 150px;
+        height: 80px;
+        background: transparent;
+      }
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .caret {
+        font-family: "Press Start 2P", monospace;
+        font-size: 48px;
+        line-height: 1;
+        color: var(--coral);
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <span class="caret">&gt;_</span>
+  </body>
+</html>
