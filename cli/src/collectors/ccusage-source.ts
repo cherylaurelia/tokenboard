@@ -1,14 +1,58 @@
 import { spawn, spawnSync } from "node:child_process";
+import { readdirSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import type { NormalizedRecord } from "@tokenboard/contracts";
 import { CCUSAGE_SOURCES } from "./ccusage-sources.js";
 import { ccusageDailyToRecords, type CcusageDailyRow } from "./ccusage-map.js";
 
 const SPAWN_TIMEOUT_MS = 30_000;
 
+// We pin ccusage to this MAJOR forever — the v15->v20 JS->Rust rewrite changed the output contract
+// (and v15 may be co-resident in npm's cache). Anything not exactly this major must NOT be exec'd.
+const CCUSAGE_MAJOR = 20;
+
 // Claude Code is the FIRST-PARTY collector; it must never be routed through ccusage too (that would
 // double-count the same (date, claude-code, model) keys). ccusage tags its rows' metadata.agents
 // with this name for Claude Code, so we use it to recognize "claude-only" machines.
 const CLAUDE_AGENT = "claude";
+
+// FAST PATH: `npx -y ccusage@20` re-resolves the package every run (~1.8s of pure overhead, the
+// entire remaining cost of the preview). When npx has ALREADY cached a v20 ccusage (the warm/common
+// case), exec its JS entry directly via this Node — ~0.1s, same output. We launch the package's `bin`
+// JS file with process.execPath (NOT the .bin symlink or the native arch shim) so there is no
+// shebang / exec-bit / shell / arch dependence (works on Windows too). VERSION-GATED to major===20 so
+// a co-cached v15 (different contract) is never run. Returns null (=> npx fallback) on ANY doubt:
+// cold cache, only-v15 cached, unreadable/malformed package.json, missing bin. Correctness over speed.
+export function resolveCachedCcusageV20(npxCache = join(homedir(), ".npm", "_npx")): string | null {
+  try {
+    for (const hash of readdirSync(npxCache)) {
+      const pkgDir = join(npxCache, hash, "node_modules", "ccusage");
+      let pkg: { version?: unknown; bin?: unknown };
+      try {
+        pkg = JSON.parse(readFileSync(join(pkgDir, "package.json"), "utf8")) as typeof pkg;
+      } catch {
+        continue; // no ccusage here / unreadable -> next cache dir
+      }
+      if (typeof pkg.version !== "string") continue;
+      const major = Number.parseInt(pkg.version.split(".")[0] ?? "", 10);
+      if (major !== CCUSAGE_MAJOR) continue; // reject v15 etc. — wrong output contract
+      // bin can be a string or { ccusage: "path" }. Resolve the cli JS relative to the package dir.
+      const binField = pkg.bin;
+      const binRel =
+        typeof binField === "string"
+          ? binField
+          : typeof binField === "object" && binField !== null
+            ? (binField as Record<string, unknown>)["ccusage"]
+            : undefined;
+      if (typeof binRel !== "string") continue;
+      return join(pkgDir, binRel);
+    }
+  } catch {
+    // ~/.npm/_npx absent (cold machine) or unreadable -> fall back to npx.
+  }
+  return null;
+}
 
 export interface CcusageResult {
   records: NormalizedRecord[];
@@ -27,14 +71,23 @@ function hasNpx(): boolean {
   }
 }
 
-// Generic `npx -y ccusage@20 <args...>` spawn -> resolved stdout. argv array (never a shell string)
-// = no injection surface. Pinned @20 forever (the v15->v20 JS->Rust rewrite was a breaking
-// output-contract change; never @latest). A node-side SIGKILL guards the no-`timeout`-on-macOS case.
-// stderr IGNORED (we don't drain it; a chatty child filling an undrained pipe could block + get
-// wrongly SIGKILL'd). Rejects on non-zero exit / spawn error / timeout.
+// Resolve ONCE per process (the cache doesn't change mid-run) — null => use npx. Lazily computed so
+// the readdir cost is paid at most once even across the probe + 8 fan-out calls.
+let cachedBinPath: string | null | undefined; // undefined = not yet resolved
+function ccusageV20Bin(): string | null {
+  if (cachedBinPath === undefined) cachedBinPath = resolveCachedCcusageV20();
+  return cachedBinPath;
+}
+
+// Run `ccusage@20 <args...>` -> resolved stdout. Launches the cached v20 binary directly via this
+// Node when available (~0.1s), else `npx -y ccusage@20` (~1.8s, cold/uncached). BOTH branches go
+// through the SAME spawn body so the 30s SIGKILL + reject-on-error/nonzero semantics are identical
+// — a hung direct binary can't hang the preview. argv array (never a shell string) = no injection.
 function runCcusage(args: string[]): Promise<string> {
+  const bin = ccusageV20Bin();
+  const [cmd, cmdArgs] = bin ? [process.execPath, [bin, ...args]] : ["npx", ["-y", "ccusage@20", ...args]];
   return new Promise((resolve, reject) => {
-    const child = spawn("npx", ["-y", "ccusage@20", ...args], { stdio: ["ignore", "pipe", "ignore"] });
+    const child = spawn(cmd, cmdArgs, { stdio: ["ignore", "pipe", "ignore"] });
     let stdout = "";
     const killer = setTimeout(() => child.kill("SIGKILL"), SPAWN_TIMEOUT_MS);
 
@@ -124,7 +177,9 @@ export function canSkipFanOut(agents: Set<string> | null): boolean {
 // to the prior behavior — so we can never under-count. The probe also warms the npx cache for the
 // fan-out.
 export async function collectCcusage(): Promise<CcusageResult> {
-  if (!hasNpx()) {
+  // We can run ccusage if a cached v20 binary exists (fast path) OR npx can fetch it. If neither,
+  // skip the long-tail entirely (Claude Code still renders) — the documented no-npx behavior.
+  if (ccusageV20Bin() === null && !hasNpx()) {
     return { records: [], skipped: [], npxAvailable: false };
   }
 
