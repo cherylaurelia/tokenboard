@@ -1,45 +1,40 @@
-// GLOBAL first-occurrence-wins dedup on message.id — THE #1 trust risk.
+// GLOBAL max-output-per-message.id dedup — THE #1 trust risk for total accuracy.
 //
-// On disk, Claude Code's `requestId` is null on ~100% of assistant lines, so the
-// documented (requestId + message.id) key degenerates to message.id alone. The same
-// message.id recurs (a) within a file and (b) across files (session resume) — measured
-// live: 1266 ids span >1 file on this machine. Without GLOBAL dedup, every token total
-// roughly DOUBLES (measured 1.945x total / 2.60x input inflation) — silent and
-// credibility-destroying. So dedup must use ONE Set across ALL files, never per-file.
+// On disk, Claude Code's `requestId` is null on ~100% of assistant lines, so the documented
+// (requestId + message.id) key degenerates to message.id alone. The same message.id recurs (a)
+// WITHIN a file — Claude Code writes several lines per assistant turn as it streams, each a snapshot
+// whose output_tokens GROWS from a tiny partial to the final billed value — and (b) ACROSS files
+// (session resume). So we must dedupe on ONE message.id key GLOBALLY across all files.
 //
-// Caveat (NOT lossless): ~60% of duplicated ids carry differing usage across
-// occurrences — a partial streaming snapshot first, then the complete final write.
-// First-occurrence-wins (mandated by ARCH §6.1 / DESIGN §5.1) therefore UNDERCOUNTS by
-// ~0.24% vs last/max. We follow the spec; flagged to the spec owner whether last/max is
-// the more accurate rule. A line with no id can't be deduped, so it's always kept.
+// WHICH occurrence to keep: the one with the GREATEST output_tokens. input/cacheRead/cacheCreate are
+// constant across a message.id's snapshots; only output_tokens ascends, and the turn is billed ONCE
+// at its final (max) value. Keeping the FIRST occurrence (the old rule) held the tiny partial and
+// discarded the final write — measured to UNDER-count output by ~49% on a real corpus (matching
+// ccusage only after this fix). Max-output is order-independent (no dependency on file/line sort) and
+// gives the true billed figure; last-occurrence-wins is equivalent only because snapshots ascend.
+//
+// A line with no id can't be deduped, so it's always kept.
 
 interface DedupableLine {
   messageId: string | null;
-  sourcePath: string;
-  lineIndex: number;
+  // output_tokens is the value that VARIES across a message.id's streaming snapshots; we keep the max.
+  usage: { output_tokens?: number };
+}
+
+function outputOf(line: DedupableLine): number {
+  return line.usage.output_tokens ?? 0;
 }
 
 export function dedupeByMessageId<T extends DedupableLine>(lines: T[]): T[] {
-  // Stable, deterministic order so "first occurrence" is reproducible regardless of
-  // filesystem read order: order by (sourcePath, lineIndex).
-  const ordered = [...lines].sort((a, b) =>
-    a.sourcePath < b.sourcePath
-      ? -1
-      : a.sourcePath > b.sourcePath
-        ? 1
-        : a.lineIndex - b.lineIndex,
-  );
-
-  const seen = new Set<string>();
-  const kept: T[] = [];
-  for (const line of ordered) {
+  const best = new Map<string, T>(); // message.id -> the occurrence with the greatest output_tokens
+  const idless: T[] = []; // id-less lines: undedupable, always kept (preserve input order)
+  for (const line of lines) {
     if (line.messageId == null || line.messageId === "") {
-      kept.push(line); // cannot dedupe an id-less line — keep it
+      idless.push(line);
       continue;
     }
-    if (seen.has(line.messageId)) continue; // a later occurrence — drop
-    seen.add(line.messageId);
-    kept.push(line);
+    const cur = best.get(line.messageId);
+    if (cur === undefined || outputOf(line) > outputOf(cur)) best.set(line.messageId, line);
   }
-  return kept;
+  return [...best.values(), ...idless];
 }
