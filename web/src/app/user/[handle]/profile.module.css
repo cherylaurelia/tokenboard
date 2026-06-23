@@ -83,9 +83,14 @@
   border-radius: 999px;
   padding: 4px 10px;
 }
+/* The edit control now sits BELOW .head (full-width block), not inside the flex row. The collapsed
+   "Edit profile" button right-aligns; the open form (its own .form class is width:100%) fills the row. */
 .editSlot {
-  flex: none;
-  align-self: flex-start;
+  margin-top: 16px;
+}
+button.editSlot {
+  display: block;
+  margin-left: auto;
 }
 
 .bio {

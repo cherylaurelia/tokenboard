@@ -104,14 +104,16 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
                 {meEntry?.tierPill && <span className={styles.pill}>{meEntry.tierPill.label}</span>}
               </div>
             </div>
-            {isOwner && (
-              <EditProfileForm
-                initialBio={u.bio ?? ""}
-                initialLinks={u.socialLinks ?? {}}
-                className={styles.editSlot}
-              />
-            )}
           </header>
+
+          {/* Outside .head: the form is full-width below the header, never squeezed into the flex row. */}
+          {isOwner && (
+            <EditProfileForm
+              initialBio={u.bio ?? ""}
+              initialLinks={u.socialLinks ?? {}}
+              className={styles.editSlot}
+            />
+          )}
 
           {u.bio && <p className={styles.bio}>{u.bio}</p>}
 

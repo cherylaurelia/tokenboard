@@ -26,9 +26,12 @@ Status key: 🔴 open · 🟡 investigating · 🟢 fix pushed (needs verify) ·
   differences (landing has GitHub; app has Home/Profile) kept intentionally — different audiences.
 
 ## Profile (edit)
-- 🟡 **Edit profile doesn't work** — adding a social link (e.g. LinkedIn) fails to save.
-  Two sub-issues found while investigating:
-  - form layout is chopped/squeezed (it mounts *inside* the flex header `.head`)
+- ✅ **Edit profile doesn't work** — RESOLVED & verified live in a real authed browser
+  (browser-use + Chrome profile). Adding `ca.linkedin.com/...` now saves, persists to the prod
+  DB (`{"linkedin":"angela-felicia"}`), and renders the correct rebuilt link. Both sub-issues fixed:
+  - form layout chopped/squeezed (mounted *inside* the flex header `.head`) — FIXED: moved the
+    form OUT of `<header>` to a full-width block below; collapsed button right-aligns. Verified
+    open + collapsed states render cleanly.
   - "One of your links isn't valid" error even on valid input (the pure normalizer
     passes normal handles/URLs in unit tests — likely a UI value or a specific input
     shape; reproduce live to confirm the exact trigger)
