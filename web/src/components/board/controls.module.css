@@ -25,10 +25,20 @@
 }
 .tab {
   composes: control;
+  /* skinnier visible pill than the shared 44px base; the ::after below restores a 44px tap target */
+  min-height: 0;
+  height: 30px;
+  position: relative;
+  font-size: var(--fs-14);
   border: 1px solid var(--frame);
   border-radius: 7px;
-  padding: 0 13px;
+  padding: 0 11px;
   user-select: none;
+}
+.tab::after {
+  content: "";
+  position: absolute;
+  inset: -7px 0; /* 30px + 7 + 7 = 44px hit area */
 }
 .tab:hover {
   color: var(--ink);
@@ -50,12 +60,29 @@
   flex: none;
   border: 1px solid var(--frame);
   border-radius: 8px;
-  overflow: hidden;
+  /* visible (not hidden) so each segment's ::after tap target isn't clipped; the end segments round
+     their own outer corners below so the active coral fill still reads as one pill */
 }
 .mt {
   composes: control;
+  /* match the slimmed window tabs; ::after restores a 44px tap target the 30px pill would otherwise lose */
+  position: relative;
+  min-height: 0;
+  height: 30px;
+  font-size: var(--fs-14);
   border: none;
-  padding: 0 18px;
+  padding: 0 15px;
+}
+.mt::after {
+  content: "";
+  position: absolute;
+  inset: -7px 0; /* 30px + 7 + 7 = 44px hit area; 0 horizontal inset so segments tile without overlap */
+}
+.mt:first-child {
+  border-radius: 7px 0 0 7px;
+}
+.mt:last-child {
+  border-radius: 0 7px 7px 0;
 }
 .mt + .mt {
   border-left: 1px solid var(--frame);
