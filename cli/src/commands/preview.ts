@@ -10,6 +10,7 @@ import { summarize, type LocalSummary } from "../aggregate/summary.js";
 import { loadPriceTable } from "@tokenboard/cost";
 import { resolveTimeZone } from "../normalize/local-day.js";
 import { resolveStyle, styler } from "../render/terminal-style.js";
+import { startSpinner } from "../render/spinner.js";
 import { renderLocalPreview, CLAIM_PROMPT, CLAIM_HINT } from "../render/local-preview.js";
 import { readAuthFile, resolveConfigDir } from "../config/auth-store.js";
 import { confirm } from "../prompt/confirm.js";
@@ -45,7 +46,16 @@ export async function collectLocalRecords(): Promise<{ records: NormalizedRecord
 // the §14.1 sync-then-render hero path.
 export async function runPreview(args: PreviewArgs): Promise<void> {
   const prices = loadPriceTable();
-  const { records } = await collectLocalRecords();
+  // Show a spinner while we read logs + probe ccusage (a few seconds on a cold npx cache). It writes
+  // to stderr and self-disables off a TTY, so --json / piped output is unaffected. Skip it entirely
+  // for --json (machine path). Always stop it before any stdout render.
+  const spinner = args.json ? null : startSpinner("reading your local usage…", args.ascii);
+  let records: NormalizedRecord[];
+  try {
+    ({ records } = await collectLocalRecords());
+  } finally {
+    spinner?.stop();
+  }
   const summary = summarize(records, prices);
 
   if (args.json) {
