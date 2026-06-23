@@ -65,11 +65,17 @@ function isPlatform(key: string): key is Platform {
 // survives stripping but isn't a clean handle is rejected (returns null), never coerced. NOTE: a
 // trailing path segment is dropped at the first '/', '?', '#' (so "a/b" -> "a"); this is a DELIBERATE
 // forgiving truncation (the host is hardcoded so it's safe), covered by a test so it's not accidental.
+//
+// The `(?:[a-z0-9-]+\.)*` allows ANY subdomain chain before the known host (ca./uk. LinkedIn,
+// mobile./m. Twitter, m. YouTube, www.) — country/mobile subdomains are common in pasted URLs and
+// must NOT be rejected. This is safe: the subdomain only LOCATES the handle; the final URL is always
+// rebuilt from the platform's HARDCODED host + the charset-validated handle, so a spoofed host can't
+// ride along (worst case the handle fails the charset and is rejected).
 function stripHandle(raw: string): string {
   let h = raw.trim();
   h = h.replace(/^@+/, "");
   const hostMatch = h.match(
-    /^(?:https?:\/\/)?(?:www\.)?(?:x\.com|twitter\.com|github\.com|linkedin\.com\/in|youtube\.com|bsky\.app\/profile)\/(.+)$/i,
+    /^(?:https?:\/\/)?(?:[a-z0-9-]+\.)*(?:x\.com|twitter\.com|github\.com|linkedin\.com\/in|youtube\.com|bsky\.app\/profile)\/(.+)$/i,
   );
   if (hostMatch) h = hostMatch[1]!;
   h = h.replace(/^@+/, ""); // youtube @handle after the host strip

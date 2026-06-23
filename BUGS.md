@@ -30,10 +30,17 @@ Status key: 🔴 open · 🟡 investigating · 🟢 fix pushed (needs verify) ·
   - "One of your links isn't valid" error even on valid input (the pure normalizer
     passes normal handles/URLs in unit tests — likely a UI value or a specific input
     shape; reproduce live to confirm the exact trigger)
-  - PROD CHECK: all users have `social_links = {}` (incl. owner) — saves are NOT landing
-    at all. Validation ruled out (normalizer accepts every common LinkedIn/X/GitHub form).
-    Suspect the round-trip: auth on POST /api/v1/profile, the write, or router.refresh
-    not reflecting. Need a live authed browser session to capture the actual response.
+  - 🟢 FIXED (validation): `stripHandle` rejected country/mobile subdomains — `ca.linkedin.com`
+    (Canadian LinkedIn, the likely repro), `uk.linkedin.com`, `mobile.twitter.com`. Regex now
+    allows any subdomain chain before the hardcoded host; spoofed hosts still rejected (tested).
+  - PROD CHECK still standing: all users have `social_links = {}` (incl. owner) — so there may
+    ALSO be a round-trip failure (auth on POST /api/v1/profile, the write, or router.refresh not
+    reflecting). Need a live authed browser session to capture the actual response. The validation
+    fix unblocks valid input; confirm saves actually persist once the browser is free.
+- 🔴 **YouTube URL forms parse wrong** (separate from the LinkedIn bug) — `youtube.com/channel/UC123`
+  stores handle as literally `"channel"`, `/c/Name` stores `"c"`. stripHandle keeps the first path
+  segment, which is wrong for YouTube's `/channel/`, `/c/`, `/user/` forms (only `/@handle` is right).
+  Needs YouTube-specific path handling. Low priority (YouTube rarely used), logged so it's not lost.
 
 ## Communities / schema
 - 🟡 **`ubcbiztech` shows "member #N" (anonymized)** — it's a student club, shouldn't be
