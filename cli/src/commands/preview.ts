@@ -9,7 +9,10 @@ import { summarize, type LocalSummary } from "../aggregate/summary.js";
 import { loadPriceTable } from "@tokenboard/cost";
 import { resolveTimeZone } from "../normalize/local-day.js";
 import { resolveStyle, styler } from "../render/terminal-style.js";
-import { renderLocalPreview, CLAIM_CTA } from "../render/local-preview.js";
+import { renderLocalPreview, CLAIM_PROMPT, CLAIM_HINT } from "../render/local-preview.js";
+import { readAuthFile } from "../config/auth-store.js";
+import { confirm } from "../prompt/confirm.js";
+import { runClaim } from "./claim.js";
 import type { NormalizedRecord } from "@tokenboard/contracts";
 
 export interface PreviewArgs {
@@ -57,11 +60,29 @@ export async function runPreview(args: PreviewArgs): Promise<void> {
 
   process.stdout.write(renderLocalPreview(summary, style) + "\n");
 
-  // Cosmetic claim CTA — interactive (TTY) only; creates nothing.
-  if (process.stdout.isTTY) {
-    const c = styler(style);
-    process.stdout.write("\n" + c.cyan(CLAIM_CTA) + "\n");
+  await offerClaim(style);
+}
+
+// The claim nudge. NON-interactive (piped/CI/`npx | tee`) -> nothing, so output stays
+// screenshot-clean and scripts never block. Already claimed -> a quiet confirmation, no prompt.
+// Otherwise -> a [y/N] prompt that runs `claim` on yes (the device flow opens the browser),
+// else the passive hint so the next step is still discoverable.
+async function offerClaim(style: ReturnType<typeof resolveStyle>): Promise<void> {
+  if (!process.stdout.isTTY) return;
+  const c = styler(style);
+
+  const auth = await readAuthFile();
+  if (auth) {
+    process.stdout.write("\n" + c.dim(`✓ claimed as @${auth.handle} · run \`tokenboard sync\` to upload`) + "\n");
+    return;
   }
+
+  process.stdout.write("\n");
+  if (await confirm(c.cyan(CLAIM_PROMPT))) {
+    await runClaim();
+    return;
+  }
+  process.stdout.write(c.dim(CLAIM_HINT) + "\n");
 }
 
 export type { LocalSummary };
