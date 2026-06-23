@@ -8,6 +8,7 @@ import { startDeviceGrant, pollDeviceGrant } from "../claim/transport.js";
 import { openInBrowser } from "../claim/browser.js";
 import { machineHash, clientLabel } from "../claim/machine.js";
 import { writeAuthFile } from "../config/auth-store.js";
+import { runSync } from "./sync.js";
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 const out = (line: string) => process.stdout.write(`${line}\n`);
@@ -46,6 +47,16 @@ export async function runClaim(): Promise<void> {
         createdAt: new Date().toISOString(),
       });
       out(`  Claimed as @${result.user.handle}. Saved credentials to ${path}`);
+      // Auto-sync so a fresh claim lands on the board in one step. Claiming alone writes NO
+      // leaderboard entry (the global board ranks synced usage), so without this users stop
+      // here and never appear. A sync failure must NOT fail the claim — credentials are saved
+      // — so swallow it and nudge the user to retry `tokenboard sync` manually.
+      out("");
+      try {
+        await runSync();
+      } catch {
+        out("  Couldn't sync usage just now — run `tokenboard sync` to appear on the board.");
+      }
       return;
     }
     if (result.status === "denied") {
