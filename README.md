@@ -1,6 +1,8 @@
 <div align="center">
 
-<img src="web/public/brand/wordmark.png" alt="tokenboard" width="420" />
+<img src="web/public/brand/caret.png" alt="" width="64" />
+
+# tokenboard
 
 ### See who's burning the most tokens.
 
