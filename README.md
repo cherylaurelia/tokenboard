@@ -7,7 +7,16 @@
 A public leaderboard for agentic-coding usage. tokenboard reads how many tokens
 you burn across Claude Code, Codex, Opencode, etc.
 
-[tokenboard.sh](https://tokenboard.sh)
+[![live](https://img.shields.io/badge/live-tokenboard.sh-cc785c?style=flat-square&labelColor=14151f)](https://tokenboard.sh)
+[![npx](https://img.shields.io/badge/npx-%40tokenboard%2Fcli-cc785c?style=flat-square&labelColor=14151f&logo=npm&logoColor=cc785c)](https://www.npmjs.com/package/@tokenboard/cli)
+[![license](https://img.shields.io/badge/license-MIT-cc785c?style=flat-square&labelColor=14151f)](#)
+[![counts only](https://img.shields.io/badge/uploads-counts%20only-5f998a?style=flat-square&labelColor=14151f)](#privacy)
+
+<br />
+
+<a href="https://tokenboard.sh">
+  <img src="prototypes/shots/dashboard-pixel.png" alt="The tokenboard leaderboard — a community ranked by token spend, in the dark coral arcade theme." width="720" />
+</a>
 
 </div>
 
