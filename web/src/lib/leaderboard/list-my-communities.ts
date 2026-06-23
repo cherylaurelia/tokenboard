@@ -18,6 +18,7 @@ export interface MyCommunity {
   memberCount: number;
   joinPolicy: "open" | "code" | "email_domain";
   emailDomain: string | null;
+  visibility: "public" | "unlisted" | "private";
   rank: number | null;
   totalEntries: number;
   displayCost: number | null;
@@ -31,19 +32,25 @@ interface Row {
   type: "community" | "company";
   role: "member" | "admin" | "owner";
   joinPolicy: "open" | "code" | "email_domain";
+  visibility: "public" | "unlisted" | "private";
   memberCount: number;
   emailDomain: string | null;
 }
 
-export async function listMyCommunities(userId: string): Promise<MyCommunity[]> {
+// A non-owner viewer MUST NOT see a user's private-board membership; the owner sees all theirs. The
+// visibility filter runs in SQL so private boards never reach the per-board assemble loop for
+// non-owners. The bound JS boolean is a valid top-level boolean operand in drizzle/postgres-js (it
+// is code-controlled, never user input).
+export async function listMyCommunities(userId: string, viewerIsOwner: boolean): Promise<MyCommunity[]> {
   const rows = (await db.execute(sql`
     select c.id::text as id, c.slug::text as slug, c.name, c.type,
-           m.role, c.join_policy as "joinPolicy",
+           m.role, c.join_policy as "joinPolicy", c.visibility as "visibility",
            (select count(*) from memberships mm where mm.community_id = c.id)::int as "memberCount",
            (select d.domain from community_email_domains d where d.community_id = c.id limit 1) as "emailDomain"
     from memberships m
     join communities c on c.id = m.community_id
     where m.user_id = ${userId}
+      and (${viewerIsOwner} or c.visibility in ('public', 'unlisted'))
     order by c.name asc
   `)) as unknown as Row[];
 
@@ -74,6 +81,7 @@ export async function listMyCommunities(userId: string): Promise<MyCommunity[]> 
         memberCount: r.memberCount,
         joinPolicy: r.joinPolicy,
         emailDomain: r.emailDomain,
+        visibility: r.visibility,
         rank: board.me?.rank ?? null,
         totalEntries: board.totalEntries,
         displayCost: meEntry?.cost ?? null,

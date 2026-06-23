@@ -1,0 +1,120 @@
+/* Read-only profile-membership card. Mirrors board-card.module.css's tokens-only visual language so
+   the profile's Communities grid reads the same as the /communities hub, but viewer-aware (no
+   hardcoded "You"). */
+.ccard {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: var(--bg-2);
+  border: 1px solid var(--frame);
+  border-radius: 12px;
+  padding: 16px 18px 14px;
+  transition:
+    border-color 0.12s,
+    transform 0.1s steps(2),
+    background 0.12s;
+  position: relative;
+}
+.ccard:hover {
+  border-color: var(--frame-hi);
+  transform: translateY(-2px);
+  background: var(--panel);
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.badge {
+  width: 40px;
+  height: 40px;
+  border-radius: 9px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  font-family: var(--pixel);
+  font-size: var(--fs-13);
+  color: var(--on-coral);
+  background: var(--coral);
+  border: 1px solid var(--coral-hi);
+}
+.titleWrap {
+  min-width: 0;
+}
+.cname {
+  display: block;
+  font-family: var(--term);
+  font-size: var(--fs-24);
+  line-height: 1;
+  letter-spacing: 0.5px;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ctag {
+  display: block;
+  font-family: var(--term);
+  font-size: var(--fs-12);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  line-height: 1;
+  margin-top: 5px;
+  color: var(--ink-4-text);
+}
+.arrow {
+  margin-left: auto;
+  align-self: flex-start;
+  flex: none;
+  font-family: var(--term);
+  font-size: var(--fs-20);
+  color: var(--ink-4-text);
+  transition:
+    color 0.12s,
+    transform 0.12s steps(2);
+}
+.ccard:hover .arrow {
+  color: var(--coral);
+  transform: translateX(3px);
+}
+
+.stats {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--frame);
+}
+.youRank {
+  font-family: var(--term);
+  font-size: var(--fs-18);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ink-3-text);
+}
+.youRank b {
+  color: var(--ink);
+  font-weight: 400;
+}
+.youSpend {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.big {
+  font-family: var(--money);
+  font-weight: 700;
+  font-size: var(--fs-20);
+  line-height: 1;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.cardElo {
+  font-family: var(--term);
+  font-size: var(--fs-16);
+  margin-left: 0;
+  min-width: auto;
+}
