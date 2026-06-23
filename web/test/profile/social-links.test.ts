@@ -73,6 +73,22 @@ test("handle path is truncated at the first slash (deliberate forgiving behavior
   assert.equal(buildSocialUrl("x", "a/b"), "https://x.com/a"); // documented: keeps first segment, host is hardcoded so safe
 });
 
+test("accepts country/mobile subdomains on pasted handle-platform URLs", () => {
+  // ca./uk. LinkedIn (Canadian/UK users), mobile./m. Twitter, m. YouTube — common in pasted
+  // URLs. The subdomain only LOCATES the handle; the link is rebuilt from the hardcoded host.
+  assert.equal(buildSocialUrl("linkedin", "https://ca.linkedin.com/in/angela-felicia"), "https://www.linkedin.com/in/angela-felicia");
+  assert.equal(buildSocialUrl("linkedin", "https://uk.linkedin.com/in/someone"), "https://www.linkedin.com/in/someone");
+  assert.equal(buildSocialUrl("x", "https://mobile.twitter.com/handle"), "https://x.com/handle");
+  assert.equal(buildSocialUrl("youtube", "https://m.youtube.com/@creator"), "https://www.youtube.com/@creator");
+});
+
+test("a spoofed host (x.com.evil.com) is NOT silently linked", () => {
+  // The subdomain allowance must not let an attacker host ride along: the value doesn't end at a
+  // real host boundary, so it fails the charset and is rejected (never builds an evil.com link).
+  assert.equal(buildSocialUrl("x", "https://x.com.evil.com/in/victim"), null);
+  assert.equal(buildSocialUrl("github", "https://github.com.evil.com/victim"), null);
+});
+
 // --- normalizeSocialLinks: allowlist + drop unknown + per-field errors ---
 
 test("drops unknown platform keys (never stored)", () => {
