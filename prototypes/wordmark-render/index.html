@@ -1,0 +1,49 @@
+<!doctype html>
+<!-- One-off render surface for the README wordmark banner. Mirrors the landing nav wordmark:
+     Press Start 2P, ">_" in --coral, TOKENBOARD in --ink, full-bleed on the --bg terminal color.
+     Screenshotted headless at a fixed window size (see the build command in git history). -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #14151f;
+        --coral: #cc785c;
+        --ink: #e6e6ea;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 760px;
+        height: 200px;
+      }
+      body {
+        background: var(--bg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .mark {
+        font-family: "Press Start 2P", monospace;
+        font-size: 34px;
+        line-height: 1;
+        letter-spacing: 1px;
+        color: var(--ink);
+        white-space: nowrap;
+      }
+      .caret {
+        color: var(--coral);
+        margin-right: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <span class="mark"><span class="caret">&gt;_</span>TOKENBOARD</span>
+  </body>
+</html>
