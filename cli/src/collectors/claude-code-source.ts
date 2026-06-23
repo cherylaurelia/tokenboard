@@ -1,13 +1,13 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { isCountableAssistantLine } from "./claude-code-filter.js";
-import type { AssistantUsageLine, ParsedLine } from "./parsed-line.js";
+import { parseFileLines } from "./claude-code-cache.js";
+import type { ParsedLine } from "./parsed-line.js";
 
 // Recursively collect *.jsonl paths under `dir`. Hand-rolled (depth-first) rather than
 // `readdirSync(dir, { recursive: true })` because that option only exists on Node
 // >=18.17/>=20.1 — our declared engine is >=18, so a hand walk is the 18.x-safe form.
 // Unreadable subdirs are skipped (defensive), never thrown.
-function findJsonlFiles(dir: string): string[] {
+export function findJsonlFiles(dir: string): string[] {
   let entries: import("node:fs").Dirent[];
   try {
     entries = readdirSync(dir, { withFileTypes: true });
@@ -40,27 +40,7 @@ export function collectClaudeCodeLines(projectsRoot: string): ParsedLine[] {
     } catch {
       continue; // unreadable file — skip, keep going
     }
-    const lines = text.split("\n");
-    for (let i = 0; i < lines.length; i++) {
-      const raw = lines[i];
-      if (!raw) continue;
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(raw);
-      } catch {
-        continue; // malformed line — skip
-      }
-      if (!isCountableAssistantLine(parsed)) continue;
-      const line = parsed as AssistantUsageLine;
-      out.push({
-        messageId: line.message.id ?? null,
-        model: line.message.model ?? "",
-        usage: line.message.usage,
-        timestamp: line.timestamp ?? null,
-        sourcePath: file,
-        lineIndex: i,
-      });
-    }
+    out.push(...parseFileLines(file, text)); // SAME parser the cache uses -> identical lines
   }
   return out;
 }

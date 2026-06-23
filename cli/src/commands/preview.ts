@@ -1,6 +1,7 @@
 import { homedir } from "node:os";
 import { resolveProjectsRoot } from "../config/home.js";
-import { collectClaudeCodeLines } from "../collectors/claude-code-source.js";
+import { findJsonlFiles } from "../collectors/claude-code-source.js";
+import { collectClaudeCodeLinesCached } from "../collectors/claude-code-cache.js";
 import { dedupeByMessageId } from "../collectors/dedup.js";
 import { parsedLineToRecord } from "../collectors/claude-code-map.js";
 import { collectCcusage } from "../collectors/ccusage-source.js";
@@ -10,7 +11,7 @@ import { loadPriceTable } from "@tokenboard/cost";
 import { resolveTimeZone } from "../normalize/local-day.js";
 import { resolveStyle, styler } from "../render/terminal-style.js";
 import { renderLocalPreview, CLAIM_PROMPT, CLAIM_HINT } from "../render/local-preview.js";
-import { readAuthFile } from "../config/auth-store.js";
+import { readAuthFile, resolveConfigDir } from "../config/auth-store.js";
 import { confirm } from "../prompt/confirm.js";
 import { runClaim } from "./claim.js";
 import type { NormalizedRecord } from "@tokenboard/contracts";
@@ -26,10 +27,14 @@ export interface PreviewArgs {
 export async function collectLocalRecords(): Promise<{ records: NormalizedRecord[]; ccusageSkipped: string[]; npxAvailable: boolean }> {
   const tz = resolveTimeZone();
 
-  const claudeLines = dedupeByMessageId(collectClaudeCodeLines(resolveProjectsRoot(homedir())));
+  // Read Claude Code (first-party, cached by file mtime+size) and run the ccusage long-tail probe
+  // concurrently — independent local I/O, so overlap them instead of serializing.
+  const files = findJsonlFiles(resolveProjectsRoot(homedir()));
+  const [claudeLines, ccusage] = await Promise.all([
+    Promise.resolve().then(() => dedupeByMessageId(collectClaudeCodeLinesCached(files, resolveConfigDir()))),
+    collectCcusage(),
+  ]);
   const claudeRecords = claudeLines.map((l) => parsedLineToRecord(l, tz));
-
-  const ccusage = await collectCcusage();
 
   const records = aggregateByKey([...claudeRecords, ...ccusage.records]);
   return { records, ccusageSkipped: ccusage.skipped, npxAvailable: ccusage.npxAvailable };
