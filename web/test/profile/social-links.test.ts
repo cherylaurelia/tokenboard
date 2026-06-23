@@ -54,10 +54,9 @@ test("x: strips leading @ and builds the canonical host", () => {
   assert.equal(buildSocialUrl("x", "https://x.com/devon"), "https://x.com/devon"); // pasted URL coerced to handle
 });
 
-test("github / linkedin / youtube / bluesky build their canonical hosts", () => {
+test("github / linkedin / bluesky build their canonical hosts", () => {
   assert.equal(buildSocialUrl("github", "@devon"), "https://github.com/devon");
   assert.equal(buildSocialUrl("linkedin", "devon-lee"), "https://www.linkedin.com/in/devon-lee");
-  assert.equal(buildSocialUrl("youtube", "@devon"), "https://www.youtube.com/@devon");
   assert.equal(buildSocialUrl("bluesky", "devon.bsky.social"), "https://bsky.app/profile/devon.bsky.social");
 });
 
@@ -74,12 +73,11 @@ test("handle path is truncated at the first slash (deliberate forgiving behavior
 });
 
 test("accepts country/mobile subdomains on pasted handle-platform URLs", () => {
-  // ca./uk. LinkedIn (Canadian/UK users), mobile./m. Twitter, m. YouTube — common in pasted
-  // URLs. The subdomain only LOCATES the handle; the link is rebuilt from the hardcoded host.
+  // ca./uk. LinkedIn (Canadian/UK users), mobile. Twitter — common in pasted URLs. The subdomain
+  // only LOCATES the handle; the link is rebuilt from the hardcoded host.
   assert.equal(buildSocialUrl("linkedin", "https://ca.linkedin.com/in/angela-felicia"), "https://www.linkedin.com/in/angela-felicia");
   assert.equal(buildSocialUrl("linkedin", "https://uk.linkedin.com/in/someone"), "https://www.linkedin.com/in/someone");
   assert.equal(buildSocialUrl("x", "https://mobile.twitter.com/handle"), "https://x.com/handle");
-  assert.equal(buildSocialUrl("youtube", "https://m.youtube.com/@creator"), "https://www.youtube.com/@creator");
 });
 
 test("a spoofed host (x.com.evil.com) is NOT silently linked", () => {
