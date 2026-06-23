@@ -3,6 +3,7 @@
 // The server re-resolves the user from the session (never trusts a client user_id). On
 // success shows "return to your terminal" — the token is NEVER shown here (CLI poll delivers it).
 import { useState } from "react";
+import styles from "./claim.module.css";
 
 type Phase = "idle" | "working" | "approved" | "denied" | "error";
 
@@ -29,25 +30,55 @@ export function ApproveForm({ userCode }: { userCode: string }) {
   }
 
   if (phase === "approved") {
-    return <p>Device approved. Return to your terminal — it will finish automatically.</p>;
+    return (
+      <section className={styles.card} role="status">
+        <p className={styles.success}>
+          Device approved. Return to your terminal — it will finish automatically.
+        </p>
+      </section>
+    );
   }
-  if (phase === "denied") return <p>Request denied. Nothing was linked.</p>;
+  if (phase === "denied") {
+    return (
+      <section className={styles.card} role="status">
+        <p className={styles.note}>Request denied. Nothing was linked.</p>
+      </section>
+    );
+  }
   if (phase === "error") {
     return (
-      <p>
-        Something went wrong. Run <code>tokenboard claim</code> again.
-      </p>
+      <section className={styles.card}>
+        <p className={styles.error} role="alert">
+          Something went wrong. Run <code>tokenboard claim</code> again.
+        </p>
+      </section>
     );
   }
 
   return (
-    <div>
-      <button type="button" onClick={() => submit("approve")} disabled={phase === "working"}>
-        Approve
-      </button>
-      <button type="button" onClick={() => submit("deny")} disabled={phase === "working"}>
-        Deny
-      </button>
-    </div>
+    <section className={styles.card}>
+      <span className={styles.code}>{userCode}</span>
+      <p className={styles.note}>
+        Make sure this code matches the one shown in your terminal before approving.
+      </p>
+      <div className={styles.actions}>
+        <button
+          type="button"
+          className={`${styles.btn} ${styles.btnCoral}`}
+          onClick={() => submit("approve")}
+          disabled={phase === "working"}
+        >
+          {phase === "working" ? "Approving…" : "Approve"}
+        </button>
+        <button
+          type="button"
+          className={`${styles.btn} ${styles.btnGhost}`}
+          onClick={() => submit("deny")}
+          disabled={phase === "working"}
+        >
+          Deny
+        </button>
+      </div>
+    </section>
   );
 }

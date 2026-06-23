@@ -1,10 +1,17 @@
 // /claim — browser approve page (auth: session). Server component. Resolves the user via
 // getUser() (NEVER getSession()). Reads ?code=<user_code>. If signed out, redirect THROUGH
-// login preserving the code. No design tokens yet (Phase 7 restyles); semantic HTML.
+// login preserving the code. Styled with the shared board chrome + form-shell (matches verify).
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getViewer } from "@/lib/auth/get-viewer";
 import { USER_CODE_RE } from "@/lib/cli-login/user-code";
+import { SiteNav } from "@/components/site-nav";
+import { SiteFooter } from "@/components/site-footer";
 import { ApproveForm } from "./approve-form";
+import styles from "./claim.module.css";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export default async function ClaimPage({
   searchParams,
@@ -16,16 +23,26 @@ export default async function ClaimPage({
   // by USER_CODE_RE below).
   const raw = Array.isArray(code) ? code[0] : code;
   const userCode = (raw ?? "").toUpperCase();
+
+  const v = await getViewer();
+  const viewer = v === "outage" ? null : v;
+
   // Validate against the actual generator alphabet (shared regex) — a code with an ambiguous
   // char the server can never have minted is rejected at the boundary.
   if (!USER_CODE_RE.test(userCode)) {
     return (
-      <main>
-        <h1>Invalid code</h1>
-        <p>
-          Run <code>tokenboard claim</code> again to get a fresh code.
-        </p>
-      </main>
+      <div className={styles.surfaceBoardBase}>
+        <SiteNav viewer={viewer} currentPath="/claim" />
+        <main className={styles.shell}>
+          <h1 className={styles.title}>
+            INVALID <span className={styles.dim}>CODE</span>
+          </h1>
+          <p className={styles.lede}>
+            That code isn&rsquo;t valid. Run <code>tokenboard claim</code> again to get a fresh one.
+          </p>
+        </main>
+        <SiteFooter variant="board" />
+      </div>
     );
   }
 
@@ -39,10 +56,18 @@ export default async function ClaimPage({
   }
 
   return (
-    <main>
-      <h1>Approve device {userCode}?</h1>
-      <p>This links a CLI on your machine to upload your agentic-coding usage as you.</p>
-      <ApproveForm userCode={userCode} />
-    </main>
+    <div className={styles.surfaceBoardBase}>
+      <SiteNav viewer={viewer} currentPath="/claim" />
+      <main className={styles.shell}>
+        <h1 className={styles.title}>
+          APPROVE <span className={styles.dim}>THIS MACHINE</span>
+        </h1>
+        <p className={styles.lede}>
+          This links a CLI on your machine to upload your agentic-coding usage as you.
+        </p>
+        <ApproveForm userCode={userCode} />
+      </main>
+      <SiteFooter variant="board" />
+    </div>
   );
 }

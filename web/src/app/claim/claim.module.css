@@ -1,0 +1,64 @@
+/* Claim (device-approval) UI — composes the shared form-shell (see
+   components/communities/form-shell.module.css) so the shell/title/card/btn/error patterns match the
+   verify + create forms and don't drift. Only the claim-specific code chip + actions row live here. */
+@value shell as sShell, title as sTitle, dim as sDim, lede as sLede, card as sCard,
+  btn as sBtn, btnCoral as sBtnCoral, btnGhost as sBtnGhost, error as sError, success as sSuccess
+  from "@/components/communities/form-shell.module.css";
+
+.surfaceBoardBase {
+  composes: surfaceBoardBase from global;
+}
+.shell {
+  composes: sShell;
+}
+.title {
+  composes: sTitle;
+}
+.dim {
+  composes: sDim;
+}
+.lede {
+  composes: sLede;
+}
+.card {
+  composes: sCard;
+}
+.btn {
+  composes: sBtn;
+}
+.btnCoral {
+  composes: sBtnCoral;
+}
+.btnGhost {
+  composes: sBtnGhost;
+}
+.error {
+  composes: sError;
+}
+.success {
+  composes: sSuccess;
+}
+
+/* The device user-code, shown as a monospace chip so the user can match it to their terminal. */
+.code {
+  font-family: var(--num);
+  font-size: var(--fs-24);
+  letter-spacing: 4px;
+  color: var(--coral-hi);
+  background: var(--coral-tint-12);
+  border: 1px solid var(--frame);
+  border-radius: 8px;
+  padding: 8px 14px;
+  align-self: flex-start;
+}
+.note {
+  font-family: var(--money);
+  font-size: var(--fs-13);
+  line-height: 1.5;
+  color: var(--ink-3-text);
+}
+/* The two actions sit side by side; both meet the 44px target via the composed .btn. */
+.actions {
+  display: flex;
+  gap: 12px;
+}
