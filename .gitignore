@@ -48,6 +48,10 @@ pnpm-debug.log*
 coverage/
 .nyc_output/
 
+# Scratch screenshots dumped at the repo root (verify/probe runs). Root-only so
+# tracked design artifacts under web/ and prototypes/ are unaffected.
+/*.png
+
 # OS / editor cruft
 .DS_Store
 Thumbs.db
