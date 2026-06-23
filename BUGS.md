@@ -20,8 +20,10 @@ Status key: 🔴 open · 🟡 investigating · 🟢 fix pushed (needs verify) ·
   successful claim, then show rank/board link (fall back to a nudge if nothing to upload).
 
 ## Navigation
-- 🔴 **Navbar discrepancy: lander vs app** — the landing nav and the leaderboard nav
-  (`SiteNav`) use different labels/links. Reconcile into one consistent nav.
+- 🟢 **Navbar discrepancy: lander vs app** — FIXED (align labels + CTA). Landing nav now uses
+  the app's vocabulary: "Leaderboard"→"Global", "Communities"→"My Communities", and the
+  redundant "Leaderboard" button → "Claim Your Spot"/@handle CTA (mirrors SiteNav). Link-set
+  differences (landing has GitHub; app has Home/Profile) kept intentionally — different audiences.
 
 ## Profile (edit)
 - 🟡 **Edit profile doesn't work** — adding a social link (e.g. LinkedIn) fails to save.

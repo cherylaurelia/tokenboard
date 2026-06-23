@@ -13,7 +13,10 @@ const NPX = "npx @tokenboard/cli";
 export default async function LandingPage() {
   const v = await getViewer();
   const viewer = v === "outage" ? null : v;
+  // Hero "See the leaderboard" button -> the board (sign-in first when anon).
   const leaderboardCta = viewer ? "/global" : "/api/auth/login?next=/global";
+  // Nav CTA mirrors SiteNav: signed in -> your profile (@handle), anon -> sign-in then /global.
+  const claimCta = viewer ? `/user/${viewer.handle}` : "/api/auth/login?next=/global";
 
   return (
     <div className={styles.surfaceLanding}>
@@ -27,10 +30,10 @@ export default async function LandingPage() {
           </a>
           <ul className={styles.navLinks}>
             <li>
-              <Link href="/global">Leaderboard</Link>
+              <Link href="/global">Global</Link>
             </li>
             <li>
-              <Link href="/communities">Communities</Link>
+              <Link href="/communities">My Communities</Link>
             </li>
             <li>
               <a href="https://github.com/angelafeliciaa/tokenboard" target="_blank" rel="noopener">
@@ -39,8 +42,8 @@ export default async function LandingPage() {
             </li>
           </ul>
           <div className={styles.spacer} />
-          <Link className={styles.navCta} href={leaderboardCta}>
-            Leaderboard
+          <Link className={styles.navCta} href={claimCta}>
+            {viewer ? `@${viewer.handle}` : "Claim Your Spot"}
           </Link>
         </div>
       </nav>
