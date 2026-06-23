@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="web/public/brand/caret.png" alt="" width="64" />
+<img src="web/public/brand/caret.svg" alt="" width="72" />
 
 # tokenboard
 
