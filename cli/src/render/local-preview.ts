@@ -63,6 +63,8 @@ export function renderLocalPreview(summary: LocalSummary, style: TerminalStyle):
   return lines.join("\n");
 }
 
-// The cosmetic claim CTA — printed by the command on a TTY only. A literal string; it
-// creates no identity and calls no claim flow (that is Phase 4).
-export const CLAIM_CTA = "→ Sign in with GitHub to claim your spot → tokenboard claim";
+// The claim CTA. On an interactive TTY the command turns CLAIM_PROMPT into a [y/N] prompt that
+// runs `claim` on yes; CLAIM_HINT is the passive fallback printed when the user declines or when
+// the run isn't interactive (so the next step is always discoverable).
+export const CLAIM_PROMPT = "Sign in with GitHub to claim your spot?";
+export const CLAIM_HINT = "→ Claim your spot anytime → tokenboard claim";
