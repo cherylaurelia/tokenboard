@@ -1,45 +1,41 @@
 /* Create-community form — composes the shared form-shell (see
    components/communities/form-shell.module.css). Only the create-specific fieldset/radio/code-row
    styles live here. */
-@value shell as sShell, title as sTitle, dim as sDim, lede as sLede, card as sCard,
-  input as sInput, btn as sBtn, btnCoral as sBtnCoral, btnGhost as sBtnGhost, error as sError,
-  success as sSuccess from "@/components/communities/form-shell.module.css";
-
 .surfaceBoardBase {
   composes: surfaceBoardBase from global;
 }
 .shell {
-  composes: sShell;
+  composes: shell from "@/components/communities/form-shell.module.css";
 }
 .title {
-  composes: sTitle;
+  composes: title from "@/components/communities/form-shell.module.css";
 }
 .dim {
-  composes: sDim;
+  composes: dim from "@/components/communities/form-shell.module.css";
 }
 .lede {
-  composes: sLede;
+  composes: lede from "@/components/communities/form-shell.module.css";
 }
 .card {
-  composes: sCard;
+  composes: card from "@/components/communities/form-shell.module.css";
 }
 .input {
-  composes: sInput;
+  composes: input from "@/components/communities/form-shell.module.css";
 }
 .btn {
-  composes: sBtn;
+  composes: btn from "@/components/communities/form-shell.module.css";
 }
 .btnCoral {
-  composes: sBtnCoral;
+  composes: btnCoral from "@/components/communities/form-shell.module.css";
 }
 .btnGhost {
-  composes: sBtnGhost;
+  composes: btnGhost from "@/components/communities/form-shell.module.css";
 }
 .error {
-  composes: sError;
+  composes: error from "@/components/communities/form-shell.module.css";
 }
 .success {
-  composes: sSuccess;
+  composes: success from "@/components/communities/form-shell.module.css";
 }
 /* label treatment inlined (composes can't target the compound `.card label` selector). */
 .card label {
