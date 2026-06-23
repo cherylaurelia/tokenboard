@@ -71,6 +71,9 @@ export async function runPreview(args: PreviewArgs): Promise<void> {
     noColorFlag: args.noColor,
     asciiFlag: args.ascii,
     columns: process.stdout.columns,
+    colorterm: process.env["COLORTERM"],
+    term: process.env["TERM"],
+    forceColor: process.env["FORCE_COLOR"],
   });
 
   process.stdout.write(renderLocalPreview(summary, style) + "\n");
