@@ -27,9 +27,6 @@ export default async function LandingPage() {
           </a>
           <ul className={styles.navLinks}>
             <li>
-              <a href="#how">How it works</a>
-            </li>
-            <li>
               <Link href="/global">Leaderboard</Link>
             </li>
             <li>
