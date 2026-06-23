@@ -21,36 +21,44 @@ export function renderLocalPreview(summary: LocalSummary, style: TerminalStyle):
       ` · ${formatApproxUsd(summary.totalCostUsd)} est`,
   );
   lines.push("");
-  lines.push(c.dim("🪙 tokenboard · your local usage"));
+  lines.push(c.dim("🪙 tokenboard · your local usage by day"));
 
-  // Per-tool board. Columns: tool | tokens | ~$ est | daily burn.
-  const dayTokens = summary.perDay.map((d) => d.tokens);
-  const spark = sparkline(dayTokens, style.ascii);
-
-  const headers = ["tool", "tokens", "~$ est", "daily burn"];
-  const aligns = ["left", "right", "right", "left"] as const;
-  const bodyRows = summary.perTool.map((t) => [
-    t.tool,
-    humanizeTokens(t.tokens),
-    formatApproxUsd(t.costUsd),
-    spark, // same per-day series across the board in Phase 2 (per-tool series is Phase 6+)
+  // Daily breakdown table (newest last), with a TOTAL row — like ccusage's daily report.
+  // Columns: date | tokens | ~$ est. The per-day series also drives the headline sparkline below.
+  const headers = ["date", "tokens", "~$ est"];
+  const aligns = ["left", "right", "right"] as const;
+  const bodyRows = summary.perDay.map((d) => [
+    d.date,
+    humanizeTokens(d.tokens),
+    formatApproxUsd(d.costUsd),
   ]);
+  const totalRow = ["TOTAL", humanizeTokens(summary.totalTokens), formatApproxUsd(summary.totalCostUsd)];
 
-  const allRows = [headers, ...bodyRows];
+  // Width each column to the widest cell across headers + body + the total row.
+  const allRows = [headers, ...bodyRows, totalRow];
   const colWidths = headers.map((_, col) =>
     Math.max(...allRows.map((r) => [...r[col]!].length), 1),
   );
 
   const cellAlign = (i: number): "left" | "right" => aligns[i] ?? "left";
   const width = (i: number): number => colWidths[i] ?? 1;
+  const renderRow = (cells: string[]) =>
+    row(cells.map((cell, i) => padCell(cell, width(i), cellAlign(i))), g);
 
   lines.push(rule(colWidths, "top", g));
-  lines.push(row(headers.map((h, i) => padCell(h, width(i), cellAlign(i))), g));
+  lines.push(renderRow(headers));
   lines.push(rule(colWidths, "mid", g));
-  for (const r of bodyRows) {
-    lines.push(row(r.map((cell, i) => padCell(cell, width(i), cellAlign(i))), g));
-  }
+  for (const r of bodyRows) lines.push(renderRow(r));
+  lines.push(rule(colWidths, "mid", g)); // separate the TOTAL from the daily rows
+  lines.push(renderRow(totalRow));
   lines.push(rule(colWidths, "bottom", g));
+
+  // The daily-burn sparkline (per-day token series) under the table.
+  const spark = sparkline(
+    summary.perDay.map((d) => d.tokens),
+    style.ascii,
+  );
+  if (spark) lines.push(c.dim("daily burn ") + spark);
 
   // Honest labels.
   lines.push(
