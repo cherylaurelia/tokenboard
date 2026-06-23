@@ -14,11 +14,11 @@
 //            value, prepend https:// to a bare host, then `new URL(value)` and require the PARSED
 //            protocol === 'https:'. Re-serialize via url.href so embedded quotes are percent-encoded.
 
-export const SOCIAL_PLATFORMS = ["x", "github", "website", "linkedin", "youtube", "bluesky"] as const;
+export const SOCIAL_PLATFORMS = ["x", "github", "website", "linkedin", "bluesky"] as const;
 export type Platform = (typeof SOCIAL_PLATFORMS)[number];
 
 // A blanket safety ceiling on handle input, applied BEFORE the per-platform regex runs. The regex is
-// the real per-platform length authority (x 15, github 39, linkedin 100, youtube 64, bluesky 253), so
+// the real per-platform length authority (x 15, github 39, linkedin 100, bluesky 253), so
 // this must sit ABOVE the largest of those (bluesky's 253) or it would wrongly reject valid long
 // handles (e.g. a full bsky.social DID-ish handle) as "too long" before the regex could accept them.
 export const MAX_HANDLE_LEN = 256;
@@ -44,7 +44,6 @@ const PLATFORM_SPECS: Record<Platform, HandlePlatform | UrlPlatform> = {
   x: { kind: "handle", label: "X", re: /^[A-Za-z0-9_]{1,15}$/, toUrl: (h) => `https://x.com/${h}`, placeholder: "@handle" },
   github: { kind: "handle", label: "GitHub", re: /^[A-Za-z0-9-]{1,39}$/, toUrl: (h) => `https://github.com/${h}`, placeholder: "@handle" },
   linkedin: { kind: "handle", label: "LinkedIn", re: /^[A-Za-z0-9-]{1,100}$/, toUrl: (h) => `https://www.linkedin.com/in/${h}`, placeholder: "vanity slug" },
-  youtube: { kind: "handle", label: "YouTube", re: /^[A-Za-z0-9_.-]{1,64}$/, toUrl: (h) => `https://www.youtube.com/@${h}`, placeholder: "@handle" },
   bluesky: { kind: "handle", label: "Bluesky", re: /^[A-Za-z0-9.-]{1,253}$/, toUrl: (h) => `https://bsky.app/profile/${h}`, placeholder: "name.bsky.social" },
   website: { kind: "url", label: "Website", placeholder: "https://example.com" },
 };
@@ -67,18 +66,18 @@ function isPlatform(key: string): key is Platform {
 // forgiving truncation (the host is hardcoded so it's safe), covered by a test so it's not accidental.
 //
 // The `(?:[a-z0-9-]+\.)*` allows ANY subdomain chain before the known host (ca./uk. LinkedIn,
-// mobile./m. Twitter, m. YouTube, www.) — country/mobile subdomains are common in pasted URLs and
-// must NOT be rejected. This is safe: the subdomain only LOCATES the handle; the final URL is always
-// rebuilt from the platform's HARDCODED host + the charset-validated handle, so a spoofed host can't
-// ride along (worst case the handle fails the charset and is rejected).
+// mobile./m. Twitter, www.) — country/mobile subdomains are common in pasted URLs and must NOT be
+// rejected. This is safe: the subdomain only LOCATES the handle; the final URL is always rebuilt
+// from the platform's HARDCODED host + the charset-validated handle, so a spoofed host can't ride
+// along (worst case the handle fails the charset and is rejected).
 function stripHandle(raw: string): string {
   let h = raw.trim();
   h = h.replace(/^@+/, "");
   const hostMatch = h.match(
-    /^(?:https?:\/\/)?(?:[a-z0-9-]+\.)*(?:x\.com|twitter\.com|github\.com|linkedin\.com\/in|youtube\.com|bsky\.app\/profile)\/(.+)$/i,
+    /^(?:https?:\/\/)?(?:[a-z0-9-]+\.)*(?:x\.com|twitter\.com|github\.com|linkedin\.com\/in|bsky\.app\/profile)\/(.+)$/i,
   );
   if (hostMatch) h = hostMatch[1]!;
-  h = h.replace(/^@+/, ""); // youtube @handle after the host strip
+  h = h.replace(/^@+/, ""); // a leftover '@' after the host strip
   h = h.split(/[/?#]/)[0]!; // cut a trailing path/query so it can't ride along
   return h;
 }

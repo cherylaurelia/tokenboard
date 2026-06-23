@@ -42,10 +42,8 @@ Status key: 🔴 open · 🟡 investigating · 🟢 fix pushed (needs verify) ·
     ALSO be a round-trip failure (auth on POST /api/v1/profile, the write, or router.refresh not
     reflecting). Need a live authed browser session to capture the actual response. The validation
     fix unblocks valid input; confirm saves actually persist once the browser is free.
-- 🔴 **YouTube URL forms parse wrong** (separate from the LinkedIn bug) — `youtube.com/channel/UC123`
-  stores handle as literally `"channel"`, `/c/Name` stores `"c"`. stripHandle keeps the first path
-  segment, which is wrong for YouTube's `/channel/`, `/c/`, `/user/` forms (only `/@handle` is right).
-  Needs YouTube-specific path handling. Low priority (YouTube rarely used), logged so it's not lost.
+- ✅ **YouTube URL forms parse wrong** — MOOT: YouTube removed as a social platform entirely
+  (no prod user had one stored). The `/channel/` `/c/` mis-parse can't happen without the platform.
 
 ## Communities / schema
 - 🟡 **`ubcbiztech` shows "member #N" (anonymized)** — it's a student club, shouldn't be
