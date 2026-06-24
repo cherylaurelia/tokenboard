@@ -1,7 +1,8 @@
 // Shared footer. variant="landing" renders the landing-dark brand/links row (Press Start 2P brand)
-// with a single "Contributing" link ("#" placeholder); variant="board" renders the centered VT323
+// with a single "Contributing" link (-> CONTRIBUTING.md on GitHub); variant="board" renders the VT323
 // brand + copyright used by the board + communities pages.
 import styles from "./site-footer.module.css";
+import { CONTRIBUTING_URL } from "@/lib/links";
 
 export function SiteFooter({ variant = "board" }: { variant?: "landing" | "board" }) {
   if (variant === "landing") {
@@ -25,7 +26,9 @@ export function SiteFooter({ variant = "board" }: { variant?: "landing" | "board
           <span className={styles.spacer} />
           <ul className={styles.links}>
             <li>
-              <a href="#">Contributing</a>
+              <a href={CONTRIBUTING_URL} target="_blank" rel="noopener">
+                Contributing
+              </a>
             </li>
           </ul>
         </div>

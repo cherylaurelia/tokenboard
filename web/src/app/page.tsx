@@ -7,6 +7,7 @@ import { CopyCommand } from "@/components/landing/copy-command";
 import { Reveal } from "@/components/landing/reveal";
 import { SiteFooter } from "@/components/site-footer";
 import { getViewer } from "@/lib/auth/get-viewer";
+import { GITHUB_URL } from "@/lib/links";
 
 const NPX = "npx @tokenboard/cli";
 
@@ -36,7 +37,7 @@ export default async function LandingPage() {
               <Link href="/communities">My Communities</Link>
             </li>
             <li>
-              <a href="https://github.com/angelafeliciaa/tokenboard" target="_blank" rel="noopener">
+              <a href={GITHUB_URL} target="_blank" rel="noopener">
                 GitHub
               </a>
             </li>
@@ -107,7 +108,7 @@ export default async function LandingPage() {
               </Link>
               <a
                 className={styles.btnSecondary}
-                href="https://github.com/angelafeliciaa/tokenboard"
+                href={GITHUB_URL}
                 target="_blank"
                 rel="noopener"
               >
