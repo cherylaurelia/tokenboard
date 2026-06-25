@@ -156,10 +156,13 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
                 // The owner signed in via the web but hasn't synced any usage — they're at $0 and not
                 // on the board yet. Tell them exactly what unlocks a real number: the CLI.
                 <div className={styles.emptyOwner}>
-                  <p className={styles.empty}>
+                  <p className={styles.emptyMsg}>
                     You&rsquo;re signed in, but no usage has synced yet. Run this to get on the board:
                   </p>
-                  <CopyCommand value={NPX} className={styles.emptyCmd} />
+                  <div className={styles.emptyCmd}>
+                    <code className={styles.emptyCmdText}>{NPX}</code>
+                    <CopyCommand value={NPX} />
+                  </div>
                 </div>
               ) : (
                 <p className={styles.empty}>No synced usage yet for @{u.handle}.</p>
