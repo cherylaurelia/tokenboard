@@ -1,7 +1,171 @@
-/* Sparkline — tokens-only stroke/fill via class, no inline hex. */
+/* Profile usage chart — range/metric controls + summary metrics + trend/top-tool badges + coral line
+   over a grid (labeled Y axis max/mid/min, X axis start/end) + hover readout + per-tool breakdown bar.
+   4px grid; colors from the design tokens (coral line, bar palette for tool segments). */
+.chart {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+}
+
+/* Controls row — range tabs (left) + metric toggle (right), wrapping on narrow widths. */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+  align-items: center;
+}
+/* Segmented controls — range tabs + Tokens/Cost toggle share this pill style. */
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  background: var(--panel);
+  border: 1px solid var(--frame);
+  border-radius: 8px;
+}
+.tab {
+  appearance: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px 12px;
+  border-radius: 5px;
+  background: transparent;
+  font-family: var(--term);
+  font-size: var(--fs-12);
+  letter-spacing: 0.04em;
+  color: var(--ink-3-text);
+  transition:
+    color 0.12s,
+    background-color 0.12s;
+}
+.tab:hover {
+  color: var(--ink);
+}
+.tabActive {
+  background: var(--coral-tint-12);
+  color: var(--coral-hi);
+}
+
+/* Summary metrics row — total / daily avg / peak / active days. */
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--frame);
+}
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.metricKey {
+  font-family: var(--term);
+  font-size: var(--fs-12);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-4-text);
+  white-space: nowrap;
+}
+.metricVal {
+  margin: 0;
+  font-family: var(--num, var(--term));
+  font-size: var(--fs-16);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.metricSub {
+  font-family: var(--term);
+  font-size: var(--fs-12);
+  color: var(--ink-4-text);
+}
+
+/* Trend chip + top-tool badge row. */
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-family: var(--term);
+  font-size: var(--fs-12);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.trendUp {
+  background: var(--teal-ring);
+  color: var(--teal);
+}
+.trendDown {
+  background: var(--coral-tint-12);
+  color: var(--coral-hi);
+}
+.topTool {
+  font-family: var(--term);
+  font-size: var(--fs-12);
+  letter-spacing: 0.04em;
+  color: var(--ink-3-text);
+}
+.topTool strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 8px;
+  row-gap: 4px;
+  align-items: stretch;
+}
+/* Y axis labels: max top, min bottom, spaced to match the plot height. */
+.yAxis {
+  grid-column: 1;
+  grid-row: 1;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+  text-align: right;
+}
+.yTick {
+  font-family: var(--term);
+  font-size: var(--fs-12);
+  color: var(--ink-4-text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+/* Plot wrapper anchors the absolutely-positioned hover tooltip over the SVG. */
+.plotWrap {
+  grid-column: 2;
+  grid-row: 1;
+  position: relative;
+}
 .spark {
   display: block;
+  width: 100%;
+  height: 96px;
   image-rendering: auto; /* stays smooth on the arcade surface */
+  touch-action: none; /* let pointermove drive the readout on touch without scrolling */
+}
+.gridLine {
+  stroke: var(--frame);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
 }
 .line {
   stroke: var(--coral);
@@ -10,6 +174,132 @@
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
 }
+.guide {
+  stroke: var(--frame-hi);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
+}
 .dot {
   fill: var(--coral-hi);
+}
+.dotActive {
+  fill: var(--coral-hi);
+  stroke: var(--bg-2);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Hover tooltip — centered over the active point, lifted above it; clamped within the plot via
+   translate + margins so the latest-day (right edge) tip doesn't overflow the card. */
+.tip {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  margin-top: -8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--frame-hi);
+  border-radius: 6px;
+  pointer-events: none;
+  white-space: nowrap;
+  max-width: max-content;
+}
+.tipDate {
+  font-family: var(--term);
+  font-size: var(--fs-12);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-4-text);
+}
+.tipVal {
+  font-family: var(--num, var(--term));
+  font-size: var(--fs-14);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* X axis: start date left, end date right, under the plot column only. */
+.xAxis {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  justify-content: space-between;
+}
+.xTick {
+  font-family: var(--term);
+  font-size: var(--fs-12);
+  color: var(--ink-4-text);
+}
+
+/* Per-tool breakdown — a stacked share bar + a legend. Colors come from the chart bar palette,
+   indexed by segment position via data-i. */
+.tools {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--frame);
+}
+.toolBar {
+  display: flex;
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--panel);
+}
+.toolSeg {
+  height: 100%;
+}
+.toolLegend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+.toolItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--term);
+  font-size: var(--fs-12);
+}
+.toolDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex: none;
+}
+.toolName {
+  color: var(--ink-3-text);
+}
+.toolPct {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+/* Segment + dot colors by position. */
+.toolSeg[data-i="0"],
+.toolDot[data-i="0"] {
+  background: var(--bar-teal);
+}
+.toolSeg[data-i="1"],
+.toolDot[data-i="1"] {
+  background: var(--bar-blue);
+}
+.toolSeg[data-i="2"],
+.toolDot[data-i="2"] {
+  background: var(--bar-lilac);
+}
+.toolSeg[data-i="3"],
+.toolDot[data-i="3"] {
+  background: var(--bar-yellow);
+}
+.toolSeg[data-i="4"],
+.toolDot[data-i="4"] {
+  background: var(--bar-rose);
 }

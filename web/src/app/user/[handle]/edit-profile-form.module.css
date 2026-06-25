@@ -21,17 +21,11 @@
   composes: error from "../../../components/communities/form-shell.module.css";
 }
 
-.editRegion {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  width: 100%;
-}
 .form {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-top: 8px;
+  margin-top: 16px;
   width: 100%;
 }
 .lockedNote {
@@ -39,14 +33,27 @@
   font-size: var(--fs-12);
   color: var(--ink-4-text);
 }
-.signoutRow {
+/* Owner header cluster: Edit + Sign Out side by side in the profile header top-right. */
+.headActions {
   display: flex;
-  justify-content: flex-start;
-  border-top: 1px solid var(--frame);
-  padding-top: 12px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  flex: none;
+  align-self: flex-start;
+}
+.signoutForm {
+  display: flex;
 }
 .signout {
+  flex: 1 1 auto;
   color: var(--ink-3-text);
+}
+/* Locked GitHub field: a normal input greyed out so it reads as not editable. */
+.inputLocked {
+  background: var(--panel-2);
+  color: var(--ink-3-text);
+  cursor: default;
 }
 .field {
   display: flex;
