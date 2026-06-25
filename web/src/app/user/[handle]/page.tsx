@@ -104,16 +104,17 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
                 {meEntry?.tierPill && <span className={styles.pill}>{meEntry.tierPill.label}</span>}
               </div>
             </div>
+            {/* Owner edit control lives in the header's top-right. Collapsed, it's a compact button that
+               adds no vertical band above the bio; open, the form breaks out full-width below. */}
+            {isOwner && viewer && (
+              <EditProfileForm
+                initialBio={u.bio ?? ""}
+                initialLinks={u.socialLinks ?? {}}
+                githubHandle={viewer.handle}
+                className={styles.editSlot}
+              />
+            )}
           </header>
-
-          {/* Outside .head: the form is full-width below the header, never squeezed into the flex row. */}
-          {isOwner && (
-            <EditProfileForm
-              initialBio={u.bio ?? ""}
-              initialLinks={u.socialLinks ?? {}}
-              className={styles.editSlot}
-            />
-          )}
 
           {u.bio && <p className={styles.bio}>{u.bio}</p>}
 

@@ -27,6 +27,7 @@
   display: flex;
   align-items: flex-start;
   gap: 16px;
+  flex-wrap: wrap;
 }
 .pfpLg {
   width: 88px;
@@ -83,18 +84,21 @@
   border-radius: 999px;
   padding: 4px 10px;
 }
-/* The edit control now sits BELOW .head (full-width block), not inside the flex row. The collapsed
-   "Edit profile" button right-aligns; the open form (its own .form class is width:100%) fills the row. */
-.editSlot {
-  margin-top: 16px;
-}
+/* The edit control sits in the header's top-right. Collapsed (button.editSlot) it's a compact control
+   that aligns to the right of the avatar/name row, adding no vertical band above the bio. Open
+   (form.editSlot) it breaks out to a full-width line below the header via flex-basis:100% + order. */
 button.editSlot {
-  display: block;
-  margin-left: auto;
+  flex: none;
+  align-self: flex-start;
+}
+form.editSlot {
+  flex-basis: 100%;
+  order: 1;
+  margin-top: 16px;
 }
 
 .bio {
-  margin-top: 16px;
+  margin-top: 8px;
   font-family: var(--money);
   font-size: var(--fs-15);
   line-height: 1.6;

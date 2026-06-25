@@ -43,7 +43,7 @@ interface UrlPlatform {
 const PLATFORM_SPECS: Record<Platform, HandlePlatform | UrlPlatform> = {
   x: { kind: "handle", label: "X", re: /^[A-Za-z0-9_]{1,15}$/, toUrl: (h) => `https://x.com/${h}`, placeholder: "@handle" },
   github: { kind: "handle", label: "GitHub", re: /^[A-Za-z0-9-]{1,39}$/, toUrl: (h) => `https://github.com/${h}`, placeholder: "@handle" },
-  linkedin: { kind: "handle", label: "LinkedIn", re: /^[A-Za-z0-9-]{1,100}$/, toUrl: (h) => `https://www.linkedin.com/in/${h}`, placeholder: "vanity slug" },
+  linkedin: { kind: "handle", label: "LinkedIn", re: /^[A-Za-z0-9-]{1,100}$/, toUrl: (h) => `https://www.linkedin.com/in/${h}`, placeholder: "linkedin.com/in/your-name" },
   bluesky: { kind: "handle", label: "Bluesky", re: /^[A-Za-z0-9.-]{1,253}$/, toUrl: (h) => `https://bsky.app/profile/${h}`, placeholder: "name.bsky.social" },
   website: { kind: "url", label: "Website", placeholder: "https://example.com" },
 };

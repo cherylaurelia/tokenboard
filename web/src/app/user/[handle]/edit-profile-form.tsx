@@ -18,10 +18,12 @@ import styles from "./edit-profile-form.module.css";
 export function EditProfileForm({
   initialBio,
   initialLinks,
+  githubHandle,
   className,
 }: {
   initialBio: string;
   initialLinks: Record<string, string>;
+  githubHandle: string;
   className?: string;
 }) {
   const router = useRouter();
@@ -53,8 +55,12 @@ export function EditProfileForm({
     e.preventDefault();
     setBusy(true);
     setError(null);
+    // github is locked to the signed-in identity — always persist that handle, ignore the editable
+    // state for it. Everything else comes from the form inputs.
     const social_links = Object.fromEntries(
-      SOCIAL_PLATFORMS.map((p) => [p, links[p].trim()] as const).filter(([, v]) => v.length > 0),
+      SOCIAL_PLATFORMS.map(
+        (p) => [p, (p === "github" ? githubHandle : links[p]).trim()] as const,
+      ).filter(([, v]) => v.length > 0),
     );
     try {
       const res = await fetch("/api/v1/profile", {
@@ -86,7 +92,8 @@ export function EditProfileForm({
   }
 
   return (
-    <form className={`${styles.form} ${className ?? ""}`} onSubmit={onSubmit}>
+    <div className={`${styles.editRegion} ${className ?? ""}`}>
+      <form className={styles.form} onSubmit={onSubmit}>
       <label className={styles.label} htmlFor="p-bio">
         Bio
       </label>
@@ -103,22 +110,39 @@ export function EditProfileForm({
       <span className={styles.counter}>
         {bio.length}/{MAX_BIO_LEN}
       </span>
-      {SOCIAL_PLATFORMS.map((p) => (
-        <div key={p} className={styles.field}>
-          <label className={styles.label} htmlFor={`p-${p}`}>
-            {platformLabel(p)}
-          </label>
-          <input
-            id={`p-${p}`}
-            className={styles.input}
-            value={links[p]}
-            disabled={busy}
-            placeholder={platformPlaceholder(p)}
-            maxLength={MAX_URL_LEN}
-            onChange={(e) => setLinks((s) => ({ ...s, [p]: e.target.value }))}
-          />
-        </div>
-      ))}
+      {SOCIAL_PLATFORMS.map((p) =>
+        p === "github" ? (
+          <div key={p} className={styles.field}>
+            <label className={styles.label} htmlFor="p-github">
+              {platformLabel(p)}
+            </label>
+            <input
+              id="p-github"
+              className={styles.input}
+              value={githubHandle}
+              readOnly
+              aria-readonly="true"
+              title="Linked to the GitHub account you signed in with"
+            />
+            <span className={styles.lockedNote}>From your GitHub login</span>
+          </div>
+        ) : (
+          <div key={p} className={styles.field}>
+            <label className={styles.label} htmlFor={`p-${p}`}>
+              {platformLabel(p)}
+            </label>
+            <input
+              id={`p-${p}`}
+              className={styles.input}
+              value={links[p]}
+              disabled={busy}
+              placeholder={platformPlaceholder(p)}
+              maxLength={MAX_URL_LEN}
+              onChange={(e) => setLinks((s) => ({ ...s, [p]: e.target.value }))}
+            />
+          </div>
+        ),
+      )}
       {error && (
         <p className={styles.error} role="alert">
           {error}
@@ -137,6 +161,14 @@ export function EditProfileForm({
           {busy ? "Saving…" : "Save"}
         </button>
       </div>
-    </form>
+      </form>
+      {/* Sign Out lives here (owner-only edit region), not in the global nav. Separate <form> (not
+          nested in the edit form) so the POST is a clean, prefetch-safe session end. */}
+      <form action="/api/auth/logout" method="post" className={styles.signoutRow}>
+        <button type="submit" className={`${styles.btn} ${styles.btnGhost} ${styles.signout}`}>
+          Sign Out
+        </button>
+      </form>
+    </div>
   );
 }
