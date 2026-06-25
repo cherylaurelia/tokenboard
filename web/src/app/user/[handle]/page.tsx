@@ -150,7 +150,16 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
       />
       <div className={styles.who}>
         <h1 className={styles.name}>{u.displayName ?? `@${u.handle}`}</h1>
-        <span className={styles.at}>@{u.handle}</span>
+        {/* The handle IS the GitHub username (avatar resolves from github.com/<handle>.png),
+            so link it out to the profile — works for everyone, edited or not. */}
+        <a
+          className={styles.atLink}
+          href={`https://github.com/${u.handle}`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          @{u.handle}
+        </a>
         <div className={styles.meta}>
           <span className={styles.joined}>Joined {joined}</span>
           {meEntry?.tierPill && <span className={styles.pill}>{meEntry.tierPill.label}</span>}

@@ -59,6 +59,19 @@
   font-size: var(--fs-15);
   color: var(--ink-2);
 }
+/* The header @handle as an outbound GitHub link: same look as .at, with a hover affordance. */
+.atLink {
+  width: fit-content;
+  font-family: var(--handle);
+  font-size: var(--fs-15);
+  color: var(--ink-2);
+  text-decoration: none;
+  transition: color 0.12s;
+}
+.atLink:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
 .meta {
   display: flex;
   align-items: center;
