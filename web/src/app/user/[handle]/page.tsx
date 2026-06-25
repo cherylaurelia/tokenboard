@@ -21,11 +21,14 @@ import { SiteFooter } from "@/components/site-footer";
 import { Sparkline } from "@/components/sparkline";
 import { DeltaArrow } from "@/components/board/delta-arrow";
 import { MembershipCard } from "@/components/profile/membership-card";
+import { CopyCommand } from "@/components/landing/copy-command";
 import { EditProfileForm } from "./edit-profile-form";
 import styles from "./profile.module.css";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const NPX = "npx @tokenboard/cli";
 
 type SafeLink = { platform: Platform; label: string; url: string };
 
@@ -145,7 +148,26 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
               )}
             </div>
           ) : (
-            <p className={styles.empty}>No synced usage yet for @{u.handle}.</p>
+            <div className={styles.statsBlock}>
+              <div className={styles.stats}>
+                <span className={styles.big}>{formatUsd2dp(0)}</span>
+              </div>
+              {isOwner ? (
+                // The owner signed in via the web but hasn't synced any usage — they're at $0 and not
+                // on the board yet. Tell them exactly what unlocks a real number: the CLI.
+                <div className={styles.emptyOwner}>
+                  <p className={styles.emptyMsg}>
+                    You&rsquo;re signed in, but no usage has synced yet. Run this to get on the board:
+                  </p>
+                  <div className={styles.emptyCmd}>
+                    <code className={styles.emptyCmdText}>{NPX}</code>
+                    <CopyCommand value={NPX} />
+                  </div>
+                </div>
+              ) : (
+                <p className={styles.empty}>No synced usage yet for @{u.handle}.</p>
+              )}
+            </div>
           )}
         </section>
 

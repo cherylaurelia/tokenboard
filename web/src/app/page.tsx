@@ -16,8 +16,9 @@ export default async function LandingPage() {
   const viewer = v === "outage" ? null : v;
   // Hero "See the leaderboard" button -> the board (sign-in first when anon).
   const leaderboardCta = viewer ? "/global" : "/api/auth/login?next=/global";
-  // Nav CTA mirrors SiteNav: signed in -> your profile (@handle), anon -> sign-in then /global.
-  const claimCta = viewer ? `/user/${viewer.handle}` : "/api/auth/login?next=/global";
+  // Nav CTA mirrors SiteNav: signed in -> your profile (@handle); anon -> "Sign in with GitHub",
+  // landing on /me so a fresh sign-in sees their own profile (+ the "$0, run the CLI" nudge).
+  const signInCta = viewer ? `/user/${viewer.handle}` : "/api/auth/login?next=/me";
 
   return (
     <div className={styles.surfaceLanding}>
@@ -43,8 +44,8 @@ export default async function LandingPage() {
             </li>
           </ul>
           <div className={styles.spacer} />
-          <Link className={styles.navCta} href={claimCta}>
-            {viewer ? `@${viewer.handle}` : "Claim Your Spot"}
+          <Link className={styles.navCta} href={signInCta}>
+            {viewer ? `@${viewer.handle}` : "Sign in with GitHub"}
           </Link>
         </div>
       </nav>

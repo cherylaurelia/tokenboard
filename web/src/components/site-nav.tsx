@@ -61,8 +61,11 @@ export function SiteNav({
           @{viewer.handle}
         </Link>
       ) : (
-        <Link className={styles.claim} href={loginHref}>
-          Claim Your Spot
+        // Honest label: web auth is a SIGN-IN (GitHub OAuth), not the thing that puts you on the
+        // board — that's the CLI. Land on /me so a freshly-signed-in user sees their own profile
+        // (and the "$0 — run the CLI" nudge if they haven't synced yet).
+        <Link className={styles.claim} href="/api/auth/login?next=/me">
+          Sign in with GitHub
         </Link>
       )}
     </header>
