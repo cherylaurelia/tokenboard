@@ -7,8 +7,11 @@ Status key: 🔴 open · 🟡 investigating · 🟢 fix pushed (needs verify) ·
 ---
 
 ## Onboarding / auth
-- 🔴 **Web sign-in flow feels off** — buttons need manual clicking to confirm they
-  fire; the sign-in flow is confusing/weird. Needs a full end-to-end click-through.
+- 🟢 **Web sign-in flow feels off** — IMPROVED. "Claim Your Spot" → GitHub OAuth over-promised
+  (web login alone doesn't put you on the board; only the CLI does). Renamed the CTA to honest
+  "Sign in with GitHub" (nav + landing), land signed-in users on /me (own profile), and added a
+  $0 owner empty-state nudge ("You're signed in, but no usage has synced yet. Run this…" + copyable
+  `npx @tokenboard/cli`). Web OAuth stays — the CLI claim approve page depends on it. Verified live.
 - 🟢 **CLI GitHub sign-in opened an unstyled page** — believed fixed; verify on prod
   (open the approve link from a real CLI login and confirm it has styling).
 - 🟡 **CLI claim → not on global leaderboard** *(high priority — core funnel)* — ROOT

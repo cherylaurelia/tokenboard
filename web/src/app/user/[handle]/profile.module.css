@@ -175,6 +175,16 @@ button.editSlot {
   letter-spacing: 0.5px;
   color: var(--ink-3-text);
 }
+/* Owner-at-$0 nudge: the "run the CLI" message + a copyable command, stacked. */
+.emptyOwner {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+.emptyCmd {
+  align-self: flex-start;
+}
 
 .communities {
   width: 100%;
