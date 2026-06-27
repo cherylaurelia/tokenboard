@@ -7,10 +7,7 @@
 ### See who's burning the most tokens.
 
 A public leaderboard for agentic-coding usage. tokenboard reads how many tokens
-you burn across Claude Code, Codex, Opencode, and more — then ranks you against
-your friends and communities.
-
-<br />
+you burn across Claude Code, Codex, etc.
 
 [![npm](https://img.shields.io/npm/v/@tokenboard/cli?color=cc785c&label=%40tokenboard%2Fcli)](https://www.npmjs.com/package/@tokenboard/cli)
 [![license](https://img.shields.io/badge/license-MIT-cc785c)](LICENSE)
