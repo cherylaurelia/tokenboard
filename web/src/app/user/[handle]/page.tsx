@@ -77,8 +77,6 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
   const meEntry = board.me?.inTopN === false ? board.me.entry : board.entries.find((e) => e.isMe) ?? null;
   const rank = board.me?.rank ?? null;
 
-  // Richer per-day series (tokens + cost) and per-tool breakdown for the profile chart. Only fetched
-  // when there's a usage series to draw.
   const usageDetail =
     meEntry && meEntry.sparkline.length > 1
       ? await profileUsageDetail(u.id, board.windowStart, board.windowEnd)
@@ -86,8 +84,6 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
 
   const boards = await listMyCommunities(u.id, isOwner);
 
-  // Re-validate every stored link at render (the href is always server-built; a bad stored value is
-  // silently dropped, never rendered).
   const socialLinks: SafeLink[] = SOCIAL_PLATFORMS.map((p): SafeLink | null => {
     const stored = u.socialLinks?.[p];
     if (typeof stored !== "string" || stored.length === 0) return null;
@@ -125,8 +121,6 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
           )}
         </div>
       ) : isOwner ? (
-        // The owner signed in via the web but hasn't synced any usage — they're at $0 and not on the
-        // board yet. Tell them exactly what unlocks a real number: the CLI.
         <div className={styles.emptyOwner}>
           <p className={styles.emptyMsg}>
             You&rsquo;re signed in, but no usage has synced yet. Run this to get on the board:
