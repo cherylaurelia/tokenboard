@@ -51,8 +51,6 @@ export function ProfileEditProvider({
   );
 }
 
-// Header top-right cluster: Edit profile + Sign Out. Hidden while editing (the form has its own
-// Cancel/Save), so the header stays clean.
 export function ProfileHeaderActions({ className }: { className?: string }) {
   const { open, setOpen } = useEdit();
   if (open) return null;
@@ -75,7 +73,6 @@ export function ProfileHeaderActions({ className }: { className?: string }) {
   );
 }
 
-// Card body: the read-only content (bio/links/graph) when collapsed; the edit form when open.
 export function ProfileEditableBody({ children }: { children: ReactNode }) {
   const { open } = useEdit();
   if (open) return <ProfileEditForm />;
@@ -100,8 +97,6 @@ function ProfileEditForm() {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    // github is locked to the signed-in identity — always persist that handle, ignore the editable
-    // state for it. Everything else comes from the form inputs.
     const social_links = Object.fromEntries(
       SOCIAL_PLATFORMS.map(
         (p) => [p, (p === "github" ? githubHandle : links[p]).trim()] as const,
@@ -127,9 +122,8 @@ function ProfileEditForm() {
         return;
       }
       setOpen(false);
-      router.refresh(); // re-fetch the force-dynamic server component (fresh bio/links from Postgres)
+      router.refresh();
     } catch {
-      // A thrown fetch (offline / network error) must not leave the form stuck busy.
       setError("Couldn't save. Check your connection and try again.");
     } finally {
       setBusy(false);
