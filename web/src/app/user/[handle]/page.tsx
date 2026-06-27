@@ -138,7 +138,6 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
 
   const header = (
     <header className={styles.head}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         className={`${styles.pfpLg} noPixelate`}
         src={u.avatar ?? `https://github.com/${u.handle}.png`}
@@ -181,7 +180,6 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
           </ul>
         </div>
       </div>
-      {/* Owner controls (Edit + Sign Out) live in the header's top-right; hidden while editing. */}
       {isOwner && viewer && <ProfileHeaderActions className={styles.editSlot} />}
     </header>
   );
