@@ -1,7 +1,3 @@
-/* Owner inline-edit form. Composes the shared communities/verify form-shell so the btn/input/label/
-   error patterns live in one place. The textarea is NOT covered by the global :focus-visible ring
-   (globals.css :where(a, button, input, [tabindex]) excludes textarea) and no textarea style exists
-   elsewhere, so it is authored explicitly here WITH a visible focus state. Tokens-only, 4px grid. */
 .btn {
   composes: btn from "../../../components/communities/form-shell.module.css";
 }
@@ -33,7 +29,6 @@
   font-size: var(--fs-12);
   color: var(--ink-4-text);
 }
-/* Owner header cluster: Edit + Sign Out side by side in the profile header top-right. */
 .headActions {
   display: flex;
   flex-direction: column;
@@ -48,7 +43,6 @@
   flex: 1 1 auto;
   color: var(--ink-3-text);
 }
-/* Locked GitHub field: a normal input greyed out so it reads as not editable. */
 .inputLocked {
   background: var(--panel-2);
   color: var(--ink-3-text);
