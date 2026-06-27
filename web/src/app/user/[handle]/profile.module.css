@@ -1,6 +1,3 @@
-/* Profile — clean, single-column, Monkeytype-like. Reuses the board surface + tokens. The card and
-   the Communities column share a 560px max-width so they read as one narrow column. Tokens-only. */
-
 .surfaceBoardBase {
   composes: surfaceBoardBase from global;
 }
@@ -44,7 +41,6 @@
   gap: 4px;
   min-width: 0;
   flex: 1 1 auto;
-  /* Bias the text column slightly below dead-center for better optical balance with the avatar. */
   position: relative;
   top: 1px;
 }
@@ -87,7 +83,6 @@
   letter-spacing: 1px;
   text-transform: uppercase;
   color: var(--ink-3-text);
-  /* Optically center the uppercase term text against the 22px icon boxes in the same row. */
   position: relative;
   top: 1px;
 }
@@ -99,7 +94,6 @@
   margin: 0;
   margin-left: -4px;
   padding: 0;
-  /* Lift the icon row a couple px so it optically aligns with the uppercase "Joined" text. */
   position: relative;
   top: -0.5px;
 }
@@ -115,7 +109,6 @@
     color 0.12s,
     background-color 0.12s;
 }
-/* The X glyph's path sits optically high within its viewBox; nudge it down to baseline-match GitHub. */
 .iconX {
   position: relative;
   top: 1px;
@@ -128,9 +121,6 @@
   outline-offset: 2px;
   color: var(--ink);
 }
-/* The owner controls (Edit + Sign Out) sit in the header's top-right, aligned to the right of the
-   avatar/name row — a compact cluster that adds no vertical band above the bio. While editing they're
-   hidden and the form replaces the read-only body below the header. */
 div.editSlot {
   flex: none;
   align-self: flex-start;
@@ -190,22 +180,18 @@ div.editSlot {
   letter-spacing: 0.5px;
   color: var(--ink-3-text);
 }
-/* Owner-at-$0 nudge: the "run the CLI" message + a copyable command, stacked. */
 .emptyOwner {
   display: flex;
   flex-direction: column;
   gap: 12px;
   margin-top: 16px;
 }
-/* Message line — no margin-top of its own (the flex `gap` + .emptyOwner margin own the spacing;
-   reusing .empty here would double the top margin since flex columns don't collapse margins). */
 .emptyMsg {
   font-family: var(--term);
   font-size: var(--fs-18);
   letter-spacing: 0.5px;
   color: var(--ink-3-text);
 }
-/* Command row: visible `npx …` text + the copy button, so the user sees what they're copying. */
 .emptyCmd {
   display: flex;
   align-items: center;
