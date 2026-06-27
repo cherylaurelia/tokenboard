@@ -22,6 +22,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { Sparkline } from "@/components/sparkline";
 import { DeltaArrow } from "@/components/board/delta-arrow";
 import { MembershipCard } from "@/components/profile/membership-card";
+import { SocialIcon } from "@/components/profile/social-icon";
 import {
   ProfileEditProvider,
   ProfileHeaderActions,
@@ -91,25 +92,25 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
     return url ? { platform: p, label: platformLabel(p), url } : null;
   }).filter((x): x is SafeLink => x !== null);
 
+  // Header social row: GitHub always (the handle IS the GitHub username, so build the URL directly),
+  // then X / LinkedIn ONLY when the user filled them out. Each href is taken from the re-validated
+  // socialLinks above so a bad stored value never reaches an icon link.
+  const iconLinks: { platform: "github" | "x" | "linkedin"; label: string; url: string }[] = [
+    { platform: "github", label: "GitHub", url: `https://github.com/${u.handle}` },
+    ...(["x", "linkedin"] as const).flatMap((p) => {
+      const link = socialLinks.find((l) => l.platform === p);
+      return link ? [{ platform: p, label: link.label, url: link.url }] : [];
+    }),
+  ];
+
   const joined = u.createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
-  // Read-only profile body (bio, social links, usage stats + graph). Shown to everyone; for the owner
-  // it's hidden while the edit form is open (ProfileEditableBody) so the editing view stays clean.
+  // Read-only profile body (bio + usage stats + graph; social links live as icons in the header).
+  // Shown to everyone; for the owner it's hidden while the edit form is open (ProfileEditableBody) so
+  // the editing view stays clean.
   const readOnlyBody = (
     <>
       {u.bio && <p className={styles.bio}>{u.bio}</p>}
-
-      {socialLinks.length > 0 && (
-        <ul className={styles.links}>
-          {socialLinks.map((l) => (
-            <li key={l.platform}>
-              <a className={styles.link} href={l.url} target="_blank" rel="noopener noreferrer">
-                {l.label}
-              </a>
-            </li>
-          ))}
-        </ul>
-      )}
 
       {meEntry ? (
         <div className={styles.statsBlock}>
@@ -162,7 +163,22 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
         </a>
         <div className={styles.meta}>
           <span className={styles.joined}>Joined {joined}</span>
-          {meEntry?.tierPill && <span className={styles.pill}>{meEntry.tierPill.label}</span>}
+          <ul className={styles.socials}>
+            {iconLinks.map((l) => (
+              <li key={l.platform}>
+                <a
+                  className={styles.social}
+                  href={l.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={l.label}
+                  title={l.label}
+                >
+                  <SocialIcon platform={l.platform} />
+                </a>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
       {/* Owner controls (Edit + Sign Out) live in the header's top-right; hidden while editing. */}

@@ -86,16 +86,35 @@
   text-transform: uppercase;
   color: var(--ink-3-text);
 }
-.pill {
-  font-family: var(--term);
-  font-size: var(--fs-12);
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--coral-hi);
-  background: var(--coral-tint-12);
-  border: 1px solid var(--frame);
-  border-radius: 999px;
-  padding: 4px 10px;
+/* Social row in the header meta line: GitHub always, X / LinkedIn when filled. Icon-only links that
+   inherit color via currentColor, with a 44px tap target and a clear hover/focus affordance. */
+.socials {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+}
+.social {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  color: var(--ink-3-text);
+  border-radius: 8px;
+  transition:
+    color 0.12s,
+    background-color 0.12s;
+}
+.social:hover {
+  color: var(--ink);
+}
+.social:focus-visible {
+  outline: 2px solid var(--frame-hi);
+  outline-offset: 2px;
+  color: var(--ink);
 }
 /* The owner controls (Edit + Sign Out) sit in the header's top-right, aligned to the right of the
    avatar/name row — a compact cluster that adds no vertical band above the bio. While editing they're
@@ -114,35 +133,6 @@ div.editSlot {
   color: var(--ink);
   white-space: pre-wrap;
   word-break: break-word;
-}
-
-.links {
-  list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 16px;
-  padding: 0;
-}
-.link {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0 14px;
-  font-family: var(--term);
-  font-size: var(--fs-14);
-  letter-spacing: 0.5px;
-  color: var(--ink-2);
-  background: var(--panel);
-  border: 1px solid var(--frame);
-  border-radius: 8px;
-  transition:
-    color 0.12s,
-    border-color 0.12s;
-}
-.link:hover {
-  color: var(--ink);
-  border-color: var(--frame-hi);
 }
 
 .statsBlock {

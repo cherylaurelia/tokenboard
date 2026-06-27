@@ -11,7 +11,7 @@ import {
   platformLabel,
   platformPlaceholder,
   MAX_BIO_LEN,
-  MAX_URL_LEN,
+  MAX_HANDLE_LEN,
   type Platform,
 } from "@/lib/profile/social-links";
 import styles from "./edit-profile-form.module.css";
@@ -116,9 +116,9 @@ function ProfileEditForm() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         const map: Record<string, string> = {
-          invalid_social_links: "One of your links isn't valid. Use a handle or an https:// URL.",
+          invalid_social_links: "One of your handles isn't valid. Enter just the username.",
           invalid_bio: "Your bio is too long (max 280).",
-          invalid_request: "Check the form and try again.", // also the path an overlong website hits (zod cap)
+          invalid_request: "Check the form and try again.", // also the path an overlong value hits (zod cap)
           rate_limited: "Too many saves. Slow down and retry.",
           unauthorized: "Sign in to edit your profile.",
           banned: "Your account can't edit its profile.",
@@ -181,7 +181,7 @@ function ProfileEditForm() {
             value={links[p]}
             disabled={busy}
             placeholder={platformPlaceholder(p)}
-            maxLength={MAX_URL_LEN}
+            maxLength={MAX_HANDLE_LEN}
             onChange={(e) => setLinks((s) => ({ ...s, [p]: e.target.value }))}
           />
         </div>

@@ -10,11 +10,10 @@
 //            prefix), validate against a strict charset, then BUILD the https URL from a HARDCODED
 //            host literal. A handle can't smuggle a path/scheme because '/ : ? # @ whitespace' fail
 //            the charset.
-//   url    — only the free-form website field parses a user URL: reject a protocol-relative '//'
-//            value, prepend https:// to a bare host, then `new URL(value)` and require the PARSED
-//            protocol === 'https:'. Re-serialize via url.href so embedded quotes are percent-encoded.
+// Every platform is handle-type — there is NO free-form website/url field (deliberately removed so a
+// user can never paste an arbitrary URL into an <a href>).
 
-export const SOCIAL_PLATFORMS = ["x", "github", "website", "linkedin", "bluesky"] as const;
+export const SOCIAL_PLATFORMS = ["x", "github", "linkedin", "bluesky"] as const;
 export type Platform = (typeof SOCIAL_PLATFORMS)[number];
 
 // A blanket safety ceiling on handle input, applied BEFORE the per-platform regex runs. The regex is
@@ -22,7 +21,6 @@ export type Platform = (typeof SOCIAL_PLATFORMS)[number];
 // this must sit ABOVE the largest of those (bluesky's 253) or it would wrongly reject valid long
 // handles (e.g. a full bsky.social DID-ish handle) as "too long" before the regex could accept them.
 export const MAX_HANDLE_LEN = 256;
-export const MAX_URL_LEN = 200;
 export const MAX_BIO_LEN = 280;
 
 interface HandlePlatform {
@@ -34,18 +32,12 @@ interface HandlePlatform {
   toUrl: (handle: string) => string; // host is a HARDCODED literal
   placeholder: string;
 }
-interface UrlPlatform {
-  kind: "url";
-  label: string;
-  placeholder: string;
-}
 
-const PLATFORM_SPECS: Record<Platform, HandlePlatform | UrlPlatform> = {
+const PLATFORM_SPECS: Record<Platform, HandlePlatform> = {
   x: { kind: "handle", label: "X", re: /^[A-Za-z0-9_]{1,15}$/, toUrl: (h) => `https://x.com/${h}`, placeholder: "@handle" },
   github: { kind: "handle", label: "GitHub", re: /^[A-Za-z0-9-]{1,39}$/, toUrl: (h) => `https://github.com/${h}`, placeholder: "@handle" },
   linkedin: { kind: "handle", label: "LinkedIn", re: /^[A-Za-z0-9-]{1,100}$/, toUrl: (h) => `https://www.linkedin.com/in/${h}`, placeholder: "linkedin.com/in/your-name" },
   bluesky: { kind: "handle", label: "Bluesky", re: /^[A-Za-z0-9.-]{1,253}$/, toUrl: (h) => `https://bsky.app/profile/${h}`, placeholder: "name.bsky.social" },
-  website: { kind: "url", label: "Website", placeholder: "https://example.com" },
 };
 
 export function platformLabel(p: Platform): string {
@@ -89,32 +81,10 @@ export function buildSocialUrl(platform: Platform, storedValue: string): string 
   const value = storedValue.trim();
   if (!value) return null;
 
-  if (spec.kind === "handle") {
-    const h = stripHandle(value);
-    if (h.length === 0 || h.length > MAX_HANDLE_LEN) return null;
-    if (!spec.re.test(h)) return null; // strict charset — no '/ : ? # @ whitespace' -> no smuggling
-    return spec.toUrl(h);
-  }
-
-  // url-type (website): the ONLY user-URL parse path.
-  if (value.length > MAX_URL_LEN) return null;
-  // Reject a protocol-relative value up front. Without this, prepending https:// to "//evil.com"
-  // yields "https:////evil.com" -> parses to host evil.com (a silent host-swap into a normal https
-  // link). Rejecting it keeps the canonical href unambiguous (the user must type a real host/URL).
-  if (value.startsWith("//")) return null;
-  // Prepend https:// to a bare host ("acme-corp.com" -> "https://acme-corp.com"). If the user already
-  // typed a scheme we leave it so a non-https scheme is REJECTED below (never silently upgraded).
-  const candidate = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(value) ? value : `https://${value}`;
-  let url: URL;
-  try {
-    url = new URL(candidate); // no base arg; an internal tab/newline scheme makes this THROW
-  } catch {
-    return null;
-  }
-  if (url.protocol !== "https:") return null; // ALLOWLIST the parsed protocol; rejects javascript:/data:/vbscript:/file:/ftp:/http:
-  if (!url.hostname.includes(".")) return null; // require a real dotted host (no "localhost", no bare token)
-  if (url.href.length > MAX_URL_LEN) return null;
-  return url.href; // re-serialized: embedded quotes/angle-brackets are percent-encoded
+  const h = stripHandle(value);
+  if (h.length === 0 || h.length > MAX_HANDLE_LEN) return null;
+  if (!spec.re.test(h)) return null; // strict charset — no '/ : ? # @ whitespace' -> no smuggling
+  return spec.toUrl(h);
 }
 
 export type NormalizeResult =
@@ -122,9 +92,8 @@ export type NormalizeResult =
   | { ok: false; errors: Record<string, string> };
 
 // Validate an arbitrary input object into a stored social_links map. Unknown keys are DROPPED (never
-// stored). Empty/whitespace values OMIT the key. For each known key we store the user-facing value
-// (the stripped handle for handle-platforms; the full normalized https URL for website) and reject —
-// with a per-field error — anything buildSocialUrl can't produce a safe URL from.
+// stored). Empty/whitespace values OMIT the key. For each known key we store the stripped handle and
+// reject — with a per-field error — anything buildSocialUrl can't produce a safe URL from.
 export function normalizeSocialLinks(input: unknown): NormalizeResult {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
     return { ok: false, errors: { _: "social_links must be an object" } };
@@ -140,19 +109,17 @@ export function normalizeSocialLinks(input: unknown): NormalizeResult {
     }
     const value = raw.trim();
     if (value.length === 0) continue; // empty -> omit the key
-    const spec = PLATFORM_SPECS[key];
-    if (value.length > (spec.kind === "url" ? MAX_URL_LEN : MAX_HANDLE_LEN)) {
+    if (value.length > MAX_HANDLE_LEN) {
       errors[key] = "too long";
       continue;
     }
-    const built = buildSocialUrl(key, value);
-    if (built === null) {
+    if (buildSocialUrl(key, value) === null) {
       errors[key] = "invalid";
       continue;
     }
-    // Store the canonical user-facing form: full URL for website, stripped handle otherwise (so the
-    // edit form round-trips what the user meant, and the href is always rebuilt at render).
-    out[key] = spec.kind === "url" ? built : stripHandle(value);
+    // Store the stripped handle (so the edit form round-trips what the user meant, and the href is
+    // always rebuilt at render).
+    out[key] = stripHandle(value);
   }
 
   if (Object.keys(errors).length > 0) return { ok: false, errors };

@@ -7,46 +7,7 @@ import {
   MAX_BIO_LEN,
 } from "@/lib/profile/social-links";
 
-// --- buildSocialUrl: the scheme/host defense (the #1 risk) ---
-
-test("rejects dangerous schemes in the website field (null, never rendered)", () => {
-  assert.equal(buildSocialUrl("website", "javascript:alert(1)"), null);
-  assert.equal(buildSocialUrl("website", "JAVASCRIPT:alert(1)"), null);
-  assert.equal(buildSocialUrl("website", "java\tscript:alert(1)"), null);
-  assert.equal(buildSocialUrl("website", "java\nscript:alert(1)"), null);
-  assert.equal(buildSocialUrl("website", "  javascript:alert(1)  "), null);
-  assert.equal(buildSocialUrl("website", "data:text/html,<script>"), null);
-  assert.equal(buildSocialUrl("website", "vbscript:msgbox(1)"), null);
-  assert.equal(buildSocialUrl("website", "file:///etc/passwd"), null);
-  assert.equal(buildSocialUrl("website", "ftp://host/x"), null);
-});
-
-test("rejects protocol-relative //evil.com (host-swap vector)", () => {
-  assert.equal(buildSocialUrl("website", "//evil.com"), null); // explicit '//' reject
-});
-
-test("rejects non-https website (http is not silently upgraded)", () => {
-  assert.equal(buildSocialUrl("website", "http://acme-corp.com"), null);
-});
-
-test("rejects dotless / no-host website", () => {
-  assert.equal(buildSocialUrl("website", "localhost"), null);
-  assert.equal(buildSocialUrl("website", "https://localhost"), null);
-  assert.equal(buildSocialUrl("website", ""), null);
-});
-
-test("accepts a bare host and a full https URL for website (percent-encodes nasties)", () => {
-  assert.equal(buildSocialUrl("website", "acme-corp.com"), "https://acme-corp.com/");
-  assert.equal(buildSocialUrl("website", "https://acme-corp.com"), "https://acme-corp.com/");
-  const enc = buildSocialUrl("website", 'https://acme-corp.com/"><script>');
-  assert.ok(enc && !enc.includes('"') && !enc.includes("<")); // embedded quotes/brackets encoded
-});
-
-test("rejects an overlong website (length cap before parse)", () => {
-  assert.equal(buildSocialUrl("website", "https://acme-corp.com/" + "a".repeat(5000)), null);
-});
-
-// --- handle platforms: server-built host, strict charset, no smuggling ---
+// --- handle platforms: server-built host, strict charset, no smuggling (the #1 risk) ---
 
 test("x: strips leading @ and builds the canonical host", () => {
   assert.equal(buildSocialUrl("x", "@devon"), "https://x.com/devon");
@@ -99,15 +60,15 @@ test("drops unknown platform keys (never stored)", () => {
 });
 
 test("omits empty values; rejects an invalid one with a per-field error", () => {
-  const r = normalizeSocialLinks({ x: "  ", website: "javascript:alert(1)" });
+  const r = normalizeSocialLinks({ github: "  ", x: 'a"><script>' });
   assert.equal(r.ok, false);
-  if (!r.ok) assert.equal(r.errors.website, "invalid");
+  if (!r.ok) assert.equal(r.errors.x, "invalid");
 });
 
-test("stores the full https URL for website", () => {
-  const r = normalizeSocialLinks({ website: "acme-corp.com" });
+test("stores the stripped handle, not the built URL", () => {
+  const r = normalizeSocialLinks({ x: "@devon" });
   assert.ok(r.ok);
-  if (r.ok) assert.equal(r.value.website, "https://acme-corp.com/");
+  if (r.ok) assert.equal(r.value.x, "devon");
 });
 
 test("rejects a non-object input", () => {

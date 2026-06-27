@@ -1,7 +1,8 @@
 "use client";
 // Profile usage chart. Fed by a profile-only per-day series ({date, tokens, cost}) plus a per-tool
-// token breakdown. Features: a metric toggle (Tokens / Cost) driving the line + axes + readout; range
-// tabs (All time / 30 days / 7 days — daily data, so no sub-day/24h view); a summary metrics row
+// token breakdown. Features: a metric toggle ($ Spent / Tokens — order/default match the main board)
+// driving the line + axes + readout; range tabs (7 days / 30 days / All time — same order as the
+// board's window tabs; daily data, so no sub-day/24h view); a summary metrics row
 // (total / daily avg / peak / active days); a streak readout (current + longest active-day run); a
 // trend chip (% vs. the preceding equal-length period); a top-tool badge; and a per-tool breakdown
 // bar. A hover readout (date + value for the nearest day) appears only while pointing at the plot.
@@ -26,15 +27,16 @@ export interface ToolSlice {
   tokens: number;
 }
 
-// Ranges slice the trailing N days off the all-time series. 'all' keeps everything.
+// Ranges slice the trailing N days off the all-time series. 'all' keeps everything. Order mirrors the
+// main leaderboard's window tabs (7d -> 30d -> all) so the two surfaces read the same.
 const RANGES = [
-  { id: "all", label: "All time", days: null },
-  { id: "30d", label: "30 days", days: 30 },
   { id: "7d", label: "7 days", days: 7 },
+  { id: "30d", label: "30 days", days: 30 },
+  { id: "all", label: "All time", days: null },
 ] as const;
 type RangeId = (typeof RANGES)[number]["id"];
 
-type Metric = "tokens" | "cost";
+type Metric = "cost" | "tokens";
 
 function fmtTokens(t: number): string {
   const { value, unit } = humanizeTokens(t);
@@ -86,7 +88,7 @@ export function Sparkline({
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const [range, setRange] = useState<RangeId>("all");
-  const [metric, setMetric] = useState<Metric>("tokens");
+  const [metric, setMetric] = useState<Metric>("cost");
 
   const availableRanges = useMemo(
     () => RANGES.filter((r) => r.days === null || points.length > 2),
@@ -186,19 +188,19 @@ export function Sparkline({
         <div className={styles.tabs} role="group" aria-label="Metric">
           <button
             type="button"
+            aria-pressed={metric === "cost"}
+            className={`${styles.tab} ${metric === "cost" ? styles.tabActive : ""}`}
+            onClick={() => setMetric("cost")}
+          >
+            $ Spent
+          </button>
+          <button
+            type="button"
             aria-pressed={metric === "tokens"}
             className={`${styles.tab} ${metric === "tokens" ? styles.tabActive : ""}`}
             onClick={() => setMetric("tokens")}
           >
             Tokens
-          </button>
-          <button
-            type="button"
-            aria-pressed={metric === "cost"}
-            className={`${styles.tab} ${metric === "cost" ? styles.tabActive : ""}`}
-            onClick={() => setMetric("cost")}
-          >
-            Cost
           </button>
         </div>
       </div>
