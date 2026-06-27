@@ -1,17 +1,8 @@
 "use client";
-// Profile usage chart. Fed by a profile-only per-day series ({date, tokens, cost}). Features: a metric
-// toggle ($ Spent / Tokens — order/default match the main board) driving the line + axes + readout;
-// range tabs (7 days / 30 days / All time — same order as the board's window tabs; daily data, so no
-// sub-day/24h view); a summary metrics row (total / daily avg / peak / active days); and a streak
-// readout (current + longest active-day run). A hover readout (date + value for the nearest day)
-// appears only while pointing at the plot.
-// Client component for the toggles + pointer interaction; data is fully server-provided. PLACEMENT:
-// profile page only.
 import { useMemo, useRef, useState } from "react";
 import { humanizeTokens, formatUsd2dp } from "@/lib/format/money";
 import styles from "./sparkline.module.css";
 
-// Plot area (excludes axis gutters, which CSS-grid lays out around it).
 const W = 260;
 const H = 96;
 const P = 4;
@@ -21,8 +12,6 @@ export interface UsageDayPoint {
   tokens: number;
   cost: number;
 }
-// Ranges slice the trailing N days off the all-time series. 'all' keeps everything. Order mirrors the
-// main leaderboard's window tabs (7d -> 30d -> all) so the two surfaces read the same.
 const RANGES = [
   { id: "7d", label: "7 days", days: 7 },
   { id: "30d", label: "30 days", days: 30 },
@@ -44,7 +33,6 @@ function fmtDay(iso: string): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 }
 
-// Longest run + current trailing run of days with usage > 0.
 function streaks(vals: number[]): { current: number; longest: number } {
   let longest = 0;
   let run = 0;
@@ -78,7 +66,6 @@ export function Sparkline({
     [points.length],
   );
 
-  // Visible slice for the active range.
   const view = useMemo(() => {
     const days = RANGES.find((r) => r.id === range)?.days ?? null;
     if (days === null) return points;
@@ -135,7 +122,6 @@ export function Sparkline({
 
   return (
     <figure className={`${styles.chart} ${className ?? ""}`}>
-      {/* Controls: range tabs + metric toggle. */}
       <div className={styles.controls}>
         <div className={styles.tabs} role="tablist" aria-label="Usage time range">
           {availableRanges.map((r) => (
@@ -171,7 +157,6 @@ export function Sparkline({
         </div>
       </div>
 
-      {/* Summary metrics. */}
       <dl className={styles.metrics}>
         <div className={styles.metric}>
           <dt className={styles.metricKey}>Total</dt>
