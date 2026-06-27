@@ -57,7 +57,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
   if (!u) notFound();
 
   const v = await getViewer();
-  const viewer = v === "outage" ? null : v; // public page: outage -> anon, no edit
+  const viewer = v === "outage" ? null : v;
   const isOwner = viewer != null && viewer.userId === u.id;
 
   const query = boardQuerySchema.parse({
