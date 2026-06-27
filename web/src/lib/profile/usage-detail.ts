@@ -1,7 +1,3 @@
-// Profile-only usage detail for the rich profile chart: a per-day series carrying BOTH tokens and
-// cost (so the chart can toggle between them) over the window. This is intentionally separate from
-// the shared board sparkline (§7.2 {date,tokens}) — it's a profile-page read, not part of the cached
-// board contract, so it doesn't bloat the board API/cache.
 import "server-only";
 import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
@@ -9,16 +5,15 @@ import { inList } from "@/lib/leaderboard/window-sums";
 import { dateRangeList } from "@/lib/leaderboard/windows";
 
 export interface UsageDayPoint {
-  date: string; // YYYY-MM-DD
+  date: string;
   tokens: number;
-  cost: number; // USD
+  cost: number; 
 }
 
 export interface ProfileUsageDetail {
   points: UsageDayPoint[];
 }
 
-// windowStart/windowEnd are inclusive ISO dates (the board's sparkline bounds). One user.
 export async function profileUsageDetail(
   userId: string,
   windowStart: string,
@@ -26,7 +21,6 @@ export async function profileUsageDetail(
 ): Promise<ProfileUsageDetail> {
   const dates = dateRangeList(windowStart, windowEnd);
 
-  // Per-day tokens + cost from the cross-device totals table (board score source).
   const dayRows = (await db.execute(sql`
     select date::text as date, sum(tokens)::text as tokens, coalesce(sum(cost_usd),0)::text as cost_usd
     from usage_day_total
