@@ -2,6 +2,7 @@
 // like the prototype's cosmetic state). Takes a resolved viewer + the active nav key + the current
 // path (for the sign-in return target). Renders the wordmark, the primary links (Global, My
 // Communities, GitHub), and either a @handle chip (signed in) or a CLAIM YOUR SPOT button (anon).
+// Sign Out is NOT here — it lives in the owner-only edit-profile form (one place, not every page).
 import Link from "next/link";
 import styles from "./site-nav.module.css";
 import type { Viewer } from "@/lib/auth/get-viewer";

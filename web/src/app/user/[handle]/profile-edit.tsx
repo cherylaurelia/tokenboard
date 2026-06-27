@@ -1,31 +1,81 @@
 "use client";
-// Owner-only inline edit. Mounted by the server page ONLY when isOwner. An "Edit profile" button
-// reveals a real <form>: a bio <textarea maxLength=280> + one <input> per platform. POST
-// /api/v1/profile -> on ok router.refresh() (re-renders the force-dynamic server profile with the
-// saved values) and collapse. Non-owners never mount this. Composes form-shell.module.css.
-import { useState } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   SOCIAL_PLATFORMS,
   platformLabel,
   platformPlaceholder,
   MAX_BIO_LEN,
-  MAX_URL_LEN,
+  MAX_HANDLE_LEN,
   type Platform,
 } from "@/lib/profile/social-links";
 import styles from "./edit-profile-form.module.css";
 
-export function EditProfileForm({
+interface EditState {
+  open: boolean;
+  setOpen: (v: boolean) => void;
+  initialBio: string;
+  initialLinks: Record<string, string>;
+  githubHandle: string;
+}
+
+const Ctx = createContext<EditState | null>(null);
+
+function useEdit(): EditState {
+  const ctx = useContext(Ctx);
+  if (!ctx) throw new Error("Profile edit components must be used within <ProfileEditProvider>");
+  return ctx;
+}
+
+export function ProfileEditProvider({
   initialBio,
   initialLinks,
-  className,
+  githubHandle,
+  children,
 }: {
   initialBio: string;
   initialLinks: Record<string, string>;
-  className?: string;
+  githubHandle: string;
+  children: ReactNode;
 }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
+  return (
+    <Ctx.Provider value={{ open, setOpen, initialBio, initialLinks, githubHandle }}>
+      {children}
+    </Ctx.Provider>
+  );
+}
+
+export function ProfileHeaderActions({ className }: { className?: string }) {
+  const { open, setOpen } = useEdit();
+  if (open) return null;
+  return (
+    <div className={`${styles.headActions} ${className ?? ""}`}>
+      <button
+        type="button"
+        className={`${styles.btn} ${styles.btnGhost}`}
+        onClick={() => setOpen(true)}
+      >
+        Edit profile
+      </button>
+      <form action="/api/auth/logout" method="post" className={styles.signoutForm}>
+        <button type="submit" className={`${styles.btn} ${styles.btnGhost} ${styles.signout}`}>
+          Sign Out
+        </button>
+      </form>
+    </div>
+  );
+}
+
+export function ProfileEditableBody({ children }: { children: ReactNode }) {
+  const { open } = useEdit();
+  if (open) return <ProfileEditForm />;
+  return <>{children}</>;
+}
+
+function ProfileEditForm() {
+  const router = useRouter();
+  const { setOpen, initialBio, initialLinks, githubHandle } = useEdit();
   const [bio, setBio] = useState(initialBio);
   const [links, setLinks] = useState<Record<Platform, string>>(
     () =>
@@ -37,24 +87,14 @@ export function EditProfileForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!open) {
-    return (
-      <button
-        type="button"
-        className={`${styles.btn} ${styles.btnGhost} ${className ?? ""}`}
-        onClick={() => setOpen(true)}
-      >
-        Edit profile
-      </button>
-    );
-  }
-
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
     const social_links = Object.fromEntries(
-      SOCIAL_PLATFORMS.map((p) => [p, links[p].trim()] as const).filter(([, v]) => v.length > 0),
+      SOCIAL_PLATFORMS.map(
+        (p) => [p, (p === "github" ? githubHandle : links[p]).trim()] as const,
+      ).filter(([, v]) => v.length > 0),
     );
     try {
       const res = await fetch("/api/v1/profile", {
@@ -65,9 +105,9 @@ export function EditProfileForm({
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         const map: Record<string, string> = {
-          invalid_social_links: "One of your links isn't valid. Use a handle or an https:// URL.",
+          invalid_social_links: "One of your handles isn't valid. Enter just the username.",
           invalid_bio: "Your bio is too long (max 280).",
-          invalid_request: "Check the form and try again.", // also the path an overlong website hits (zod cap)
+          invalid_request: "Check the form and try again.",
           rate_limited: "Too many saves. Slow down and retry.",
           unauthorized: "Sign in to edit your profile.",
           banned: "Your account can't edit its profile.",
@@ -76,9 +116,8 @@ export function EditProfileForm({
         return;
       }
       setOpen(false);
-      router.refresh(); // re-fetch the force-dynamic server component (fresh bio/links from Postgres)
+      router.refresh();
     } catch {
-      // A thrown fetch (offline / network error) must not leave the form stuck busy.
       setError("Couldn't save. Check your connection and try again.");
     } finally {
       setBusy(false);
@@ -86,7 +125,7 @@ export function EditProfileForm({
   }
 
   return (
-    <form className={`${styles.form} ${className ?? ""}`} onSubmit={onSubmit}>
+    <form className={styles.form} onSubmit={onSubmit}>
       <label className={styles.label} htmlFor="p-bio">
         Bio
       </label>
@@ -103,7 +142,21 @@ export function EditProfileForm({
       <span className={styles.counter}>
         {bio.length}/{MAX_BIO_LEN}
       </span>
-      {SOCIAL_PLATFORMS.map((p) => (
+      <div className={styles.field}>
+        <label className={styles.label} htmlFor="p-github">
+          {platformLabel("github")}
+        </label>
+        <input
+          id="p-github"
+          className={`${styles.input} ${styles.inputLocked}`}
+          value={githubHandle}
+          readOnly
+          aria-readonly="true"
+          title="Linked to the GitHub account you signed in with"
+        />
+        <span className={styles.lockedNote}>From your GitHub login</span>
+      </div>
+      {SOCIAL_PLATFORMS.filter((p) => p !== "github").map((p) => (
         <div key={p} className={styles.field}>
           <label className={styles.label} htmlFor={`p-${p}`}>
             {platformLabel(p)}
@@ -114,7 +167,7 @@ export function EditProfileForm({
             value={links[p]}
             disabled={busy}
             placeholder={platformPlaceholder(p)}
-            maxLength={MAX_URL_LEN}
+            maxLength={MAX_HANDLE_LEN}
             onChange={(e) => setLinks((s) => ({ ...s, [p]: e.target.value }))}
           />
         </div>

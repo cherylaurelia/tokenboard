@@ -16,13 +16,19 @@ import { listMyCommunities } from "@/lib/leaderboard/list-my-communities";
 import { WEB_DEFAULT_METRIC, WEB_DEFAULT_WINDOW } from "@/lib/board/web-defaults";
 import { formatUsd2dp } from "@/lib/format/money";
 import { buildSocialUrl, SOCIAL_PLATFORMS, platformLabel, type Platform } from "@/lib/profile/social-links";
+import { profileUsageDetail } from "@/lib/profile/usage-detail";
 import { SiteNav } from "@/components/site-nav";
 import { SiteFooter } from "@/components/site-footer";
 import { Sparkline } from "@/components/sparkline";
 import { DeltaArrow } from "@/components/board/delta-arrow";
 import { MembershipCard } from "@/components/profile/membership-card";
+import { SocialIcon } from "@/components/profile/social-icon";
 import { CopyCommand } from "@/components/landing/copy-command";
-import { EditProfileForm } from "./edit-profile-form";
+import {
+  ProfileEditProvider,
+  ProfileHeaderActions,
+  ProfileEditableBody,
+} from "./profile-edit";
 import styles from "./profile.module.css";
 
 export const runtime = "nodejs";
@@ -51,7 +57,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
   if (!u) notFound();
 
   const v = await getViewer();
-  const viewer = v === "outage" ? null : v; // public page: outage -> anon, no edit
+  const viewer = v === "outage" ? null : v;
   const isOwner = viewer != null && viewer.userId === u.id;
 
   const query = boardQuerySchema.parse({
@@ -71,10 +77,13 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
   const meEntry = board.me?.inTopN === false ? board.me.entry : board.entries.find((e) => e.isMe) ?? null;
   const rank = board.me?.rank ?? null;
 
+  const usageDetail =
+    meEntry && meEntry.sparkline.length > 1
+      ? await profileUsageDetail(u.id, board.windowStart, board.windowEnd)
+      : null;
+
   const boards = await listMyCommunities(u.id, isOwner);
 
-  // Re-validate every stored link at render (the href is always server-built; a bad stored value is
-  // silently dropped, never rendered).
   const socialLinks: SafeLink[] = SOCIAL_PLATFORMS.map((p): SafeLink | null => {
     const stored = u.socialLinks?.[p];
     if (typeof stored !== "string" || stored.length === 0) return null;
@@ -82,92 +91,118 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
     return url ? { platform: p, label: platformLabel(p), url } : null;
   }).filter((x): x is SafeLink => x !== null);
 
-  const joined = u.createdAt.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  const iconLinks: { platform: "github" | "x" | "linkedin"; label: string; url: string }[] = [
+    { platform: "github", label: "GitHub", url: `https://github.com/${u.handle}` },
+    ...(["x", "linkedin"] as const).flatMap((p) => {
+      const link = socialLinks.find((l) => l.platform === p);
+      return link ? [{ platform: p, label: link.label, url: link.url }] : [];
+    }),
+  ];
+
+  const joined = u.createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+  const readOnlyBody = (
+    <>
+      {u.bio && <p className={styles.bio}>{u.bio}</p>}
+
+      {meEntry ? (
+        <div className={styles.statsBlock}>
+          <div className={styles.stats}>
+            <span className={styles.big}>{formatUsd2dp(meEntry.cost)}</span>
+            <DeltaArrow delta={meEntry.delta} className={styles.bigElo} />
+          </div>
+          {rank !== null && (
+            <span className={styles.rank}>
+              Global Rank #{rank} of {board.totalEntries}
+            </span>
+          )}
+          {usageDetail && (
+            <Sparkline points={usageDetail.points} className={styles.spark} />
+          )}
+        </div>
+      ) : isOwner ? (
+        <div className={styles.emptyOwner}>
+          <p className={styles.emptyMsg}>
+            You&rsquo;re signed in, but no usage has synced yet. Run this to get on the board:
+          </p>
+          <div className={styles.emptyCmd}>
+            <code className={styles.emptyCmdText}>{NPX}</code>
+            <CopyCommand value={NPX} />
+          </div>
+        </div>
+      ) : (
+        <p className={styles.empty}>No synced usage yet for @{u.handle}.</p>
+      )}
+    </>
+  );
+
+  const header = (
+    <header className={styles.head}>
+      <img
+        className={`${styles.pfpLg} noPixelate`}
+        src={u.avatar ?? `https://github.com/${u.handle}.png`}
+        alt={`@${u.handle}`}
+        width={88}
+        height={88}
+        loading="lazy"
+      />
+      <div className={styles.who}>
+        <h1 className={styles.name}>{u.displayName ?? `@${u.handle}`}</h1>
+        <a
+          className={styles.atLink}
+          href={`https://github.com/${u.handle}`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          @{u.handle}
+        </a>
+        <div className={styles.meta}>
+          <span className={styles.joined}>Joined {joined}</span>
+          <ul className={styles.socials}>
+            {iconLinks.map((l) => (
+              <li key={l.platform}>
+                <a
+                  className={styles.social}
+                  href={l.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={l.label}
+                  title={l.label}
+                >
+                  <SocialIcon
+                    platform={l.platform}
+                    size={l.platform === "x" ? 17 : 15}
+                    className={l.platform === "x" ? styles.iconX : undefined}
+                  />
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+      {isOwner && viewer && <ProfileHeaderActions className={styles.editSlot} />}
+    </header>
+  );
 
   return (
     <div className={`${styles.surfaceBoardBase} ${styles.surfaceBoardArcade}`}>
       <SiteNav active="profile" viewer={viewer} currentPath={`/user/${u.handle}`} />
       <main className={styles.shell}>
         <section className={styles.card}>
-          <header className={styles.head}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              className={`${styles.pfpLg} noPixelate`}
-              src={u.avatar ?? `https://github.com/${u.handle}.png`}
-              alt={`@${u.handle}`}
-              width={88}
-              height={88}
-              loading="lazy"
-            />
-            <div className={styles.who}>
-              <h1 className={styles.name}>{u.displayName ?? `@${u.handle}`}</h1>
-              <span className={styles.at}>@{u.handle}</span>
-              <div className={styles.meta}>
-                <span className={styles.joined}>Joined {joined}</span>
-                {meEntry?.tierPill && <span className={styles.pill}>{meEntry.tierPill.label}</span>}
-              </div>
-            </div>
-          </header>
-
-          {/* Outside .head: the form is full-width below the header, never squeezed into the flex row. */}
-          {isOwner && (
-            <EditProfileForm
+          {isOwner && viewer ? (
+            <ProfileEditProvider
               initialBio={u.bio ?? ""}
               initialLinks={u.socialLinks ?? {}}
-              className={styles.editSlot}
-            />
-          )}
-
-          {u.bio && <p className={styles.bio}>{u.bio}</p>}
-
-          {socialLinks.length > 0 && (
-            <ul className={styles.links}>
-              {socialLinks.map((l) => (
-                <li key={l.platform}>
-                  <a className={styles.link} href={l.url} target="_blank" rel="noopener noreferrer">
-                    {l.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {meEntry ? (
-            <div className={styles.statsBlock}>
-              <div className={styles.stats}>
-                <span className={styles.big}>{formatUsd2dp(meEntry.cost)}</span>
-                <DeltaArrow delta={meEntry.delta} className={styles.bigElo} />
-              </div>
-              {rank !== null && (
-                <span className={styles.rank}>
-                  Global Rank #{rank} of {board.totalEntries}
-                </span>
-              )}
-              {meEntry.sparkline.length > 1 && (
-                <Sparkline points={meEntry.sparkline} className={styles.spark} />
-              )}
-            </div>
+              githubHandle={viewer.handle}
+            >
+              {header}
+              <ProfileEditableBody>{readOnlyBody}</ProfileEditableBody>
+            </ProfileEditProvider>
           ) : (
-            <div className={styles.statsBlock}>
-              <div className={styles.stats}>
-                <span className={styles.big}>{formatUsd2dp(0)}</span>
-              </div>
-              {isOwner ? (
-                // The owner signed in via the web but hasn't synced any usage — they're at $0 and not
-                // on the board yet. Tell them exactly what unlocks a real number: the CLI.
-                <div className={styles.emptyOwner}>
-                  <p className={styles.emptyMsg}>
-                    You&rsquo;re signed in, but no usage has synced yet. Run this to get on the board:
-                  </p>
-                  <div className={styles.emptyCmd}>
-                    <code className={styles.emptyCmdText}>{NPX}</code>
-                    <CopyCommand value={NPX} />
-                  </div>
-                </div>
-              ) : (
-                <p className={styles.empty}>No synced usage yet for @{u.handle}.</p>
-              )}
-            </div>
+            <>
+              {header}
+              {readOnlyBody}
+            </>
           )}
         </section>
 
