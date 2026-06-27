@@ -25,7 +25,7 @@
 
 .head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 16px;
   flex-wrap: wrap;
 }
@@ -44,6 +44,9 @@
   gap: 4px;
   min-width: 0;
   flex: 1 1 auto;
+  /* Bias the text column slightly below dead-center for better optical balance with the avatar. */
+  position: relative;
+  top: 1px;
 }
 .name {
   font-family: var(--handle);
@@ -59,7 +62,6 @@
   font-size: var(--fs-15);
   color: var(--ink-2);
 }
-/* The header @handle as an outbound GitHub link: same look as .at, with a hover affordance. */
 .atLink {
   width: fit-content;
   font-family: var(--handle);
@@ -85,28 +87,38 @@
   letter-spacing: 1px;
   text-transform: uppercase;
   color: var(--ink-3-text);
+  /* Optically center the uppercase term text against the 22px icon boxes in the same row. */
+  position: relative;
+  top: 1px;
 }
-/* Social row in the header meta line: GitHub always, X / LinkedIn when filled. Icon-only links that
-   inherit color via currentColor, with a 44px tap target and a clear hover/focus affordance. */
 .socials {
   list-style: none;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 0;
   margin: 0;
+  margin-left: -4px;
   padding: 0;
+  /* Lift the icon row a couple px so it optically aligns with the uppercase "Joined" text. */
+  position: relative;
+  top: -0.5px;
 }
 .social {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 22px;
+  height: 22px;
   color: var(--ink-3-text);
-  border-radius: 8px;
+  border-radius: 6px;
   transition:
     color 0.12s,
     background-color 0.12s;
+}
+/* The X glyph's path sits optically high within its viewBox; nudge it down to baseline-match GitHub. */
+.iconX {
+  position: relative;
+  top: 1px;
 }
 .social:hover {
   color: var(--ink);

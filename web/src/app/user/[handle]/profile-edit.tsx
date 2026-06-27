@@ -118,7 +118,7 @@ function ProfileEditForm() {
         const map: Record<string, string> = {
           invalid_social_links: "One of your handles isn't valid. Enter just the username.",
           invalid_bio: "Your bio is too long (max 280).",
-          invalid_request: "Check the form and try again.", // also the path an overlong value hits (zod cap)
+          invalid_request: "Check the form and try again.",
           rate_limited: "Too many saves. Slow down and retry.",
           unauthorized: "Sign in to edit your profile.",
           banned: "Your account can't edit its profile.",

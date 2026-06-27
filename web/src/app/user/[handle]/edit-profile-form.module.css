@@ -40,7 +40,6 @@
   align-items: stretch;
   gap: 8px;
   flex: none;
-  align-self: flex-start;
 }
 .signoutForm {
   display: flex;

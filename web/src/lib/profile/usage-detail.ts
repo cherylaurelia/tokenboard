@@ -1,7 +1,7 @@
 // Profile-only usage detail for the rich profile chart: a per-day series carrying BOTH tokens and
-// cost (so the chart can toggle between them) plus a per-tool token breakdown over the same window.
-// This is intentionally separate from the shared board sparkline (§7.2 {date,tokens}) — it's a
-// profile-page read, not part of the cached board contract, so it doesn't bloat the board API/cache.
+// cost (so the chart can toggle between them) over the window. This is intentionally separate from
+// the shared board sparkline (§7.2 {date,tokens}) — it's a profile-page read, not part of the cached
+// board contract, so it doesn't bloat the board API/cache.
 import "server-only";
 import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
@@ -14,14 +14,8 @@ export interface UsageDayPoint {
   cost: number; // USD
 }
 
-export interface ToolSlice {
-  tool: string;
-  tokens: number;
-}
-
 export interface ProfileUsageDetail {
   points: UsageDayPoint[];
-  tools: ToolSlice[]; // descending by tokens
 }
 
 // windowStart/windowEnd are inclusive ISO dates (the board's sparkline bounds). One user.
@@ -49,17 +43,5 @@ export async function profileUsageDetail(
     return { date: d, tokens: v?.tokens ?? 0, cost: v?.cost ?? 0 };
   });
 
-  // Per-tool token totals across the window (usage_day carries the per-tool rows).
-  const toolRows = (await db.execute(sql`
-    select tool, sum(tokens)::text as tokens
-    from usage_day
-    where user_id in ${inList([userId])} and date between ${windowStart} and ${windowEnd}
-    group by tool
-    having sum(tokens) > 0
-    order by sum(tokens) desc, tool asc
-  `)) as unknown as Array<{ tool: string; tokens: string }>;
-
-  const tools: ToolSlice[] = toolRows.map((r) => ({ tool: r.tool, tokens: Number(r.tokens) }));
-
-  return { points, tools };
+  return { points };
 }

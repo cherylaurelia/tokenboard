@@ -1,11 +1,10 @@
 "use client";
-// Profile usage chart. Fed by a profile-only per-day series ({date, tokens, cost}) plus a per-tool
-// token breakdown. Features: a metric toggle ($ Spent / Tokens — order/default match the main board)
-// driving the line + axes + readout; range tabs (7 days / 30 days / All time — same order as the
-// board's window tabs; daily data, so no sub-day/24h view); a summary metrics row
-// (total / daily avg / peak / active days); a streak readout (current + longest active-day run); a
-// trend chip (% vs. the preceding equal-length period); a top-tool badge; and a per-tool breakdown
-// bar. A hover readout (date + value for the nearest day) appears only while pointing at the plot.
+// Profile usage chart. Fed by a profile-only per-day series ({date, tokens, cost}). Features: a metric
+// toggle ($ Spent / Tokens — order/default match the main board) driving the line + axes + readout;
+// range tabs (7 days / 30 days / All time — same order as the board's window tabs; daily data, so no
+// sub-day/24h view); a summary metrics row (total / daily avg / peak / active days); and a streak
+// readout (current + longest active-day run). A hover readout (date + value for the nearest day)
+// appears only while pointing at the plot.
 // Client component for the toggles + pointer interaction; data is fully server-provided. PLACEMENT:
 // profile page only.
 import { useMemo, useRef, useState } from "react";
@@ -22,11 +21,6 @@ export interface UsageDayPoint {
   tokens: number;
   cost: number;
 }
-export interface ToolSlice {
-  tool: string;
-  tokens: number;
-}
-
 // Ranges slice the trailing N days off the all-time series. 'all' keeps everything. Order mirrors the
 // main leaderboard's window tabs (7d -> 30d -> all) so the two surfaces read the same.
 const RANGES = [
@@ -50,13 +44,6 @@ function fmtDay(iso: string): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 }
 
-// Pretty tool label — the raw value is a slug-ish id (e.g. "claude-code"). Title-case the words.
-function toolLabel(tool: string): string {
-  return tool
-    .replace(/[-_]+/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
 // Longest run + current trailing run of days with usage > 0.
 function streaks(vals: number[]): { current: number; longest: number } {
   let longest = 0;
@@ -76,13 +63,9 @@ function streaks(vals: number[]): { current: number; longest: number } {
 
 export function Sparkline({
   points,
-  tools,
-  topTool,
   className,
 }: {
   points: UsageDayPoint[];
-  tools: ToolSlice[];
-  topTool: string | null;
   className?: string;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -95,21 +78,13 @@ export function Sparkline({
     [points.length],
   );
 
-  // Visible slice for the active range, plus the equal-length window immediately before it (for the
-  // trend chip). For 'all' the "previous" window is the first half vs. the second half.
-  const { view, prevSum } = useMemo(() => {
+  // Visible slice for the active range.
+  const view = useMemo(() => {
     const days = RANGES.find((r) => r.id === range)?.days ?? null;
-    const valOf = (p: UsageDayPoint) => (metric === "cost" ? p.cost : p.tokens);
-    if (days === null) {
-      const half = Math.floor(points.length / 2);
-      const prev = points.slice(0, half).reduce((a, p) => a + valOf(p), 0);
-      return { view: points, prevSum: half > 0 ? prev : null };
-    }
+    if (days === null) return points;
     const start = Math.max(0, points.length - days);
-    const prevStart = Math.max(0, start - days);
-    const prev = start > prevStart ? points.slice(prevStart, start).reduce((a, p) => a + valOf(p), 0) : null;
-    return { view: points.slice(start), prevSum: prev };
-  }, [points, range, metric]);
+    return points.slice(start);
+  }, [points, range]);
 
   const geom = useMemo(() => {
     if (view.length < 2) return null;
@@ -142,15 +117,6 @@ export function Sparkline({
   const first = view[0]!;
   const last = view[view.length - 1]!;
   const gridYs = [yFor(max), yFor(mid), yFor(min)];
-
-  // Trend: active total vs. the preceding equal-length window.
-  const trendPct =
-    prevSum !== null && prevSum > 0 ? ((total - prevSum) / prevSum) * 100 : null;
-
-  // Per-tool breakdown (window-wide totals from the server). Top 4 + an "Other" remainder.
-  const toolTotal = tools.reduce((a, t) => a + t.tokens, 0);
-  const topTools = tools.slice(0, 4);
-  const otherTokens = tools.slice(4).reduce((a, t) => a + t.tokens, 0);
 
   function onMove(e: React.PointerEvent<SVGSVGElement>) {
     const svg = svgRef.current;
@@ -216,7 +182,7 @@ export function Sparkline({
           <dd className={styles.metricVal}>{fmtMetric(avg, metric)}</dd>
         </div>
         <div className={styles.metric}>
-          <dt className={styles.metricKey}>Peak</dt>
+          <dt className={styles.metricKey}>Highest</dt>
           <dd className={styles.metricVal}>{fmtMetric(max, metric)}</dd>
         </div>
         <div className={styles.metric}>
@@ -227,23 +193,6 @@ export function Sparkline({
           </dd>
         </div>
       </dl>
-
-      {/* Trend chip + top-tool badge. */}
-      <div className={styles.badges}>
-        {trendPct !== null && (
-          <span
-            className={`${styles.trend} ${trendPct >= 0 ? styles.trendUp : styles.trendDown}`}
-            title="Versus the preceding equal-length period"
-          >
-            {trendPct >= 0 ? "▲" : "▼"} {Math.abs(trendPct).toFixed(0)}% vs prev
-          </span>
-        )}
-        {topTool && (
-          <span className={styles.topTool}>
-            Top tool: <strong>{toolLabel(topTool)}</strong>
-          </span>
-        )}
-      </div>
 
       <div className={styles.grid}>
         <ul className={styles.yAxis} aria-hidden="true">
@@ -293,47 +242,6 @@ export function Sparkline({
           <span className={styles.xTick}>{fmtDay(last.date)}</span>
         </div>
       </div>
-
-      {/* Per-tool breakdown — window-wide token share across tools. */}
-      {toolTotal > 0 && (
-        <div className={styles.tools}>
-          <div className={styles.toolBar} aria-hidden="true">
-            {topTools.map((t, i) => (
-              <span
-                key={t.tool}
-                className={styles.toolSeg}
-                data-i={i}
-                style={{ width: `${(t.tokens / toolTotal) * 100}%` }}
-                title={`${toolLabel(t.tool)} · ${fmtTokens(t.tokens)}`}
-              />
-            ))}
-            {otherTokens > 0 && (
-              <span
-                className={styles.toolSeg}
-                data-i={4}
-                style={{ width: `${(otherTokens / toolTotal) * 100}%` }}
-                title={`Other · ${fmtTokens(otherTokens)}`}
-              />
-            )}
-          </div>
-          <ul className={styles.toolLegend}>
-            {topTools.map((t, i) => (
-              <li key={t.tool} className={styles.toolItem}>
-                <span className={styles.toolDot} data-i={i} />
-                <span className={styles.toolName}>{toolLabel(t.tool)}</span>
-                <span className={styles.toolPct}>{Math.round((t.tokens / toolTotal) * 100)}%</span>
-              </li>
-            ))}
-            {otherTokens > 0 && (
-              <li className={styles.toolItem}>
-                <span className={styles.toolDot} data-i={4} />
-                <span className={styles.toolName}>Other</span>
-                <span className={styles.toolPct}>{Math.round((otherTokens / toolTotal) * 100)}%</span>
-              </li>
-            )}
-          </ul>
-        </div>
-      )}
     </figure>
   );
 }

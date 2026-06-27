@@ -92,9 +92,6 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
     return url ? { platform: p, label: platformLabel(p), url } : null;
   }).filter((x): x is SafeLink => x !== null);
 
-  // Header social row: GitHub always (the handle IS the GitHub username, so build the URL directly),
-  // then X / LinkedIn ONLY when the user filled them out. Each href is taken from the re-validated
-  // socialLinks above so a bad stored value never reaches an icon link.
   const iconLinks: { platform: "github" | "x" | "linkedin"; label: string; url: string }[] = [
     { platform: "github", label: "GitHub", url: `https://github.com/${u.handle}` },
     ...(["x", "linkedin"] as const).flatMap((p) => {
@@ -105,9 +102,6 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
 
   const joined = u.createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
-  // Read-only profile body (bio + usage stats + graph; social links live as icons in the header).
-  // Shown to everyone; for the owner it's hidden while the edit form is open (ProfileEditableBody) so
-  // the editing view stays clean.
   const readOnlyBody = (
     <>
       {u.bio && <p className={styles.bio}>{u.bio}</p>}
@@ -124,12 +118,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
             </span>
           )}
           {usageDetail && (
-            <Sparkline
-              points={usageDetail.points}
-              tools={usageDetail.tools}
-              topTool={meEntry.topTool ?? null}
-              className={styles.spark}
-            />
+            <Sparkline points={usageDetail.points} className={styles.spark} />
           )}
         </div>
       ) : (
@@ -151,8 +140,6 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
       />
       <div className={styles.who}>
         <h1 className={styles.name}>{u.displayName ?? `@${u.handle}`}</h1>
-        {/* The handle IS the GitHub username (avatar resolves from github.com/<handle>.png),
-            so link it out to the profile — works for everyone, edited or not. */}
         <a
           className={styles.atLink}
           href={`https://github.com/${u.handle}`}
@@ -174,7 +161,11 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
                   aria-label={l.label}
                   title={l.label}
                 >
-                  <SocialIcon platform={l.platform} />
+                  <SocialIcon
+                    platform={l.platform}
+                    size={l.platform === "x" ? 17 : 15}
+                    className={l.platform === "x" ? styles.iconX : undefined}
+                  />
                 </a>
               </li>
             ))}

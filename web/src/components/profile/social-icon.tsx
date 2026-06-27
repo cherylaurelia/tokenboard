@@ -1,9 +1,5 @@
-// Brand glyphs for the profile's social row. Inline single-path SVGs (no icon dependency) drawn in
-// `currentColor` so they inherit the link color + hover state from CSS. `decorative` is the default —
-// the wrapping <a> carries the accessible label — but a standalone icon can pass a `title`.
 import type { Platform } from "@/lib/profile/social-links";
 
-// Only the platforms the profile row renders need a glyph (github always; x / linkedin when filled).
 type IconPlatform = Extract<Platform, "github" | "x" | "linkedin">;
 
 const PATHS: Record<IconPlatform, string> = {
