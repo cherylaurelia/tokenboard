@@ -1,9 +1,4 @@
 "use client";
-// Owner-only profile editing, split across the header (action buttons) and the card body (read-only
-// content vs the edit form) but sharing ONE open/close state via context. Mounted by the server page
-// ONLY when isOwner. When open, the read-only body (bio/links/graph) is hidden and the form takes its
-// place, so the editing view is clean — no stale content alongside the inputs. POST /api/v1/profile
-// -> on ok router.refresh() (re-renders the force-dynamic server profile) and collapse.
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -63,7 +58,6 @@ export function ProfileHeaderActions({ className }: { className?: string }) {
       >
         Edit profile
       </button>
-      {/* Separate <form> POST so it's a clean, prefetch-safe session end. */}
       <form action="/api/auth/logout" method="post" className={styles.signoutForm}>
         <button type="submit" className={`${styles.btn} ${styles.btnGhost} ${styles.signout}`}>
           Sign Out
@@ -148,8 +142,6 @@ function ProfileEditForm() {
       <span className={styles.counter}>
         {bio.length}/{MAX_BIO_LEN}
       </span>
-      {/* GitHub first: it's the locked identity field (from sign-in), styled as read-only so it
-          reads as not editable. The remaining platforms below are the editable inputs. */}
       <div className={styles.field}>
         <label className={styles.label} htmlFor="p-github">
           {platformLabel("github")}
