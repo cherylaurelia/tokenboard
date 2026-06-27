@@ -1,0 +1,60 @@
+/* Shared route-transition skeleton. Reuses the board surface base (column shell + coral wash) so the
+   instant loading.tsx matches the page that's about to render, then a shimmer placeholder block grid.
+   Plain blocks only — no page data/viewer needed (loading.tsx renders before the server fetch). */
+.surface {
+  composes: surfaceBoardBase from global;
+}
+
+.shell {
+  width: 100%;
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 28px 20px 48px;
+  flex: 1;
+}
+
+.bar {
+  height: 56px;
+  border-bottom: 1px solid var(--frame-hi);
+  margin-bottom: 28px;
+}
+
+.block {
+  border-radius: 4px;
+  background: var(--coral-wash-05);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--coral-wash-045) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.2s ease-in-out infinite;
+}
+
+.title {
+  height: 32px;
+  width: 240px;
+  margin-bottom: 20px;
+}
+
+.row {
+  height: 44px;
+  margin-bottom: 10px;
+}
+
+.row:nth-child(2) { width: 96%; }
+.row:nth-child(3) { width: 88%; }
+.row:nth-child(4) { width: 92%; }
+.row:nth-child(5) { width: 80%; }
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .block {
+    animation: none;
+  }
+}

@@ -7,6 +7,7 @@ import { CopyCommand } from "@/components/landing/copy-command";
 import { Reveal } from "@/components/landing/reveal";
 import { SiteFooter } from "@/components/site-footer";
 import { getViewer } from "@/lib/auth/get-viewer";
+import { GITHUB_URL } from "@/lib/links";
 
 const NPX = "npx @tokenboard/cli";
 
@@ -15,8 +16,9 @@ export default async function LandingPage() {
   const viewer = v === "outage" ? null : v;
   // Hero "See the leaderboard" button -> the board (sign-in first when anon).
   const leaderboardCta = viewer ? "/global" : "/api/auth/login?next=/global";
-  // Nav CTA mirrors SiteNav: signed in -> your profile (@handle), anon -> sign-in then /global.
-  const claimCta = viewer ? `/user/${viewer.handle}` : "/api/auth/login?next=/global";
+  // Nav CTA mirrors SiteNav: signed in -> your profile (@handle); anon -> "Sign in with GitHub",
+  // landing on /me so a fresh sign-in sees their own profile (+ the "$0, run the CLI" nudge).
+  const signInCta = viewer ? `/user/${viewer.handle}` : "/api/auth/login?next=/me";
 
   return (
     <div className={styles.surfaceLanding}>
@@ -36,14 +38,14 @@ export default async function LandingPage() {
               <Link href="/communities">My Communities</Link>
             </li>
             <li>
-              <a href="https://github.com/angelafeliciaa/tokenboard" target="_blank" rel="noopener">
+              <a href={GITHUB_URL} target="_blank" rel="noopener">
                 GitHub
               </a>
             </li>
           </ul>
           <div className={styles.spacer} />
-          <Link className={styles.navCta} href={claimCta}>
-            {viewer ? `@${viewer.handle}` : "Claim Your Spot"}
+          <Link className={styles.navCta} href={signInCta}>
+            {viewer ? `@${viewer.handle}` : "Sign in with GitHub"}
           </Link>
         </div>
       </nav>
@@ -107,7 +109,7 @@ export default async function LandingPage() {
               </Link>
               <a
                 className={styles.btnSecondary}
-                href="https://github.com/angelafeliciaa/tokenboard"
+                href={GITHUB_URL}
                 target="_blank"
                 rel="noopener"
               >

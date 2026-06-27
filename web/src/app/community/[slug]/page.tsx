@@ -2,6 +2,7 @@
 // the API route's sequence (getViewer -> resolveBoardScope -> assembleBoard) DIRECTLY rather than
 // fetch-to-self: no self-HTTP hop, no second cookie round-trip, full BoardResponse types. The window
 // tabs + metric toggle are client leaves that drive ?window=/?metric=, so this re-renders server-side.
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { boardQuerySchema } from "@tokenboard/contracts";
 import { getViewer } from "@/lib/auth/get-viewer";
@@ -26,11 +27,14 @@ export const dynamic = "force-dynamic";
 type Search = Record<string, string | string[] | undefined>;
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
-async function loadBoard(slug: string, sp: Search) {
+// Keyed on primitives (not the searchParams object) so generateMetadata and the page component share
+// one result via React cache() per request — otherwise the getViewer + scope + assembleBoard chain
+// runs twice per navigation.
+const loadBoard = cache(async function loadBoard(slug: string, windowParam: string, metricParam: string) {
   const parsed = boardQuerySchema.safeParse({
     community: slug,
-    window: one(sp.window) ?? WEB_DEFAULT_WINDOW,
-    metric: one(sp.metric) ?? WEB_DEFAULT_METRIC,
+    window: windowParam,
+    metric: metricParam,
   });
   if (!parsed.success) return { kind: "notfound" as const };
 
@@ -49,7 +53,10 @@ async function loadBoard(slug: string, sp: Search) {
     callerUserId,
   });
   return { kind: "ok" as const, board, viewer };
-}
+});
+
+const loadBoardFromSearch = (slug: string, sp: Search) =>
+  loadBoard(slug, one(sp.window) ?? WEB_DEFAULT_WINDOW, one(sp.metric) ?? WEB_DEFAULT_METRIC);
 
 export async function generateMetadata({
   params,
@@ -59,7 +66,7 @@ export async function generateMetadata({
   searchParams: Promise<Search>;
 }) {
   const { slug } = await params;
-  const res = await loadBoard(slug, await searchParams);
+  const res = await loadBoardFromSearch(slug, await searchParams);
   if (res.kind !== "ok") return { title: "tokenboard" };
   const name = res.board.community?.name ?? "Global";
   return {
@@ -76,7 +83,7 @@ export default async function BoardPage({
   searchParams: Promise<Search>;
 }) {
   const { slug } = await params;
-  const res = await loadBoard(slug, await searchParams);
+  const res = await loadBoardFromSearch(slug, await searchParams);
   if (res.kind === "outage") throw new Error("auth_unavailable");
   if (res.kind !== "ok") notFound();
 

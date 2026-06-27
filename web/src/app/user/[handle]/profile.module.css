@@ -190,6 +190,37 @@ div.editSlot {
   letter-spacing: 0.5px;
   color: var(--ink-3-text);
 }
+/* Owner-at-$0 nudge: the "run the CLI" message + a copyable command, stacked. */
+.emptyOwner {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+/* Message line — no margin-top of its own (the flex `gap` + .emptyOwner margin own the spacing;
+   reusing .empty here would double the top margin since flex columns don't collapse margins). */
+.emptyMsg {
+  font-family: var(--term);
+  font-size: var(--fs-18);
+  letter-spacing: 0.5px;
+  color: var(--ink-3-text);
+}
+/* Command row: visible `npx …` text + the copy button, so the user sees what they're copying. */
+.emptyCmd {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  align-self: flex-start;
+}
+.emptyCmdText {
+  font-family: var(--term);
+  font-size: var(--fs-16);
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--frame);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
 
 .communities {
   width: 100%;
