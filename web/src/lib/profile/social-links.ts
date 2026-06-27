@@ -1,35 +1,15 @@
-// PURE social-link validation/normalization for the public profile. NO I/O. The single trust
-// boundary for user-controlled content rendered as <a href> — stored-XSS / scheme-abuse is THE risk.
-// Two-layer defense: validate on WRITE (normalizeSocialLinks) AND rebuild the href on READ
-// (buildSocialUrl), so a value that somehow landed in the DB unvalidated still passes the scheme/host
-// gate before it reaches an href. Bio is plain text (normalizeBio) — escaped by React on render;
-// never markdown, never dangerouslySetInnerHTML.
-//
-// CLOSED platform allowlist (NOT an arbitrary-key map). Two kinds:
-//   handle — we NEVER trust a user URL: strip a leading '@' (and an accidentally-pasted known host
-//            prefix), validate against a strict charset, then BUILD the https URL from a HARDCODED
-//            host literal. A handle can't smuggle a path/scheme because '/ : ? # @ whitespace' fail
-//            the charset.
-// Every platform is handle-type — there is NO free-form website/url field (deliberately removed so a
-// user can never paste an arbitrary URL into an <a href>).
-
 export const SOCIAL_PLATFORMS = ["x", "github", "linkedin", "bluesky"] as const;
 export type Platform = (typeof SOCIAL_PLATFORMS)[number];
 
-// A blanket safety ceiling on handle input, applied BEFORE the per-platform regex runs. The regex is
-// the real per-platform length authority (x 15, github 39, linkedin 100, bluesky 253), so
-// this must sit ABOVE the largest of those (bluesky's 253) or it would wrongly reject valid long
-// handles (e.g. a full bsky.social DID-ish handle) as "too long" before the regex could accept them.
 export const MAX_HANDLE_LEN = 256;
 export const MAX_BIO_LEN = 280;
 
 interface HandlePlatform {
   kind: "handle";
   label: string;
-  // Strict charset for the stripped handle. No '/', ':', '?', '#', '@', or whitespace -> no path or
-  // scheme smuggling. Bounded length enforced separately (MAX_HANDLE_LEN).
+
   re: RegExp;
-  toUrl: (handle: string) => string; // host is a HARDCODED literal
+  toUrl: (handle: string) => string;
   placeholder: string;
 }
 
@@ -51,17 +31,6 @@ function isPlatform(key: string): key is Platform {
   return (SOCIAL_PLATFORMS as readonly string[]).includes(key);
 }
 
-// Strip a leading '@' and any accidental host prefix the user pasted (e.g. "x.com/devon" -> "devon",
-// "https://github.com/devon" -> "devon"). The result is then charset-validated, so anything that
-// survives stripping but isn't a clean handle is rejected (returns null), never coerced. NOTE: a
-// trailing path segment is dropped at the first '/', '?', '#' (so "a/b" -> "a"); this is a DELIBERATE
-// forgiving truncation (the host is hardcoded so it's safe), covered by a test so it's not accidental.
-//
-// The `(?:[a-z0-9-]+\.)*` allows ANY subdomain chain before the known host (ca./uk. LinkedIn,
-// mobile./m. Twitter, www.) — country/mobile subdomains are common in pasted URLs and must NOT be
-// rejected. This is safe: the subdomain only LOCATES the handle; the final URL is always rebuilt
-// from the platform's HARDCODED host + the charset-validated handle, so a spoofed host can't ride
-// along (worst case the handle fails the charset and is rejected).
 function stripHandle(raw: string): string {
   let h = raw.trim();
   h = h.replace(/^@+/, "");
@@ -69,13 +38,11 @@ function stripHandle(raw: string): string {
     /^(?:https?:\/\/)?(?:[a-z0-9-]+\.)*(?:x\.com|twitter\.com|github\.com|linkedin\.com\/in|bsky\.app\/profile)\/(.+)$/i,
   );
   if (hostMatch) h = hostMatch[1]!;
-  h = h.replace(/^@+/, ""); // a leftover '@' after the host strip
-  h = h.split(/[/?#]/)[0]!; // cut a trailing path/query so it can't ride along
+  h = h.replace(/^@+/, ""); 
+  h = h.split(/[/?#]/)[0]!;
   return h;
 }
 
-// THE scheme-safe href builder. Returns a validated https URL or null. Callers NEVER render the
-// stored value directly into href — they re-run this at render so the href is always server-built.
 export function buildSocialUrl(platform: Platform, storedValue: string): string | null {
   const spec = PLATFORM_SPECS[platform];
   const value = storedValue.trim();
@@ -83,7 +50,7 @@ export function buildSocialUrl(platform: Platform, storedValue: string): string 
 
   const h = stripHandle(value);
   if (h.length === 0 || h.length > MAX_HANDLE_LEN) return null;
-  if (!spec.re.test(h)) return null; // strict charset — no '/ : ? # @ whitespace' -> no smuggling
+  if (!spec.re.test(h)) return null; 
   return spec.toUrl(h);
 }
 
@@ -91,9 +58,6 @@ export type NormalizeResult =
   | { ok: true; value: Record<string, string> }
   | { ok: false; errors: Record<string, string> };
 
-// Validate an arbitrary input object into a stored social_links map. Unknown keys are DROPPED (never
-// stored). Empty/whitespace values OMIT the key. For each known key we store the stripped handle and
-// reject — with a per-field error — anything buildSocialUrl can't produce a safe URL from.
 export function normalizeSocialLinks(input: unknown): NormalizeResult {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
     return { ok: false, errors: { _: "social_links must be an object" } };
@@ -102,13 +66,13 @@ export function normalizeSocialLinks(input: unknown): NormalizeResult {
   const errors: Record<string, string> = {};
 
   for (const [key, raw] of Object.entries(input as Record<string, unknown>)) {
-    if (!isPlatform(key)) continue; // DROP unknown keys silently — never store them
+    if (!isPlatform(key)) continue; 
     if (typeof raw !== "string") {
       errors[key] = "must be a string";
       continue;
     }
     const value = raw.trim();
-    if (value.length === 0) continue; // empty -> omit the key
+    if (value.length === 0) continue;
     if (value.length > MAX_HANDLE_LEN) {
       errors[key] = "too long";
       continue;
@@ -117,8 +81,7 @@ export function normalizeSocialLinks(input: unknown): NormalizeResult {
       errors[key] = "invalid";
       continue;
     }
-    // Store the stripped handle (so the edit form round-trips what the user meant, and the href is
-    // always rebuilt at render).
+   
     out[key] = stripHandle(value);
   }
 
@@ -126,9 +89,6 @@ export function normalizeSocialLinks(input: unknown): NormalizeResult {
   return { ok: true, value: out };
 }
 
-// Bio is plain text: trim, cap, empty -> null. NO markdown, NO sanitize-then-inject — React escapes
-// the text child on render. Returns { ok:false } only when over the cap (a non-string is the route's
-// zod job).
 export function normalizeBio(
   input: string | null | undefined,
 ): { ok: true; value: string | null } | { ok: false } {
