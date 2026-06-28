@@ -1,4 +1,4 @@
-/* .elo lifted from dashboard-pixel. Up = teal, down = coral, flat/new = dim. */
+/* .elo lifted from dashboard-pixel. Up = teal, down = coral, flat = dim, new = coral "NEW" tag. */
 .elo {
   flex: none;
   margin-left: 16px;
@@ -20,6 +20,12 @@
 }
 .flat {
   color: var(--ink-4-text);
+}
+/* New entrant (no prior-period snapshot) — a small "NEW" tag, not a magnitude. */
+.new {
+  font-size: var(--fs-12);
+  letter-spacing: 1px;
+  color: var(--coral-hi);
 }
 .ar {
   font-size: var(--fs-13);
