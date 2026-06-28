@@ -45,12 +45,17 @@ function bucketKeys(scope: Scope, metric: MetricToken, dates: string[]): string[
 // next sweep), so it's logged, not thrown.
 async function seedZeroRosters(): Promise<void> {
   try {
-    // Every non-banned user is on the global board; plus their community memberships.
+    // Every non-banned CLAIMED user is on the global board; plus their community memberships.
+    // "Claimed" = has an ingest_devices row (the approve route mints one). A web-only sign-in
+    // ("Sign in with GitHub") also creates a users row but NO device — those must NOT be seeded
+    // onto public boards at $0 (claim = on the board, not mere web login).
     const rows = (await db.execute(sql`
       select u.id::text as user_id, m.community_id::text as community_id
       from users u
+      join ingest_devices d on d.user_id = u.id
       left join memberships m on m.user_id = u.id
       where u.banned_at is null
+      group by u.id, m.community_id
     `)) as unknown as Array<{ user_id: string; community_id: string | null }>;
 
     const byUser = new Map<string, Set<Scope>>();
