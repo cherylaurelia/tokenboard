@@ -24,6 +24,7 @@ import {
   type MetricToken,
 } from "./keys";
 import { currentWindowBucketDates, previousWindowBucketDates } from "./windows";
+import { seedZeroScoresForScopes } from "./seed-zero-scores";
 
 // Active scopes = global + every community that has >=1 membership.
 async function activeScopes(): Promise<Scope[]> {
@@ -35,6 +36,39 @@ async function activeScopes(): Promise<Scope[]> {
 
 function bucketKeys(scope: Scope, metric: MetricToken, dates: string[]): string[] {
   return dates.map((d) => lbdayKey(scope, metric, d));
+}
+
+// PHASE C helper — re-seed score 0 for every claimed (non-banned) user across the scopes they belong
+// to, so the bucket-only rebuild doesn't drop zero-usage claimers. Builds a userId -> scopes[] map in
+// ONE pass (global for everyone + each membership's community scope), then ZADD NX via the shared
+// seeder. Best-effort: a failure here leaves the boards rebuilt (just missing some $0 rows until the
+// next sweep), so it's logged, not thrown.
+async function seedZeroRosters(): Promise<void> {
+  try {
+    // Every non-banned user is on the global board; plus their community memberships.
+    const rows = (await db.execute(sql`
+      select u.id::text as user_id, m.community_id::text as community_id
+      from users u
+      left join memberships m on m.user_id = u.id
+      where u.banned_at is null
+    `)) as unknown as Array<{ user_id: string; community_id: string | null }>;
+
+    const byUser = new Map<string, Set<Scope>>();
+    for (const r of rows) {
+      let set = byUser.get(r.user_id);
+      if (!set) {
+        set = new Set<Scope>(["g"]);
+        byUser.set(r.user_id, set);
+      }
+      if (r.community_id) set.add(scopeForCommunity(r.community_id));
+    }
+
+    for (const [userId, scopeSet] of byUser) {
+      await seedZeroScoresForScopes(userId, [...scopeSet]);
+    }
+  } catch (err) {
+    console.error("sweep: zero-roster seed failed (non-fatal)", err instanceof Error ? err.message : err);
+  }
 }
 
 export async function runLeaderboardSweep(now: Date = new Date()): Promise<{ scopes: number; boards: number }> {
@@ -72,6 +106,13 @@ export async function runLeaderboardSweep(now: Date = new Date()): Promise<{ sco
     }
   }
   await buildPipe.exec();
+
+  // PHASE C — "claim = on the board": re-seed every claimed user at score 0 so the rebuild (which
+  // only includes users with usage buckets) doesn't drop zero-usage claimers. ZADD NX never clobbers
+  // a real score just written in PHASE B. Global roster = all non-banned users; community roster =
+  // its non-banned members. Non-fatal (the boards are already rebuilt).
+  await seedZeroRosters();
+
   return { scopes: scopes.length, boards };
 }
 
