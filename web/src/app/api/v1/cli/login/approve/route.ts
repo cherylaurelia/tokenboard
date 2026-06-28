@@ -10,6 +10,7 @@ import { db } from "@/db/client";
 import { deviceGrants, ingestDevices } from "@/db/schema";
 import { cliLoginApproveRequestSchema } from "@tokenboard/contracts";
 import { mintIngestToken, sha256Bytes } from "@/lib/cli-login/token";
+import { seedZeroScoresForUser } from "@/lib/leaderboard/seed-zero-scores";
 
 export const dynamic = "force-dynamic";
 
@@ -106,6 +107,16 @@ export async function POST(request: NextRequest) {
     console.error("cli/login/approve: bind/mint transaction failed");
     return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
+
+  // "Claim = on the board": seed the user at score 0 so they appear immediately, even with no synced
+  // usage yet (their real score overwrites it on first sync via ZADD). NON-FATAL — the claim already
+  // succeeded (device is bound); a Redis hiccup here must not fail it. The nightly sweep re-seeds.
+  try {
+    await seedZeroScoresForUser(user.id);
+  } catch (err) {
+    console.error("cli/login/approve: zero-score seed failed (non-fatal)", err instanceof Error ? err.message : err);
+  }
+
   return NextResponse.json({ ok: true, action: "approved" });
 }
 
