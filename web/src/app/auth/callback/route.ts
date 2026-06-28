@@ -6,6 +6,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { enforce } from "@/lib/ratelimit/enforce";
+import { seedZeroScoresForUser } from "@/lib/leaderboard/seed-zero-scores";
 
 export async function GET(request: NextRequest) {
   // §8.2 — 60/min per-IP on the OAuth callback (the unauthenticated ?code-exchange surface). Fail-open.
@@ -47,17 +48,30 @@ export async function GET(request: NextRequest) {
   // PKCE verifier), but RE-THROWS non-AuthError exceptions (network failure on the /token
   // request, a storage throw). Wrap so any of those still redirect gracefully instead of
   // crashing the route with an unhandled 500.
+  let userId: string | null = null;
   try {
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) {
       console.warn(`auth/callback: exchangeCodeForSession failed: ${error.message}`);
       return NextResponse.redirect(new URL("/auth/auth-code-error", origin));
     }
+    userId = data.user?.id ?? null;
   } catch (err) {
     console.warn(
       `auth/callback: exchangeCodeForSession threw: ${err instanceof Error ? err.message : String(err)}`,
     );
     return NextResponse.redirect(new URL("/auth/auth-code-error", origin));
+  }
+
+  // Seed the user onto the board at $0 the moment they sign in (web-only too) so they appear
+  // immediately rather than waiting for the nightly sweep. NON-FATAL: a Redis hiccup must not block
+  // the login redirect. ZADD NX never clobbers a real score, so a returning user is unaffected.
+  if (userId) {
+    try {
+      await seedZeroScoresForUser(userId);
+    } catch (err) {
+      console.error("auth/callback: zero-score seed failed (non-fatal)", err instanceof Error ? err.message : err);
+    }
   }
 
   return NextResponse.redirect(new URL(next, origin));

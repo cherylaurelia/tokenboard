@@ -38,24 +38,21 @@ function bucketKeys(scope: Scope, metric: MetricToken, dates: string[]): string[
   return dates.map((d) => lbdayKey(scope, metric, d));
 }
 
-// PHASE C helper — re-seed score 0 for every claimed (non-banned) user across the scopes they belong
-// to, so the bucket-only rebuild doesn't drop zero-usage claimers. Builds a userId -> scopes[] map in
-// ONE pass (global for everyone + each membership's community scope), then ZADD NX via the shared
-// seeder. Best-effort: a failure here leaves the boards rebuilt (just missing some $0 rows until the
-// next sweep), so it's logged, not thrown.
+// PHASE C helper — re-seed score 0 for every signed-in (non-banned) user across the scopes they
+// belong to, so the bucket-only rebuild doesn't drop zero-usage users. Builds a userId -> scopes[]
+// map in ONE pass (global for everyone + each membership's community scope), then ZADD NX via the
+// shared seeder. Best-effort: a failure here leaves the boards rebuilt (just missing some $0 rows
+// until the next sweep), so it's logged, not thrown.
 async function seedZeroRosters(): Promise<void> {
   try {
-    // Every non-banned CLAIMED user is on the global board; plus their community memberships.
-    // "Claimed" = has an ingest_devices row (the approve route mints one). A web-only sign-in
-    // ("Sign in with GitHub") also creates a users row but NO device — those must NOT be seeded
-    // onto public boards at $0 (claim = on the board, not mere web login).
+    // Every non-banned user is on the global board — anyone signed in (web-only OR CLI-claimed)
+    // appears at $0 and climbs as they sync. Plus their community memberships. (A web-only sign-in
+    // has no ingest_devices row, but being signed in is enough to be on the board.)
     const rows = (await db.execute(sql`
       select u.id::text as user_id, m.community_id::text as community_id
       from users u
-      join ingest_devices d on d.user_id = u.id
       left join memberships m on m.user_id = u.id
       where u.banned_at is null
-      group by u.id, m.community_id
     `)) as unknown as Array<{ user_id: string; community_id: string | null }>;
 
     const byUser = new Map<string, Set<Scope>>();
