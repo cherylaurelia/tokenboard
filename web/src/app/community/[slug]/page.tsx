@@ -6,6 +6,7 @@ import { cache } from "react";
 import { notFound } from "next/navigation";
 import { boardQuerySchema } from "@tokenboard/contracts";
 import { getViewer } from "@/lib/auth/get-viewer";
+import { getViewerMembership } from "@/lib/communities/get-membership";
 import { resolveBoardScope } from "@/lib/leaderboard/resolve-scope";
 import { assembleBoard } from "@/lib/leaderboard/assemble-board";
 import { WEB_DEFAULT_METRIC, WEB_DEFAULT_WINDOW } from "@/lib/board/web-defaults";
@@ -95,6 +96,8 @@ export default async function BoardPage({
   // lands it, company boards alias every row by rank rather than leak real handles.
   const aliasCompany = board.community?.type === "company";
   const pinnedMe = board.me && board.me.inTopN === false ? board.me.entry : null;
+  const membership =
+    viewer && board.community ? await getViewerMembership(viewer.userId, board.community.slug) : null;
 
   return (
     <div className={`${styles.surfaceBoardBase} ${styles.surfaceBoardArcade}`}>
@@ -152,7 +155,9 @@ export default async function BoardPage({
               viewer={viewer}
               aliasCompany={aliasCompany}
             />
-            {board.community && <CommunityPanel community={board.community} />}
+            {board.community && (
+              <CommunityPanel community={board.community} membership={membership} />
+            )}
           </aside>
         </div>
       </main>

@@ -11,6 +11,7 @@ import { assembleBoard } from "./assemble-board";
 import { WEB_DEFAULT_METRIC, WEB_DEFAULT_WINDOW } from "@/lib/board/web-defaults";
 
 export interface MyCommunity {
+  id: string;
   slug: string;
   name: string;
   type: "community" | "company";
@@ -74,6 +75,7 @@ export async function listMyCommunities(userId: string, viewerIsOwner: boolean):
       });
       const meEntry = board.me?.inTopN === false ? board.me.entry : board.entries.find((e) => e.isMe);
       return {
+        id: r.id,
         slug: r.slug,
         name: r.name,
         type: r.type,

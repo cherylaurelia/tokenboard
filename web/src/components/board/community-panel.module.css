@@ -72,3 +72,74 @@
 .inviteBtn:hover {
   background: var(--coral-hi);
 }
+
+.leaveWrap {
+  margin-top: 12px;
+}
+.leaveBtn {
+  width: 100%;
+  font-family: var(--term);
+  font-size: var(--fs-14);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  background: transparent;
+  border: 1px solid var(--frame-hi);
+  border-radius: 8px;
+  min-height: 40px;
+  cursor: pointer;
+  transition:
+    color 0.12s,
+    border-color 0.12s;
+}
+.leaveBtn:hover {
+  color: var(--coral);
+  border-color: var(--coral-hi);
+}
+.leaveError {
+  font-family: var(--term);
+  font-size: var(--fs-13);
+  color: var(--coral);
+  margin-bottom: 8px;
+}
+.leaveConfirm {
+  margin-top: 12px;
+  border: 1px solid var(--frame-hi);
+  border-radius: 8px;
+  padding: 12px;
+}
+.leaveAsk {
+  font-family: var(--term);
+  font-size: var(--fs-14);
+  letter-spacing: 0.5px;
+  color: var(--ink-2);
+  margin-bottom: 10px;
+}
+.leaveActions {
+  display: flex;
+  gap: 8px;
+}
+.leaveYes,
+.leaveCancel {
+  flex: 1;
+  font-family: var(--term);
+  font-size: var(--fs-14);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border-radius: 8px;
+  min-height: 40px;
+  cursor: pointer;
+}
+.leaveYes {
+  color: var(--on-coral);
+  background: var(--coral);
+  border: 1px solid var(--coral-hi);
+}
+.leaveYes:hover {
+  background: var(--coral-hi);
+}
+.leaveCancel {
+  color: var(--ink-2);
+  background: transparent;
+  border: 1px solid var(--frame-hi);
+}

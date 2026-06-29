@@ -4,6 +4,8 @@
 // surfacing it is Phase-8 invite work (flagged in the PR).
 import Link from "next/link";
 import type { CommunityMeta } from "@tokenboard/contracts";
+import type { ViewerMembership } from "@/lib/communities/get-membership";
+import { LeaveCommunity } from "./leave-community";
 import styles from "./community-panel.module.css";
 
 function policyHint(c: CommunityMeta): string {
@@ -12,7 +14,13 @@ function policyHint(c: CommunityMeta): string {
   return "open to join";
 }
 
-export function CommunityPanel({ community }: { community: CommunityMeta }) {
+export function CommunityPanel({
+  community,
+  membership,
+}: {
+  community: CommunityMeta;
+  membership: ViewerMembership | null;
+}) {
   return (
     <>
       <section className={styles.panel}>
@@ -33,6 +41,7 @@ export function CommunityPanel({ community }: { community: CommunityMeta }) {
         <Link className={styles.inviteBtn} href="/communities?soon=invite">
           Invite Friends
         </Link>
+        {membership && <LeaveCommunity communityId={membership.communityId} name={community.name} />}
       </section>
     </>
   );
