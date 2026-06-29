@@ -1,10 +1,8 @@
 "use client";
-// Create form. Real <form>: name <input>, join_policy radios in a <fieldset>/<legend>, visibility
-// <select>. POSTs {type:'community',name,join_policy,visibility}. On 201 'code' policy: show the code
-// with a real Copy <button> + a "Go to board" link; 'open': router.push the board. Tokens-only.
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CreateCommunityResponse } from "@tokenboard/contracts";
+import { inviteLink } from "@/lib/communities/invite-link";
 import styles from "./new.module.css";
 
 export function CreateCommunityForm() {
@@ -15,7 +13,7 @@ export function CreateCommunityForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<CreateCommunityResponse | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"code" | "link" | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -49,23 +47,35 @@ export function CreateCommunityForm() {
 
   if (created) {
     const path = new URL(created.join_url).pathname;
+    const link = created.join_code ? inviteLink(window.location.origin, created.join_code) : null;
+    const copy = (which: "code" | "link", text: string) =>
+      navigator.clipboard
+        ?.writeText(text)
+        .then(() => setCopied(which))
+        .catch(() => {});
     return (
       <section className={styles.card} role="status">
-        <p className={styles.success}>Created. Share this code so people can join:</p>
+        <p className={styles.success}>Created. Share the invite link (or code) so people can join:</p>
+        {link && (
+          <div className={styles.linkRow}>
+            <span className={styles.linkValue}>{link}</span>
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.btnGhost}`}
+              onClick={() => copy("link", link)}
+            >
+              {copied === "link" ? "Copied" : "Copy link"}
+            </button>
+          </div>
+        )}
         <div className={styles.codeRow}>
           <span className={styles.codeValue}>{created.join_code}</span>
           <button
             type="button"
             className={`${styles.btn} ${styles.btnGhost}`}
-            onClick={() => {
-              // Only show "Copied" if the write actually succeeds; swallow a denied-clipboard rejection.
-              navigator.clipboard
-                ?.writeText(created.join_code ?? "")
-                .then(() => setCopied(true))
-                .catch(() => {});
-            }}
+            onClick={() => copy("code", created.join_code ?? "")}
           >
-            {copied ? "Copied" : "Copy"}
+            {copied === "code" ? "Copied" : "Copy code"}
           </button>
         </div>
         <a className={`${styles.btn} ${styles.btnCoral}`} href={path}>
@@ -102,7 +112,7 @@ export function CreateCommunityForm() {
       <label htmlFor="c-vis">Visibility</label>
       <select
         id="c-vis"
-        className={styles.input}
+        className={styles.select}
         value={visibility}
         onChange={(e) => setVisibility(e.target.value as typeof visibility)}
         disabled={busy}

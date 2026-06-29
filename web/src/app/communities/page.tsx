@@ -8,15 +8,23 @@ import { SiteNav } from "@/components/site-nav";
 import { SiteFooter } from "@/components/site-footer";
 import { BoardCard } from "@/components/communities/board-card";
 import { JoinPanel } from "@/components/communities/join-panel";
+import { parseInviteCode } from "@/lib/communities/invite-link";
 import styles from "./communities.module.css";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export default async function CommunitiesPage() {
+export default async function CommunitiesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ code?: string | string[] }>;
+}) {
   const v = await getViewer();
   const viewer = v === "outage" ? null : v; // graceful: a public page treats an outage as signed-out
-  const boards = viewer ? await listMyCommunities(viewer.userId, true) : []; // own list -> all theirs
+  const boards = viewer ? await listMyCommunities(viewer.userId, true) : [];
+  const sp = await searchParams;
+  const rawCode = Array.isArray(sp.code) ? sp.code[0] : sp.code;
+  const inviteCode = (rawCode && parseInviteCode(rawCode)) || undefined;
 
   return (
     <div className={styles.surfaceBoardBase}>
@@ -52,7 +60,7 @@ export default async function CommunitiesPage() {
           </section>
 
           <aside className={styles.rail}>
-            <JoinPanel />
+            <JoinPanel autoCode={inviteCode} />
           </aside>
         </div>
       </main>

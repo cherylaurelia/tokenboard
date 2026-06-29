@@ -1,27 +1,31 @@
 "use client";
-// Invite-code form. POSTs {code} to /api/v1/communities/join; on success router.push(board path).
-// 403 invalid_join_code -> inline error. Model: the claim approve-form (useState phase, fetch, res.ok).
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { JoinResponse } from "@tokenboard/contracts";
+import { parseInviteCode } from "@/lib/communities/invite-link";
 import panel from "./join-panel.module.css";
 import styles from "./join-by-code-form.module.css";
 
-export function JoinByCodeForm() {
+export function JoinByCodeForm({ autoCode }: { autoCode?: string }) {
   const router = useRouter();
-  const [code, setCode] = useState("");
+  const [value, setValue] = useState(autoCode ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const autoSubmitted = useRef(false);
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function join(rawInput: string) {
+    const code = parseInviteCode(rawInput);
+    if (!code) {
+      setError("Paste a valid invite link or 6-char code.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
       const res = await fetch("/api/v1/communities/join", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ code: code.trim() }),
+        body: JSON.stringify({ code }),
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
@@ -33,11 +37,24 @@ export function JoinByCodeForm() {
         return;
       }
       const data = (await res.json()) as JoinResponse;
-      router.push(new URL(data.board_url).pathname); // board_url is absolute; push the path
+      router.push(new URL(data.board_url).pathname);
     } catch {
       setError("Something went wrong. Try again.");
       setBusy(false);
     }
+  }
+
+  useEffect(() => {
+    if (autoCode && !autoSubmitted.current) {
+      autoSubmitted.current = true;
+      void join(autoCode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoCode]);
+
+  function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    void join(value);
   }
 
   return (
@@ -48,17 +65,16 @@ export function JoinByCodeForm() {
           id="invite-code"
           type="text"
           inputMode="text"
-          maxLength={6}
           autoComplete="off"
-          placeholder="6-char code"
-          value={code}
-          onChange={(e) => setCode(e.target.value.replace(/\s/g, "").toUpperCase().slice(0, 6))}
+          placeholder="Paste an invite link or 6-char code"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
           required
         />
         <button
           type="submit"
           className={`${panel.btn} ${panel.btnCoral}`}
-          disabled={busy || code.trim().length !== 6}
+          disabled={busy || parseInviteCode(value) === null}
         >
           {busy ? "Joining…" : "Join"}
         </button>

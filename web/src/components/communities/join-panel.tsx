@@ -6,7 +6,7 @@ import Link from "next/link";
 import { JoinByCodeForm } from "./join-by-code-form";
 import styles from "./join-panel.module.css";
 
-export function JoinPanel() {
+export function JoinPanel({ autoCode }: { autoCode?: string }) {
   return (
     <>
       <section className={styles.panel}>
@@ -15,7 +15,7 @@ export function JoinPanel() {
           Got a <span className={styles.hl}>link or code</span> from a friend&rsquo;s board? Paste it —
           you&rsquo;re in instantly, no email needed.
         </p>
-        <JoinByCodeForm />
+        <JoinByCodeForm autoCode={autoCode} />
         <div className={styles.orDiv}>or join your company</div>
         <div className={styles.field}>
           <span className={styles.fieldHead}>Work email</span>
