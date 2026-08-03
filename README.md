@@ -32,8 +32,12 @@ land on the board. After a global install the command is just `tokenboard`:
 ```bash
 tokenboard                 # preview + claim
 tokenboard sync            # push usage now
+tokenboard sync --since 2026-08-01           # only upload usage on/after a day
+tokenboard sync --sources codex,claude-code  # only upload specific tools
+tokenboard whoami          # show the account this machine is signed in as
 tokenboard service install # sync hourly in the background (launchd/systemd/Task Scheduler)
 tokenboard service status  # is the background sync running, and when did it last run?
+tokenboard upgrade         # update to the latest CLI and refresh the background sync
 tokenboard show-data       # dry-run: print the exact payload before anything is sent
 ```
 

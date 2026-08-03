@@ -6,6 +6,8 @@ import { notAvailableYet } from "./commands/stub.js";
 import { runClaim } from "./commands/claim.js";
 import { runSync } from "./commands/sync.js";
 import { runServiceInstall, runServiceStatus, runServiceUninstall } from "./commands/service.js";
+import { runWhoami } from "./commands/whoami.js";
+import { runUpgrade } from "./commands/upgrade.js";
 
 // Window flags are bare per DESIGN §14.1 (--7d, not --window=7d). In Phase 2 they're
 // cosmetic — the local preview shows all available local history — but registered so the
@@ -41,8 +43,31 @@ const claim = defineCommand({
 
 const sync = defineCommand({
   meta: { name: "sync", description: "upload local usage to the server" },
+  args: {
+    since: { type: "string", description: "only upload usage on/after this day (YYYY-MM-DD)" },
+    sources: { type: "string", description: "only upload these tools (comma-separated, e.g. codex,claude-code)" },
+  },
+  async run({ args }) {
+    const since = typeof args.since === "string" && args.since.trim() !== "" ? args.since.trim() : undefined;
+    const sources =
+      typeof args.sources === "string" && args.sources.trim() !== ""
+        ? args.sources.split(",").map((s) => s.trim()).filter((s) => s.length > 0)
+        : undefined;
+    await runSync({ since, sources });
+  },
+});
+
+const whoami = defineCommand({
+  meta: { name: "whoami", description: "show the account this machine is signed in as" },
   async run() {
-    await runSync();
+    await runWhoami();
+  },
+});
+
+const upgrade = defineCommand({
+  meta: { name: "upgrade", description: "update the CLI to the latest version and refresh the background sync" },
+  async run() {
+    await runUpgrade();
   },
 });
 
@@ -85,6 +110,8 @@ const main = defineCommand({
     claim,
     sync,
     service,
+    whoami,
+    upgrade,
     top: stub("top", "Phase 6", "the global / default board"),
     board: stub("board", "Phase 6", "a specific community board"),
     me: stub("me", "Phase 6", "your rank across communities"),

@@ -17,6 +17,10 @@ export interface SchedulerBackend {
   status(spec: ServiceSpec): Promise<ServiceStatus>;
 }
 
+export function serviceSupported(os: NodeJS.Platform = platform()): boolean {
+  return os === "darwin" || os === "linux" || os === "win32";
+}
+
 export function selectBackend(os: NodeJS.Platform = platform()): SchedulerBackend {
   switch (os) {
     case "darwin":

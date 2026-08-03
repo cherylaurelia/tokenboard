@@ -8,7 +8,27 @@ import { chunk } from "../sync/chunk.js";
 import { tzOffsetMinutes } from "../sync/tz-offset.js";
 import { chunkIdempotencyKey } from "../sync/idempotency-key.js";
 import { postSyncChunk, SyncInProgressError } from "../sync/transport.js";
-import type { SyncRequest, SyncResponseEnvelope } from "@tokenboard/contracts";
+import { canonicalTool } from "../normalize/tool-name.js";
+import type { NormalizedRecord, SyncRequest, SyncResponseEnvelope } from "@tokenboard/contracts";
+
+export interface SyncOptions {
+  since?: string;
+  sources?: string[];
+}
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+export function filterRecordsForSync(records: NormalizedRecord[], options: SyncOptions): NormalizedRecord[] {
+  const sources =
+    options.sources && options.sources.length > 0
+      ? new Set(options.sources.map(canonicalTool).filter((s) => s.length > 0))
+      : null;
+  return records.filter((record) => {
+    if (options.since && record.date < options.since) return false;
+    if (sources && !sources.has(record.tool)) return false;
+    return true;
+  });
+}
 
 const CHUNK_SIZE = 500;
 const CLI_VERSION = "0.0.1"; // mirror package.json; X-Tokenboard-CLI header.
@@ -33,14 +53,20 @@ async function sendChunk(base: string, token: string, body: SyncRequest): Promis
   }
 }
 
-export async function runSync(): Promise<void> {
+export async function runSync(options: SyncOptions = {}): Promise<void> {
+  if (options.since && !ISO_DATE.test(options.since)) {
+    throw new Error(`--since must be a date in YYYY-MM-DD form (got: ${options.since}).`);
+  }
+
   const auth = await readAuthFile();
   if (!auth) throw new Error("not signed in — run `tokenboard claim` first."); // fail loud -> non-zero exit
 
   const base = resolveApiBase();
-  const { records } = await collectLocalRecords();
+  const { records: collected } = await collectLocalRecords();
+  const records = filterRecordsForSync(collected, options);
   if (records.length === 0) {
-    process.stdout.write("  tokenboard sync — nothing to upload (no local usage found).\n");
+    const scoped = options.since || (options.sources && options.sources.length > 0) ? " matching those filters" : "";
+    process.stdout.write(`  tokenboard sync — nothing to upload (no local usage found${scoped}).\n`);
     return;
   }
 
