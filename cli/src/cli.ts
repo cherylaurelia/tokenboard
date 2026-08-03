@@ -5,6 +5,7 @@ import { runShowData } from "./commands/show-data.js";
 import { notAvailableYet } from "./commands/stub.js";
 import { runClaim } from "./commands/claim.js";
 import { runSync } from "./commands/sync.js";
+import { runServiceInstall, runServiceStatus, runServiceUninstall } from "./commands/service.js";
 
 // Window flags are bare per DESIGN §14.1 (--7d, not --window=7d). In Phase 2 they're
 // cosmetic — the local preview shows all available local history — but registered so the
@@ -45,6 +46,34 @@ const sync = defineCommand({
   },
 });
 
+const service = defineCommand({
+  meta: { name: "service", description: "manage the hourly background sync (install/status/uninstall)" },
+  subCommands: {
+    install: defineCommand({
+      meta: { name: "install", description: "start syncing hourly in the background" },
+      async run() {
+        await runServiceInstall();
+      },
+    }),
+    status: defineCommand({
+      meta: { name: "status", description: "show whether the background sync is running and its last run" },
+      async run() {
+        await runServiceStatus();
+      },
+    }),
+    uninstall: defineCommand({
+      meta: { name: "uninstall", description: "stop and remove the background sync" },
+      async run() {
+        await runServiceUninstall();
+      },
+    }),
+  },
+  async run({ args }) {
+    if (Array.isArray(args._) && args._.length > 0) return;
+    await runServiceStatus();
+  },
+});
+
 const main = defineCommand({
   meta: {
     name: "tokenboard",
@@ -55,6 +84,7 @@ const main = defineCommand({
     "show-data": showData,
     claim,
     sync,
+    service,
     top: stub("top", "Phase 6", "the global / default board"),
     board: stub("board", "Phase 6", "a specific community board"),
     me: stub("me", "Phase 6", "your rank across communities"),

@@ -31,7 +31,9 @@ land on the board. After a global install the command is just `tokenboard`:
 
 ```bash
 tokenboard                 # preview + claim
-tokenboard sync            # push usage (also runs hourly in the background)
+tokenboard sync            # push usage now
+tokenboard service install # sync hourly in the background (launchd/systemd/Task Scheduler)
+tokenboard service status  # is the background sync running, and when did it last run?
 tokenboard show-data       # dry-run: print the exact payload before anything is sent
 ```
 
@@ -45,7 +47,7 @@ tokenboard show-data       # dry-run: print the exact payload before anything is
 - It uploads **aggregate token counts only** — run `tokenboard show-data` to see the
   exact payload before anything leaves your machine.
 - The web dashboard ranks you within your communities, over rolling time windows.
-- Sync hourly in the background, or any time you run the CLI.
+- Run `tokenboard service install` to sync hourly in the background, or sync any time you run the CLI.
 
 ## Privacy
 
